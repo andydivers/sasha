@@ -20,11 +20,6 @@ groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
-try:
-    init_sheets(config.google_sheets_creds or "")
-except Exception as e:
-    logger.warning("Google Sheets init failed: %s", e)
-
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
