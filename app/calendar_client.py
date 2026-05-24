@@ -69,8 +69,7 @@ def create_event(summary: str, date: str, time: str = "10:00", tz: str = "UTC", 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     r = httpx.post(f"{API_BASE}/calendars/{_calendar_id}/events", headers=headers, json=body)
     if r.status_code >= 400:
-        logger.error("Calendar API error %s: %s", r.status_code, r.text)
-    r.raise_for_status()
+        raise RuntimeError(f"Calendar API {r.status_code}: {r.text}")
     data = r.json()
     link = data.get("htmlLink", "")
     logger.info("Created event: %s", link)
