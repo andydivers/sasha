@@ -1,6 +1,7 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from google.oauth2.service_account import Credentials
 from google.auth.transport.requests import Request as AuthRequest
@@ -59,12 +60,18 @@ def is_ready() -> bool:
 
 def create_event(summary: str, date: str, time: str = "10:00", tz: str = "UTC", duration_min: int = 60) -> str:
     token = _get_token()
-    dt_start = datetime.fromisoformat(f"{date}T{time}:00")
-    dt_end = dt_start + timedelta(minutes=duration_min)
+    local_str = f"{date}T{time}:00"
+    try:
+        local_tz = ZoneInfo(tz)
+    except (KeyError, TypeError):
+        local_tz = timezone.utc
+    local_dt = datetime.fromisoformat(local_str).replace(tzinfo=local_tz)
+    utc_dt = local_dt.astimezone(timezone.utc)
+    dt_end = utc_dt + timedelta(minutes=duration_min)
     body = {
         "summary": summary,
-        "start": {"dateTime": dt_start.isoformat(), "timeZone": tz},
-        "end": {"dateTime": dt_end.isoformat(), "timeZone": tz},
+        "start": {"dateTime": utc_dt.isoformat(), "timeZone": "UTC"},
+        "end": {"dateTime": dt_end.isoformat(), "timeZone": "UTC"},
     }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     r = httpx.post(f"{API_BASE}/calendars/{_calendar_id}/events", headers=headers, json=body)
