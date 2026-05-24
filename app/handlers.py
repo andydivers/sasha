@@ -7,6 +7,7 @@ from app.config import Config
 from app.database import get_user_lang, set_user_lang, save_chat, log_event
 from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
+from app.gemini_client import init_gemini, analyze_image
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,9 @@ router = Router()
 
 config = Config()
 groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
+
+if config.gemini_api_key:
+    init_gemini(config.gemini_api_key)
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
@@ -73,12 +77,23 @@ async def cmd_webhook(message: types.Message, bot: Bot):
 
 
 @router.message(F.photo)
-async def handle_photo(message: types.Message):
+async def handle_photo(message: types.Message, bot: Bot):
     lang = await get_lang(message.from_user.id)
-    if lang == "ru":
-        await message.answer("Изображение получено! Анализ скриншотов через мультимодальный AI — в День 4. Пока я могу работать только с текстом.")
-    else:
-        await message.answer("Image received! Screenshot analysis via multimodal AI comes on Day 4. For now I can only work with text.")
+    caption = message.caption or ""
+    prompt = caption if caption else ("What do you see in this image?" if lang != "ru" else "Что ты видишь на этом изображении?")
+
+    await message.answer(t(lang, "thinking"))
+
+    try:
+        photo = message.photo[-1]
+        file = await bot.get_file(photo.file_id)
+        image_bytes = await bot.download_file(file.file_path)
+        result = analyze_image(image_bytes.read(), "image/jpeg", prompt)
+        await message.answer(result)
+        await log_event(message.from_user.id, "image_analyzed")
+    except Exception as e:
+        logger.error("Gemini error: %s", e)
+        await message.answer(t(lang, "error"))
 
 
 @router.message()
