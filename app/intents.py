@@ -3,6 +3,7 @@ import json
 
 from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
+from app.calendar_client import create_event, is_ready as calendar_ready
 
 logger = logging.getLogger(__name__)
 
@@ -80,16 +81,18 @@ def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None) -
 
 def _handle_create_event(args: dict, lang: str) -> str:
     summary = args.get("summary", "Event")
-    date = args.get("date", "—")
-    time = args.get("time", "—")
-    if lang == "ru":
-        return f"Событие создано: <b>{summary}</b>\nДата: {date}\nВремя: {time}\n\n(Полная интеграция с Google Calendar — в День 6)"
-    return (
-        f"Calendar event created: <b>{summary}</b>\n"
-        f"Date: {date}\n"
-        f"Time: {time}\n\n"
-        f"(Full Google Calendar integration comes Day 6)"
-    )
+    date = args.get("date", "")
+    time = args.get("time", "10:00")
+    try:
+        link = create_event(summary, date, time)
+        if lang == "ru":
+            return f"Событие создано: <a href='{link}'><b>{summary}</b></a>\nДата: {date}\nВремя: {time}"
+        return f"Event created: <a href='{link}'><b>{summary}</b></a>\nDate: {date}\nTime: {time}"
+    except Exception as e:
+        logger.error("Calendar error: %s", e)
+        if lang == "ru":
+            return "Не удалось создать событие. Проверь, что сервис-аккаунт имеет доступ к календарю."
+        return "Failed to create event. Make sure the service account has calendar access."
 
 
 def _handle_generate_report(args: dict, lang: str) -> str:
