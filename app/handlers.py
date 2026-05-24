@@ -68,22 +68,33 @@ async def cmd_webhook(message: types.Message, bot: Bot):
     ))
 
 
+@router.message(F.photo)
+async def handle_photo(message: types.Message):
+    lang = get_lang(message.from_user.id)
+    caption = message.caption or ""
+    if lang == "ru":
+        await message.answer("Изображение получено! Анализ скриншотов через мультимодальный AI — в День 4. Пока я могу работать только с текстом.")
+    else:
+        await message.answer("Image received! Screenshot analysis via multimodal AI comes on Day 4. For now I can only work with text.")
+
+
 @router.message()
 async def handle_message(message: types.Message):
     if not groq or not message.text:
-        await message.answer(t(get_lang(message.from_user.id), "not_ready"))
+        lang = get_lang(message.from_user.id)
+        await message.answer(t(lang, "not_ready"))
         return
 
     lang = get_lang(message.from_user.id)
     await message.answer(t(lang, "thinking"))
 
     try:
-        result, latency = detect_intent(groq, message.text)
+        result, latency = detect_intent(groq, message.text, lang=lang)
 
         if isinstance(result, str):
             await message.answer(result)
         else:
-            response = await handle_tool_call(result)
+            response = await handle_tool_call(result, lang=lang)
             await message.answer(response)
 
         logger.info("Handled message in %.2fs", latency)
