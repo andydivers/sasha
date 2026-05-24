@@ -8,6 +8,7 @@ from app.database import get_user_lang, set_user_lang, save_chat, log_event
 from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
+from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,9 @@ groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
+if config.google_sheets_creds:
+    init_sheets(config.google_sheets_creds)
+
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
@@ -29,6 +33,7 @@ LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 _lang_cache: dict[int, str] = {}
+_sheet_cache: dict[int, str] = {}
 
 
 async def get_lang(user_id: int) -> str:
@@ -76,6 +81,35 @@ async def cmd_webhook(message: types.Message, bot: Bot):
     ))
 
 
+@router.message(Command("sheet"))
+async def cmd_sheet(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        if lang == "ru":
+            await message.answer(
+                "Отправь ссылку на Google Таблицу:\n"
+                "<code>/sheet https://docs.google.com/spreadsheets/d/...</code>\n\n"
+                "Не забудь <b>открыть доступ</b> таблице для:\n"
+                f"<code>{get_service_email()}</code>"
+            )
+        else:
+            await message.answer(
+                "Send your Google Sheet URL:\n"
+                "<code>/sheet https://docs.google.com/spreadsheets/d/...</code>\n\n"
+                "Make sure to <b>share</b> the sheet with:\n"
+                f"<code>{get_service_email()}</code>"
+            )
+        return
+
+    url = parts[1].strip()
+    _sheet_cache[message.from_user.id] = url
+    if lang == "ru":
+        await message.answer("Google Таблица подключена! Теперь я могу читать и записывать данные.")
+    else:
+        await message.answer("Google Sheet connected! I can now read and write data.")
+
+
 @router.message(F.photo)
 async def handle_photo(message: types.Message, bot: Bot):
     lang = await get_lang(message.from_user.id)
@@ -113,7 +147,8 @@ async def handle_message(message: types.Message):
             response_text = result
             await message.answer(response_text)
         else:
-            response_text = await handle_tool_call(result, lang=lang)
+            sheet_url = _sheet_cache.get(message.from_user.id)
+            response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url)
             await message.answer(response_text)
 
         await save_chat(message.from_user.id, message.text, response_text, int(latency * 1000))
