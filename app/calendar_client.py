@@ -12,10 +12,11 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 API_BASE = "https://www.googleapis.com/calendar/v3"
 
 _creds: Credentials | None = None
+_calendar_id: str = "primary"
 
 
 def init_calendar(credentials_json: str = ""):
-    global _creds
+    global _creds, _calendar_id
     raw = credentials_json.strip().strip("'\"") if credentials_json else ""
     if not raw:
         path = "/etc/secrets/google_sheets_credentials.json"
@@ -27,12 +28,22 @@ def init_calendar(credentials_json: str = ""):
     creds_dict = json.loads(raw)
     _creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
-
-def _get_token() -> str:
-    if not _creds:
-        raise RuntimeError("Calendar not initialized")
-    _creds.refresh(AuthRequest())
-    return _creds.token
+    token = _get_token()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    cal_list = httpx.get(f"{API_BASE}/users/me/calendarList", headers=headers).json()
+    for cal in cal_list.get("items", []):
+        if cal.get("summary") == "Sasha Bot":
+            _calendar_id = cal["id"]
+            logger.info("Found existing Sasha Bot calendar: %s", _calendar_id)
+            return
+    body = {"summary": "Sasha Bot", "description": "Events created by Sasha Telegram bot"}
+    r = httpx.post(f"{API_BASE}/calendars", headers=headers, json=body)
+    r.raise_for_status()
+    _calendar_id = r.json()["id"]
+    acl_body = {"role": "reader", "scope": {"type": "default"}}
+    httpx.post(f"{API_BASE}/calendars/{_calendar_id}/acl", headers=headers, json=acl_body)
+    cal_link = f"https://calendar.google.com/calendar/u/0?cid={_calendar_id}"
+    logger.info("Created Sasha Bot calendar: %s", cal_link)
 
 
 def is_ready() -> bool:
@@ -49,7 +60,7 @@ def create_event(summary: str, date: str, time: str = "10:00", duration_min: int
         "end": {"dateTime": dt_end.isoformat(), "timeZone": "UTC"},
     }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    r = httpx.post(f"{API_BASE}/calendars/primary/events", headers=headers, json=body)
+    r = httpx.post(f"{API_BASE}/calendars/{_calendar_id}/events", headers=headers, json=body)
     r.raise_for_status()
     data = r.json()
     link = data.get("htmlLink", "")
@@ -57,10 +68,18 @@ def create_event(summary: str, date: str, time: str = "10:00", duration_min: int
     return link
 
 
+def get_calendar_link() -> str:
+    return f"https://calendar.google.com/calendar/u/0?cid={_calendar_id}"
+
+
+def get_calendar_id() -> str:
+    return _calendar_id
+
+
 def list_events(max_results: int = 10) -> list[dict]:
     token = _get_token()
     headers = {"Authorization": f"Bearer {token}"}
     params = {"maxResults": max_results, "orderBy": "startTime", "singleEvents": "true"}
-    r = httpx.get(f"{API_BASE}/calendars/primary/events", headers=headers, params=params)
+    r = httpx.get(f"{API_BASE}/calendars/{_calendar_id}/events", headers=headers, params=params)
     r.raise_for_status()
     return r.json().get("items", [])
