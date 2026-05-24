@@ -1,5 +1,7 @@
+import re
 import logging
 import json
+from datetime import datetime, timedelta
 
 from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
@@ -79,10 +81,68 @@ def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None) -
         return f"Sheet error: {e}" if lang != "ru" else f"Ошибка таблицы: {e}"
 
 
+_WEEKDAYS = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
+
+
+def _parse_date(raw: str) -> str:
+    raw = raw.strip().lower()
+    today = datetime.now()
+    if raw == "today":
+        return today.strftime("%Y-%m-%d")
+    if raw == "tomorrow":
+        return (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    if raw in _WEEKDAYS:
+        target = _WEEKDAYS[raw]
+        days_ahead = (target - today.weekday()) % 7
+        if days_ahead == 0:
+            days_ahead = 7
+        return (today + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+    if raw.startswith("next "):
+        rest = raw[5:]
+        if rest in _WEEKDAYS:
+            target = _WEEKDAYS[rest]
+            days_ahead = (target - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            return (today + timedelta(days=days_ahead + 7)).strftime("%Y-%m-%d")
+    try:
+        datetime.fromisoformat(raw)
+        return raw
+    except ValueError:
+        try:
+            dt = datetime.strptime(raw, "%d.%m.%Y")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            return today.strftime("%Y-%m-%d")
+
+
+def _parse_time(raw: str) -> str:
+    raw = raw.strip().lower()
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?", raw)
+    if m:
+        hour = int(m.group(1))
+        minute = int(m.group(2)) if m.group(2) else 0
+        mer = m.group(3)
+        if mer:
+            mer = mer.replace(".", "")
+            if mer == "pm" and hour < 12:
+                hour += 12
+            elif mer == "am" and hour == 12:
+                hour = 0
+        return f"{hour:02d}:{minute:02d}"
+    try:
+        datetime.strptime(raw, "%H:%M")
+        return raw
+    except ValueError:
+        return "10:00"
+
+
 def _handle_create_event(args: dict, lang: str) -> str:
     summary = args.get("summary", "Event")
-    date = args.get("date", "")
-    time = args.get("time", "10:00")
+    date_raw = args.get("date", "")
+    time_raw = args.get("time", "10:00")
+    date = _parse_date(date_raw) if date_raw else datetime.now().strftime("%Y-%m-%d")
+    time = _parse_time(time_raw)
     try:
         link = create_event(summary, date, time)
         if lang == "ru":
