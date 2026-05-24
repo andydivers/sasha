@@ -24,7 +24,7 @@ bot = create_bot(config)
 dp = create_dispatcher()
 dp.include_router(router)
 
-app = FastAPI(title="Viktor Bot")
+app = FastAPI(title="Sasha Bot")
 
 
 @app.on_event("startup")
@@ -51,7 +51,7 @@ async def webhook(request: Request) -> None:
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "bot": "Viktor"}
+    return {"status": "ok", "bot": "Sasha"}
 
 
 @app.get("/health")
