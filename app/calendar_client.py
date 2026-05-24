@@ -94,7 +94,20 @@ def get_calendar_id() -> str:
 def list_events(max_results: int = 10) -> list[dict]:
     token = _get_token()
     headers = {"Authorization": f"Bearer {token}"}
-    params = {"maxResults": max_results, "orderBy": "startTime", "singleEvents": "true"}
+    params = {
+        "maxResults": max_results,
+        "orderBy": "startTime",
+        "singleEvents": "true",
+        "timeMin": (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(),
+    }
     r = httpx.get(f"{API_BASE}/calendars/{_calendar_id}/events", headers=headers, params=params)
     r.raise_for_status()
     return r.json().get("items", [])
+
+
+def delete_event(event_id: str) -> None:
+    token = _get_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    r = httpx.delete(f"{API_BASE}/calendars/{_calendar_id}/events/{event_id}", headers=headers)
+    if r.status_code >= 400:
+        raise RuntimeError(f"Calendar API {r.status_code}: {r.text}")
