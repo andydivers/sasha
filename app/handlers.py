@@ -2,9 +2,15 @@ import logging
 
 from aiogram import Bot, types, Router
 from aiogram.filters import Command
+from app.config import Config
+from app.groq_client import create_groq_client, detect_intent
+from app.intents import handle_tool_call
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+config = Config()
+groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 
 
 @router.message(Command("start"))
@@ -46,8 +52,23 @@ async def cmd_webhook(message: types.Message, bot: Bot):
 
 
 @router.message()
-async def echo(message: types.Message):
-    await message.answer(
-        f"You wrote: <i>{message.text}</i>\n\n"
-        f"For now I only know /start, /help, /ping"
-    )
+async def handle_message(message: types.Message):
+    if not groq or not message.text:
+        await message.answer("I'm not fully set up yet. Try /help")
+        return
+
+    await message.answer("Thinking...")
+
+    try:
+        result, latency = detect_intent(groq, message.text)
+
+        if isinstance(result, str):
+            await message.answer(result)
+        else:
+            response = await handle_tool_call(result)
+            await message.answer(response)
+
+        logger.info("Handled message in %.2fs", latency)
+    except Exception as e:
+        logger.error("Groq error: %s", e)
+        await message.answer("Sorry, I ran into an issue. Try again in a moment.")
