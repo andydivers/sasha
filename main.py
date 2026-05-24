@@ -29,7 +29,8 @@ app = FastAPI(title="Viktor Bot")
 
 @app.on_event("startup")
 async def on_startup():
-    init_db(config.supabase_url, config.supabase_key)
+    if config.supabase_url and config.supabase_key:
+        init_db(config.supabase_url, config.supabase_key)
     webhook_url = config.webhook_url
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
