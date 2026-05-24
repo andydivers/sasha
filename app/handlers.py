@@ -16,9 +16,13 @@ groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 
 user_langs: dict[int, str] = {}
 
+LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
+
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="English 🇬🇧", callback_data="lang_en")],
-    [InlineKeyboardButton(text="Русский 🇷🇺", callback_data="lang_ru")],
+    [InlineKeyboardButton(
+        text=f"{TRANSLATIONS[code]['flag']} {TRANSLATIONS[code]['name']}",
+        callback_data=f"lang_{code}"
+    )] for code in LANG_LIST
 ])
 
 
