@@ -50,3 +50,5 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
     next_run TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT '';
