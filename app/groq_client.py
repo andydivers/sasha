@@ -89,8 +89,8 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
     ]
 
     lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
-system_prompt = f"You are Viktor, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. {lang_instruction}"
-messages = [{"role": "system", "content": system_prompt}]
+    system_prompt = f"You are Viktor, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. {lang_instruction}"
+    messages = [{"role": "system", "content": system_prompt}]
     if chat_history:
         messages.extend(chat_history[-6:])
     messages.append({"role": "user", "content": text})
