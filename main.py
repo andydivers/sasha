@@ -9,6 +9,7 @@ from app.config import Config
 from app.bot import create_bot, create_dispatcher, setup_sentry
 from app.database import init_db
 from app.sheets_client import init_sheets, is_ready as sheets_ready
+from app.calendar_client import init_calendar, is_ready as calendar_ready
 from app.handlers import router
 
 logging.basicConfig(
@@ -42,6 +43,12 @@ async def lifespan(app: FastAPI):
             logger.info("Sheets initialized from secret file")
         except Exception as e:
             logger.warning("Sheets init from secret file also failed: %s", e)
+    if not calendar_ready():
+        try:
+            init_calendar()
+            logger.info("Calendar initialized")
+        except Exception as e:
+            logger.warning("Calendar init failed: %s", e)
     webhook_url = config.webhook_url
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
