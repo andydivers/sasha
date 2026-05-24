@@ -5,7 +5,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, save_chat, log_event
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, save_chat, log_event
 from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -31,6 +31,7 @@ LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 _lang_cache: dict[int, str] = {}
+_tz_cache: dict[int, str] = {}
 _sheet_cache: dict[int, str] = {}
 
 
@@ -38,6 +39,13 @@ async def get_lang(user_id: int) -> str:
     if user_id not in _lang_cache:
         _lang_cache[user_id] = await get_user_lang(user_id)
     return _lang_cache.get(user_id, "en")
+
+
+async def get_tz(user_id: int) -> str:
+    if user_id not in _tz_cache:
+        tz = await get_user_tz(user_id)
+        _tz_cache[user_id] = tz if tz else "UTC"
+    return _tz_cache.get(user_id, "UTC")
 
 
 @router.message(Command("start"))
@@ -108,6 +116,31 @@ async def cmd_sheet(message: types.Message):
         await message.answer("Google Sheet connected! I can now read and write data.")
 
 
+@router.message(Command("tz"))
+async def cmd_tz(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        if lang == "ru":
+            await message.answer("Укажи часовой пояс: /tz UTC+3\nНапример: /tz Europe/Moscow, /tz UTC+5, /tz America/New_York")
+        else:
+            await message.answer("Set your timezone with: /tz UTC+3\nOr use IANA names: /tz Europe/Moscow, /tz America/New_York")
+        return
+
+    tz = parts[1].strip().upper()
+    if tz.startswith("UTC") and len(tz) <= 6:
+        _tz_cache[message.from_user.id] = tz
+        await set_user_tz(message.from_user.id, tz)
+    else:
+        _tz_cache[message.from_user.id] = tz
+        await set_user_tz(message.from_user.id, tz)
+
+    if lang == "ru":
+        await message.answer(f"Часовой пояс установлен: {tz}")
+    else:
+        await message.answer(f"Timezone set: {tz}")
+
+
 @router.message(F.photo)
 async def handle_photo(message: types.Message, bot: Bot):
     lang = await get_lang(message.from_user.id)
@@ -152,6 +185,8 @@ async def handle_message(message: types.Message):
         await message.answer(t(lang, "not_ready"))
         return
 
+    tz = await get_tz(message.from_user.id)
+
     await message.answer(t(lang, "thinking"))
 
     try:
@@ -162,7 +197,7 @@ async def handle_message(message: types.Message):
             await message.answer(response_text)
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
-            response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url)
+            response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url, tz=tz)
             await message.answer(response_text)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
