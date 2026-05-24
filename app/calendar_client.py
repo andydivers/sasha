@@ -57,14 +57,14 @@ def is_ready() -> bool:
     return _creds is not None
 
 
-def create_event(summary: str, date: str, time: str = "10:00", duration_min: int = 60) -> str:
+def create_event(summary: str, date: str, time: str = "10:00", tz: str = "UTC", duration_min: int = 60) -> str:
     token = _get_token()
     dt_start = datetime.fromisoformat(f"{date}T{time}:00")
     dt_end = dt_start + timedelta(minutes=duration_min)
     body = {
         "summary": summary,
-        "start": {"dateTime": dt_start.isoformat(), "timeZone": "UTC"},
-        "end": {"dateTime": dt_end.isoformat(), "timeZone": "UTC"},
+        "start": {"dateTime": dt_start.isoformat(), "timeZone": tz},
+        "end": {"dateTime": dt_end.isoformat(), "timeZone": tz},
     }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     r = httpx.post(f"{API_BASE}/calendars/{_calendar_id}/events", headers=headers, json=body)
