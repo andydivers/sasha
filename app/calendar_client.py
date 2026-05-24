@@ -46,6 +46,13 @@ def init_calendar(credentials_json: str = ""):
     logger.info("Created Sasha Bot calendar: %s", cal_link)
 
 
+def _get_token() -> str:
+    if not _creds:
+        raise RuntimeError("Calendar not initialized")
+    _creds.refresh(AuthRequest())
+    return _creds.token
+
+
 def is_ready() -> bool:
     return _creds is not None
 
