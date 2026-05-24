@@ -2,7 +2,7 @@ TRANSLATIONS = {
     "en": {
         "name": "English",
         "flag": "🇬🇧",
-        "welcome": "Hi! I'm <b>Viktor</b> — your AI assistant.\n\nI can:\n• Analyze screenshots\n• Work with Google Sheets\n• Create calendar events\n• Generate reports\n\n<i>Language can be changed anytime with /lang</i>",
+        "welcome": "Hi! I'm <b>Sasha</b> — your AI assistant.\n\nI can:\n• Analyze screenshots\n• Work with Google Sheets\n• Create calendar events\n• Generate reports\n\n<i>Language can be changed anytime with /lang</i>",
         "help": "/start — Restart\n/help — This help\n/ping — Ping test\n/lang — Change language\n/webhook — Webhook status",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErrors: {errors}",
@@ -17,7 +17,7 @@ TRANSLATIONS = {
     "ru": {
         "name": "Русский",
         "flag": "🇷🇺",
-        "welcome": "Привет! Я <b>Viktor</b> — твой AI-ассистент.\n\nЯ умею:\n• Анализировать скриншоты\n• Работать с Google Таблицами\n• Создавать события в календаре\n• Формировать отчёты\n\n<i>Язык можно сменить через /lang</i>",
+        "welcome": "Привет! Я <b>Sasha</b> — твой AI-ассистент.\n\nЯ умею:\n• Анализировать скриншоты\n• Работать с Google Таблицами\n• Создавать события в календаре\n• Формировать отчёты\n\n<i>Язык можно сменить через /lang</i>",
         "help": "/start — Начать\n/help — Справка\n/ping — Проверка\n/lang — Сменить язык\n/webhook — Статус вебхука",
         "ping": "Понг!",
         "webhook": "<b>Вебхук:</b>\nURL: {url}\nОшибок: {errors}",
@@ -32,7 +32,7 @@ TRANSLATIONS = {
     "es": {
         "name": "Español",
         "flag": "🇪🇸",
-        "welcome": "¡Hola! Soy <b>Viktor</b> — tu asistente AI.\n\nPuedo:\n• Analizar capturas de pantalla\n• Trabajar con Google Sheets\n• Crear eventos de calendario\n• Generar informes\n\n<i>Idioma cambiable con /lang</i>",
+        "welcome": "¡Hola! Soy <b>Sasha</b> — tu asistente AI.\n\nPuedo:\n• Analizar capturas de pantalla\n• Trabajar con Google Sheets\n• Crear eventos de calendario\n• Generar informes\n\n<i>Idioma cambiable con /lang</i>",
         "help": "/start — Iniciar\n/help — Ayuda\n/ping — Ping\n/lang — Cambiar idioma\n/webhook — Estado del webhook",
         "ping": "¡Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErrores: {errors}",
@@ -47,7 +47,7 @@ TRANSLATIONS = {
     "fr": {
         "name": "Français",
         "flag": "🇫🇷",
-        "welcome": "Bonjour ! Je suis <b>Viktor</b> — votre assistant IA.\n\nJe peux :\n• Analyser des captures d'écran\n• Travailler avec Google Sheets\n• Créer des événements calendrier\n• Générer des rapports\n\n<i>Langue modifiable avec /lang</i>",
+        "welcome": "Bonjour ! Je suis <b>Sasha</b> — votre assistant IA.\n\nJe peux :\n• Analyser des captures d'écran\n• Travailler avec Google Sheets\n• Créer des événements calendrier\n• Générer des rapports\n\n<i>Langue modifiable avec /lang</i>",
         "help": "/start — Démarrer\n/help — Aide\n/ping — Ping\n/lang — Changer de langue\n/webhook — Statut du webhook",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErreurs: {errors}",
@@ -62,7 +62,7 @@ TRANSLATIONS = {
     "zh": {
         "name": "中文",
         "flag": "🇨🇳",
-        "welcome": "你好！我是 <b>Viktor</b> — 你的AI助手。\n\n我可以：\n• 分析截图\n• 处理Google表格\n• 创建日历事件\n• 生成报告\n\n<i>语言可通过 /lang 更改</i>",
+        "welcome": "你好！我是 <b>Sasha</b> — 你的AI助手。\n\n我可以：\n• 分析截图\n• 处理Google表格\n• 创建日历事件\n• 生成报告\n\n<i>语言可通过 /lang 更改</i>",
         "help": "/start — 开始\n/help — 帮助\n/ping — 测试\n/lang — 更改语言\n/webhook — Webhook状态",
         "ping": "乒！",
         "webhook": "<b>Webhook:</b>\nURL: {url}\n错误: {errors}",
@@ -77,7 +77,7 @@ TRANSLATIONS = {
     "ar": {
         "name": "العربية",
         "flag": "🇸🇦",
-        "welcome": "مرحباً! أنا <b>Viktor</b> — مساعدك الذكي.\n\nيمكنني:\n• تحليل لقطات الشاشة\n• العمل مع Google Sheets\n• إنشاء أحداث التقويم\n• إنشاء التقارير\n\n<i>يمكن تغيير اللغة عبر /lang</i>",
+        "welcome": "مرحباً! أنا <b>Sasha</b> — مساعدك الذكي.\n\nيمكنني:\n• تحليل لقطات الشاشة\n• العمل مع Google Sheets\n• إنشاء أحداث التقويم\n• إنشاء التقارير\n\n<i>يمكن تغيير اللغة عبر /lang</i>",
         "help": "/start — ابدأ\n/help — المساعدة\n/ping — اختبار\n/lang — تغيير اللغة\n/webhook — حالة الويب هوك",
         "ping": "بونغ!",
         "webhook": "<b>الويب هوك:</b>\nالرابط: {url}\nالأخطاء: {errors}",
@@ -92,7 +92,7 @@ TRANSLATIONS = {
     "pt": {
         "name": "Português",
         "flag": "🇧🇷",
-        "welcome": "Olá! Sou o <b>Viktor</b> — seu assistente de IA.\n\nPosso:\n• Analisar capturas de tela\n• Trabalhar com Google Sheets\n• Criar eventos no calendário\n• Gerar relatórios\n\n<i>Idioma pode ser alterado com /lang</i>",
+        "welcome": "Olá! Sou o <b>Sasha</b> — seu assistente de IA.\n\nPosso:\n• Analisar capturas de tela\n• Trabalhar com Google Sheets\n• Criar eventos no calendário\n• Gerar relatórios\n\n<i>Idioma pode ser alterado com /lang</i>",
         "help": "/start — Iniciar\n/help — Ajuda\n/ping — Teste\n/lang — Mudar idioma\n/webhook — Status do webhook",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErros: {errors}",
@@ -107,7 +107,7 @@ TRANSLATIONS = {
     "de": {
         "name": "Deutsch",
         "flag": "🇩🇪",
-        "welcome": "Hallo! Ich bin <b>Viktor</b> — dein KI-Assistent.\n\nIch kann:\n• Screenshots analysieren\n• Mit Google Sheets arbeiten\n• Kalendertermine erstellen\n• Berichte generieren\n\n<i>Sprache jederzeit mit /lang änderbar</i>",
+        "welcome": "Hallo! Ich bin <b>Sasha</b> — dein KI-Assistent.\n\nIch kann:\n• Screenshots analysieren\n• Mit Google Sheets arbeiten\n• Kalendertermine erstellen\n• Berichte generieren\n\n<i>Sprache jederzeit mit /lang änderbar</i>",
         "help": "/start — Start\n/help — Hilfe\n/ping — Ping\n/lang — Sprache ändern\n/webhook — Webhook-Status",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nFehler: {errors}",
@@ -122,7 +122,7 @@ TRANSLATIONS = {
     "hi": {
         "name": "हिन्दी",
         "flag": "🇮🇳",
-        "welcome": "नमस्ते! मैं <b>Viktor</b> हूँ — आपका AI सहायक।\n\nमैं कर सकता हूँ:\n• स्क्रीनशॉट का विश्लेषण\n• Google Sheets के साथ काम\n• कैलेंडर इवेंट बनाना\n• रिपोर्ट तैयार करना\n\n<i>/lang से भाषा बदलें</i>",
+        "welcome": "नमस्ते! मैं <b>Sasha</b> हूँ — आपका AI सहायक।\n\nमैं कर सकता हूँ:\n• स्क्रीनशॉट का विश्लेषण\n• Google Sheets के साथ काम\n• कैलेंडर इवेंट बनाना\n• रिपोर्ट तैयार करना\n\n<i>/lang से भाषा बदलें</i>",
         "help": "/start — शुरू\n/help — सहायता\n/ping — परीक्षण\n/lang — भाषा बदलें\n/webhook — वेबहुक स्थिति",
         "ping": "पोंग!",
         "webhook": "<b>वेबहुक:</b>\nURL: {url}\nत्रुटियाँ: {errors}",
@@ -137,7 +137,7 @@ TRANSLATIONS = {
     "ja": {
         "name": "日本語",
         "flag": "🇯🇵",
-        "welcome": "こんにちは！<b>Viktor</b> — AIアシスタントです。\n\n私は以下ができます：\n• スクリーンショットの分析\n• Google Sheetsの操作\n• カレンダーイベントの作成\n• レポートの生成\n\n<i>/lang で言語変更可能</i>",
+        "welcome": "こんにちは！<b>Sasha</b> — AIアシスタントです。\n\n私は以下ができます：\n• スクリーンショットの分析\n• Google Sheetsの操作\n• カレンダーイベントの作成\n• レポートの生成\n\n<i>/lang で言語変更可能</i>",
         "help": "/start — 開始\n/help — ヘルプ\n/ping — テスト\n/lang — 言語変更\n/webhook — Webhook状態",
         "ping": "ポン！",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nエラー: {errors}",
