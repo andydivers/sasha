@@ -130,10 +130,13 @@ async def cmd_tz(message: types.Message):
     raw = parts[1].strip()
     m = re.match(r"^UTC([+-]?)(\d{1,2})(?::(\d{2}))?$", raw, re.I)
     if m:
-        sign = "+" if m.group(1) in ("", "+") else "-"
         h = int(m.group(2))
-        mm = m.group(3) or "00"
-        tz = f"{sign}{h:02d}:{mm}"
+        if h == 0:
+            tz = "UTC"
+        elif m.group(1) in ("", "+"):
+            tz = f"Etc/GMT-{h}"
+        else:
+            tz = f"Etc/GMT+{h}"
     else:
         tz = raw
     _tz_cache[message.from_user.id] = tz
