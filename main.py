@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -25,11 +26,9 @@ bot = create_bot(config)
 dp = create_dispatcher()
 dp.include_router(router)
 
-app = FastAPI(title="Sasha Bot")
 
-
-@app.on_event("startup")
-async def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     if config.supabase_url and config.supabase_key:
         init_db(config.supabase_url, config.supabase_key)
     if config.google_sheets_creds:
@@ -47,12 +46,12 @@ async def on_startup():
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
         logger.info("Webhook set to %s", webhook_url)
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
+    yield
     await bot.session.close()
     logger.info("Bot session closed")
+
+
+app = FastAPI(title="Sasha Bot", lifespan=lifespan)
 
 
 @app.post("/webhook")
