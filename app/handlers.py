@@ -24,6 +24,11 @@ groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
+STAR_PRICES = {
+    "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "stars": 5},
+    "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "stars": 3},
+}
+
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
@@ -257,6 +262,60 @@ def _parse_delay(raw: str) -> int:
             return n * 86400
         return n * 60
     raise ValueError(f"Can't parse: {raw}")
+
+
+@router.message(Command("buy"))
+async def cmd_buy(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=f"📊 {p['label_en']} — {p['stars']} ⭐" if lang != "ru" else f"📊 {p['label_ru']} — {p['stars']} ⭐",
+            callback_data=f"buy_{k}"
+        )]
+        for k, p in STAR_PRICES.items()
+    ])
+    if lang == "ru":
+        await message.answer("Выбери услугу:", reply_markup=kb)
+    else:
+        await message.answer("Choose a service:", reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("buy_"))
+async def on_buy_choice(callback: CallbackQuery, bot: Bot):
+    key = callback.data[4:]
+    price = STAR_PRICES.get(key)
+    if not price:
+        await callback.answer("Unknown service")
+        return
+    lang = await get_lang(callback.from_user.id)
+    title = price["label_en"] if lang != "ru" else price["label_ru"]
+    prices = [types.LabeledPrice(label=title, amount=price["stars"])]
+    await callback.message.delete()
+    await bot.send_invoice(
+        chat_id=callback.from_user.id,
+        title=title,
+        description=title,
+        payload=key,
+        provider_token="",
+        currency="XTR",
+        prices=prices,
+    )
+    await callback.answer()
+
+
+@router.pre_checkout_query()
+async def on_pre_checkout(query: types.PreCheckoutQuery):
+    await query.answer(ok=True)
+
+
+@router.message(F.successful_payment)
+async def on_paid(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    payload = message.successful_payment.invoice_payload
+    if lang == "ru":
+        await message.answer(f"✅ Оплачено! Услуга: {payload}. Чем могу помочь?")
+    else:
+        await message.answer(f"✅ Payment received! Service: {payload}. What now?")
 
 
 @router.message(F.photo)
