@@ -11,7 +11,10 @@ _service_email: str = ""
 
 def init_sheets(credentials_json: str):
     global _gc, _service_email
-    creds_dict = json.loads(credentials_json)
+    raw = credentials_json.strip().strip("'\"")
+    if not raw:
+        raise ValueError("GOOGLE_SHEETS_CREDENTIALS is empty")
+    creds_dict = json.loads(raw)
     _service_email = creds_dict["client_email"]
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
