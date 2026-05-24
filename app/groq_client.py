@@ -10,7 +10,21 @@ def create_groq_client(api_key: str) -> Groq:
     return Groq(api_key=api_key)
 
 
-def detect_intent(client: Groq, text: str, chat_history: list | None = None):
+LANG_INSTRUCTIONS = {
+    "en": "Respond in English.",
+    "ru": "Отвечай на русском языке.",
+    "es": "Responde en español.",
+    "fr": "Réponds en français.",
+    "zh": "请用中文回答。",
+    "ar": "الرد باللغة العربية.",
+    "pt": "Responda em português.",
+    "de": "Antworte auf Deutsch.",
+    "hi": "हिंदी में उत्तर दें।",
+    "ja": "日本語で答えてください。",
+}
+
+
+def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list | None = None):
     tools = [
         {
             "type": "function",
@@ -74,7 +88,9 @@ def detect_intent(client: Groq, text: str, chat_history: list | None = None):
         },
     ]
 
-    messages = [{"role": "system", "content": "You are Viktor, an AI assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally."}]
+    lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
+system_prompt = f"You are Viktor, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. {lang_instruction}"
+messages = [{"role": "system", "content": system_prompt}]
     if chat_history:
         messages.extend(chat_history[-6:])
     messages.append({"role": "user", "content": text})
