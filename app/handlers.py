@@ -127,13 +127,13 @@ async def cmd_tz(message: types.Message):
             await message.answer("Set your timezone with: /tz UTC+3\nOr use IANA names: /tz Europe/Moscow, /tz America/New_York")
         return
 
-    tz = parts[1].strip().upper()
-    if tz.startswith("UTC") and len(tz) <= 6:
-        _tz_cache[message.from_user.id] = tz
-        await set_user_tz(message.from_user.id, tz)
+    raw = parts[1].strip()
+    if re.match(r"^UTC[+-]?\d{1,2}(?::\d{2})?$", raw, re.I):
+        tz = raw.upper()
     else:
-        _tz_cache[message.from_user.id] = tz
-        await set_user_tz(message.from_user.id, tz)
+        tz = raw
+    _tz_cache[message.from_user.id] = tz
+    await set_user_tz(message.from_user.id, tz)
 
     if lang == "ru":
         await message.answer(f"Часовой пояс установлен: {tz}")
