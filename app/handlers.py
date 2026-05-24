@@ -21,7 +21,10 @@ if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
 if config.google_sheets_creds:
-    init_sheets(config.google_sheets_creds)
+    try:
+        init_sheets(config.google_sheets_creds)
+    except Exception as e:
+        logger.warning("Google Sheets init failed: %s. Set GOOGLE_SHEETS_CREDENTIALS via Render Secret File.", e)
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
