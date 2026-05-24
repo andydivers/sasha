@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
@@ -74,3 +75,34 @@ async def log_event(user_id: int, event_type: str, event_data: dict = None):
         }).execute()
     except Exception as e:
         logger.warning("Failed to log event: %s", e)
+
+
+async def add_reminder(user_id: int, message: str, next_run: str):
+    try:
+        get_db().table("scheduled_tasks").insert({
+            "user_id": user_id,
+            "job_id": f"remind_{user_id}_{int(datetime.now().timestamp())}",
+            "task_type": "reminder",
+            "config": {"message": message},
+            "next_run": next_run,
+            "done": False,
+        }).execute()
+    except Exception as e:
+        logger.warning("Failed to add reminder: %s", e)
+
+
+async def get_due_reminders() -> list[dict]:
+    try:
+        now_ts = datetime.now(timezone.utc).isoformat()
+        resp = get_db().table("scheduled_tasks").select("*").eq("task_type", "reminder").eq("done", False).lte("next_run", now_ts).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get due reminders: %s", e)
+        return []
+
+
+async def mark_reminder_done(task_id: int):
+    try:
+        get_db().table("scheduled_tasks").update({"done": True}).eq("id", task_id).execute()
+    except Exception as e:
+        logger.warning("Failed to mark reminder done: %s", e)
