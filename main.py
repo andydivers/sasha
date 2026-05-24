@@ -6,6 +6,7 @@ from aiogram.types import Update
 
 from app.config import Config
 from app.bot import create_bot, create_dispatcher, setup_sentry
+from app.database import init_db
 from app.handlers import router
 
 logging.basicConfig(
@@ -28,6 +29,7 @@ app = FastAPI(title="Viktor Bot")
 
 @app.on_event("startup")
 async def on_startup():
+    init_db(config.supabase_url, config.supabase_key)
     webhook_url = config.webhook_url
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
