@@ -1,3 +1,4 @@
+import re
 import logging
 
 from aiogram import Bot, types, Router, F
@@ -129,16 +130,32 @@ async def handle_photo(message: types.Message, bot: Bot):
 
 @router.message()
 async def handle_message(message: types.Message):
-    if not groq or not message.text:
+    if not message.text:
         lang = await get_lang(message.from_user.id)
         await message.answer(t(lang, "not_ready"))
         return
 
     lang = await get_lang(message.from_user.id)
+
+    text = message.text.strip()
+
+    m = re.match(r"https://docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)", text)
+    if m:
+        _sheet_cache[message.from_user.id] = m.group(0)
+        if lang == "ru":
+            await message.answer("Google Таблица подключена! Теперь я могу читать и записывать данные.")
+        else:
+            await message.answer("Google Sheet connected! I can now read and write data.")
+        return
+
+    if not groq:
+        await message.answer(t(lang, "not_ready"))
+        return
+
     await message.answer(t(lang, "thinking"))
 
     try:
-        result, latency = detect_intent(groq, message.text, lang=lang)
+        result, latency = detect_intent(groq, text, lang=lang)
 
         if isinstance(result, str):
             response_text = result
@@ -148,7 +165,7 @@ async def handle_message(message: types.Message):
             response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url)
             await message.answer(response_text)
 
-        await save_chat(message.from_user.id, message.text, response_text, int(latency * 1000))
+        await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)
     except Exception as e:
         logger.error("Groq error: %s", e)
