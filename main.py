@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -7,7 +8,7 @@ from aiogram.types import Update
 
 from app.config import Config
 from app.bot import create_bot, create_dispatcher, setup_sentry
-from app.database import init_db
+from app.database import init_db, get_due_reminders, mark_reminder_done
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
 from app.handlers import router
@@ -53,7 +54,26 @@ async def lifespan(app: FastAPI):
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
         logger.info("Webhook set to %s", webhook_url)
+
+    async def check_reminders():
+        while True:
+            try:
+                reminders = await get_due_reminders()
+                for r in reminders:
+                    msg = r["config"].get("message", "Reminder!")
+                    try:
+                        await bot.send_message(chat_id=r["user_id"], text=f"⏰ <b>Reminder:</b> {msg}")
+                        await mark_reminder_done(r["id"])
+                    except Exception as e:
+                        logger.warning("Failed to send reminder to %s: %s", r["user_id"], e)
+            except Exception as e:
+                logger.warning("Reminder check error: %s", e)
+            await asyncio.sleep(30)
+
+    task = asyncio.create_task(check_reminders())
+    logger.info("Reminder checker started")
     yield
+    task.cancel()
     await bot.session.close()
     logger.info("Bot session closed")
 
