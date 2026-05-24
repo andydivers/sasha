@@ -16,8 +16,8 @@ class Config:
     def validate(self):
         errors = []
         if not self.bot_token:
-            errors.append("BOT_TOKEN не задан. Получи его у @BotFather")
+            errors.append("BOT_TOKEN is not set. Get it from @BotFather")
         if not self.app_url:
-            errors.append("APP_URL / RENDER_EXTERNAL_URL не задан. Это URL твоего сервера на Render")
+            errors.append("APP_URL / RENDER_EXTERNAL_URL is not set. It should be your server URL on Render")
         if errors:
             raise ValueError("\n".join(errors))
