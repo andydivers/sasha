@@ -7,13 +7,11 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _api_key: str = ""
-_gemini_model: str = ""
 
 
 def init_gemini(api_key: str):
-    global _api_key, _gemini_model
+    global _api_key
     _api_key = api_key
-    _gemini_model = "gemini-1.5-flash"
     logger.info("Gemini initialized")
 
 
@@ -43,7 +41,7 @@ def analyze_image(image_bytes: bytes, mime_type: str, prompt: str = "Describe wh
     if not _api_key:
         return "Gemini API key is not configured."
 
-    models_to_try = ["gemini-1.5-flash", "gemini-pro-vision", "gemini-1.5-pro"]
+    models_to_try = ["gemini-2.0-flash-001", "gemini-2.0-flash", "gemini-2.5-flash"]
     errors = []
 
     start = time.perf_counter()
