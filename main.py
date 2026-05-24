@@ -7,6 +7,7 @@ from aiogram.types import Update
 from app.config import Config
 from app.bot import create_bot, create_dispatcher, setup_sentry
 from app.database import init_db
+from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.handlers import router
 
 logging.basicConfig(
@@ -31,6 +32,17 @@ app = FastAPI(title="Sasha Bot")
 async def on_startup():
     if config.supabase_url and config.supabase_key:
         init_db(config.supabase_url, config.supabase_key)
+    if config.google_sheets_creds:
+        try:
+            init_sheets(config.google_sheets_creds)
+        except Exception as e:
+            logger.warning("Sheets init from env var failed: %s", e)
+    if not sheets_ready():
+        try:
+            init_sheets()
+            logger.info("Sheets initialized from secret file")
+        except Exception as e:
+            logger.warning("Sheets init from secret file also failed: %s", e)
     webhook_url = config.webhook_url
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
