@@ -10,23 +10,23 @@ router = Router()
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
-        "Привет! Я <b>Viktor</b> — твой AI-ассистент.\n\n"
-        "Я умею:\n"
-        "• Анализировать скриншоты\n"
-        "• Работать с Google Таблицами\n"
-        "• Создавать события в календаре\n"
-        "• Формировать отчёты\n\n"
-        "Что хочешь сделать?"
+        "Hi! I'm <b>Viktor</b> — your AI assistant.\n\n"
+        "I can:\n"
+        "• Analyze screenshots\n"
+        "• Work with Google Sheets\n"
+        "• Create calendar events\n"
+        "• Generate reports\n\n"
+        "What would you like to do?"
     )
 
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
     await message.answer(
-        "/start — Начать\n"
-        "/help — Эта справка\n"
-        "/ping — Проверка работы\n"
-        "/webhook — Статус вебхука"
+        "/start — Restart\n"
+        "/help — This help\n"
+        "/ping — Ping test\n"
+        "/webhook — Webhook status"
     )
 
 
@@ -39,15 +39,15 @@ async def cmd_ping(message: types.Message):
 async def cmd_webhook(message: types.Message, bot: Bot):
     info = await bot.get_webhook_info()
     await message.answer(
-        f"<b>Вебхук:</b>\n"
-        f"URL: {info.url or 'Не установлен'}\n"
-        f"Ошибок: {info.last_error_message or 'Нет'}"
+        f"<b>Webhook:</b>\n"
+        f"URL: {info.url or 'Not set'}\n"
+        f"Errors: {info.last_error_message or 'None'}"
     )
 
 
 @router.message()
 async def echo(message: types.Message):
     await message.answer(
-        f"Ты написал: <i>{message.text}</i>\n\n"
-        f"Пока я знаю только /start, /help, /ping"
+        f"You wrote: <i>{message.text}</i>\n\n"
+        f"For now I only know /start, /help, /ping"
     )
