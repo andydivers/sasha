@@ -1,7 +1,5 @@
 import re
 import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
@@ -162,21 +160,15 @@ async def cmd_events(message: types.Message):
         if not events:
             await message.answer("No events found." if lang != "ru" else "Событий нет.")
             return
-        tz = await get_tz(message.from_user.id)
         out = []
         for i, ev in enumerate(events, 1):
             s = ev["start"].get("dateTime", ev["start"].get("date", "?"))
-            date_only = "T" not in s
-            if date_only:
-                time_str = s
+            if "T" in s:
+                dt = s[:16].replace("T", " ")
             else:
-                try:
-                    dt = datetime.fromisoformat(s).astimezone(ZoneInfo(tz)) if tz != "UTC" else datetime.fromisoformat(s)
-                    time_str = dt.strftime("%d.%m %H:%M")
-                except Exception:
-                    time_str = s
+                dt = s
             summary = ev.get("summary", "—")
-            out.append(f"{i}. <b>{summary}</b> — {time_str}")
+            out.append(f"{i}. <b>{summary}</b> — {dt}")
         if lang == "ru":
             out.insert(0, "📅 <b>Мои события</b>")
         else:
