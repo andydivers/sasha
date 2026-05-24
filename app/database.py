@@ -36,6 +36,23 @@ async def set_user_lang(user_id: int, lang: str):
         logger.warning("Failed to set user lang: %s", e)
 
 
+async def get_user_tz(user_id: int) -> str:
+    try:
+        resp = get_db().table("users").select("timezone").eq("id", user_id).execute()
+        if resp.data and resp.data[0].get("timezone"):
+            return resp.data[0]["timezone"]
+    except Exception as e:
+        logger.warning("Failed to get user tz: %s", e)
+    return ""
+
+
+async def set_user_tz(user_id: int, tz: str):
+    try:
+        get_db().table("users").upsert({"id": user_id, "timezone": tz}, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning("Failed to set user tz: %s", e)
+
+
 async def save_chat(user_id: int, message: str, response: str, latency_ms: int):
     try:
         get_db().table("chats").insert({
