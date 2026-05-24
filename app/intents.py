@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
+from app.reports import generate_excel, generate_html
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,11 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
     if name == "create_event":
         return _handle_create_event(args, lang, tz)
 
+    if name == "generate_report":
+        return _handle_generate_report(args, lang, sheet_url)
+
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
-        "generate_report": _handle_generate_report,
     }
 
     handler = handlers.get(name)
@@ -166,12 +169,40 @@ def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
         return "Failed to create event. Make sure the service account has calendar access."
 
 
-def _handle_generate_report(args: dict, lang: str) -> str:
-    fmt = args.get("format", "pdf")
-    topic = args.get("topic", "")
-    if lang == "ru":
-        return f"Генерирую отчёт в <b>{fmt.upper()}</b> по теме: {topic}\n(Полная реализация — в День 8)."
-    return (
-        f"Generating <b>{fmt.upper()}</b> report on: {topic}\n"
-        f"Your report will be ready shortly (full implementation Day 8)."
-    )
+def _handle_generate_report(args: dict, lang: str, sheet_url: str | None = None) -> str:
+    fmt = args.get("format", "").lower()
+    topic = args.get("topic", "report")
+
+    if fmt not in ("excel", "html"):
+        if lang == "ru":
+            return "Выбери формат: <b>Excel</b> или <b>HTML</b>"
+        return "Choose format: <b>Excel</b> or <b>HTML</b>"
+
+    if not sheet_url:
+        if lang == "ru":
+            return "Сначала подключи таблицу через /sheet https://..."
+        return "First connect your sheet via /sheet https://..."
+
+    if not sheets_ready():
+        if lang == "ru":
+            return "Google Sheets не настроен."
+        return "Google Sheets is not configured."
+
+    try:
+        data = read_sheet(sheet_url)
+        if not data:
+            if lang == "ru":
+                return "Таблица пуста. Нечего формировать."
+            return "Sheet is empty. Nothing to report."
+
+        if fmt == "excel":
+            path = generate_excel(data, topic)
+            return f"__REPORT__:{fmt}:{path}"
+        else:
+            path = generate_html(data, topic)
+            return f"__REPORT__:{fmt}:{path}"
+    except Exception as e:
+        logger.error("Report error: %s", e)
+        if lang == "ru":
+            return "Ошибка при формировании отчёта."
+        return "Error generating report."
