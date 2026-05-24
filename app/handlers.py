@@ -1,12 +1,13 @@
 import os
 import re
 import logging
+from datetime import datetime, timezone, timedelta
 
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, save_chat, log_event
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, save_chat, log_event, add_reminder
 from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -211,6 +212,51 @@ async def cmd_delete(message: types.Message):
     except Exception as e:
         logger.error("Delete error: %s", e)
         await message.answer("Error deleting event." if lang != "ru" else "Ошибка удаления.")
+
+
+@router.message(Command("remind"))
+async def cmd_remind(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        if lang == "ru":
+            await message.answer("Используй: /remind 1h check my email\n/remind tomorrow 9am call John\n/remind 30min take a break")
+        else:
+            await message.answer("Use: /remind 1h check my email\n/remind tomorrow 9am call John\n/remind 30min take a break")
+        return
+
+    when_raw = parts[1].strip()
+    text = parts[2].strip()
+
+    try:
+        delay = _parse_delay(when_raw)
+        when_utc = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+    except Exception:
+        if lang == "ru":
+            await message.answer("Не понял время. Используй: 1h, 30min, tomorrow 9am")
+        else:
+            await message.answer("Can't parse time. Use: 1h, 30min, tomorrow 9am")
+        return
+
+    await add_reminder(message.from_user.id, text, when_utc)
+    if lang == "ru":
+        await message.answer(f"Напомню через <b>{when_raw}</b>: {text}")
+    else:
+        await message.answer(f"Reminder set in <b>{when_raw}</b>: {text}")
+
+
+def _parse_delay(raw: str) -> int:
+    raw = raw.lower()
+    m = re.match(r"(\d+)\s*(m|min|h|hr|hour|d|day)s?", raw)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2)
+        if unit in ("h", "hr", "hour"):
+            return n * 3600
+        if unit in ("d", "day"):
+            return n * 86400
+        return n * 60
+    raise ValueError(f"Can't parse: {raw}")
 
 
 @router.message(F.photo)
