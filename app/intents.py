@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
-from app.calendar_client import create_event, is_ready as calendar_ready
+from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 
 logger = logging.getLogger(__name__)
 
@@ -145,9 +145,18 @@ def _handle_create_event(args: dict, lang: str) -> str:
     time = _parse_time(time_raw)
     try:
         link = create_event(summary, date, time)
+        cal_link = get_calendar_link()
         if lang == "ru":
-            return f"Событие создано: <a href='{link}'><b>{summary}</b></a>\nДата: {date}\nВремя: {time}"
-        return f"Event created: <a href='{link}'><b>{summary}</b></a>\nDate: {date}\nTime: {time}"
+            return (
+                f"Событие создано: <a href='{link}'><b>{summary}</b></a>\n"
+                f"Дата: {date}\nВремя: {time}\n\n"
+                f"📅 <a href='{cal_link}'>Подписаться на календарь Sasha</a>"
+            )
+        return (
+            f"Event created: <a href='{link}'><b>{summary}</b></a>\n"
+            f"Date: {date}\nTime: {time}\n\n"
+            f"📅 <a href='{cal_link}'>Subscribe to Sasha Calendar</a>"
+        )
     except Exception as e:
         logger.error("Calendar error: %s", e)
         if lang == "ru":
