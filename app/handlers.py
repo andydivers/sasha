@@ -1,6 +1,6 @@
 import logging
 
-from aiogram import types, Router
+from aiogram import Bot, types, Router
 from aiogram.filters import Command
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ async def cmd_ping(message: types.Message):
 
 
 @router.message(Command("webhook"))
-async def cmd_webhook(message: types.Message, bot: types.Bot):
+async def cmd_webhook(message: types.Message, bot: Bot):
     info = await bot.get_webhook_info()
     await message.answer(
         f"<b>Вебхук:</b>\n"
