@@ -22,10 +22,6 @@ class Config:
             errors.append("BOT_TOKEN is not set. Get it from @BotFather")
         if not self.groq_api_key:
             errors.append("GROQ_API_KEY is not set. Get it from console.groq.com")
-        if not self.supabase_url:
-            errors.append("SUPABASE_URL is not set. Get it from supabase.com")
-        if not self.supabase_key:
-            errors.append("SUPABASE_KEY is not set. Get it from supabase.com")
         if not self.app_url:
             errors.append("APP_URL / RENDER_EXTERNAL_URL is not set. It should be your server URL on Render")
         if errors:
