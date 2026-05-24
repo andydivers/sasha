@@ -10,7 +10,7 @@ from app.calendar_client import create_event, get_calendar_link, is_ready as cal
 logger = logging.getLogger(__name__)
 
 
-async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = None) -> str:
+async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = None, tz: str = "UTC") -> str:
     name = tool_call.function.name
     try:
         args = json.loads(tool_call.function.arguments)
@@ -20,9 +20,11 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
     if name == "manage_sheets":
         return _handle_manage_sheets(args, lang, sheet_url)
 
+    if name == "create_event":
+        return _handle_create_event(args, lang, tz)
+
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
-        "create_event": _handle_create_event,
         "generate_report": _handle_generate_report,
     }
 
@@ -137,14 +139,14 @@ def _parse_time(raw: str) -> str:
         return "10:00"
 
 
-def _handle_create_event(args: dict, lang: str) -> str:
+def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
     summary = args.get("summary", "Event")
     date_raw = args.get("date", "")
     time_raw = args.get("time", "10:00")
     date = _parse_date(date_raw) if date_raw else datetime.now().strftime("%Y-%m-%d")
     time = _parse_time(time_raw)
     try:
-        link = create_event(summary, date, time)
+        link = create_event(summary, date, time, tz=tz)
         cal_link = get_calendar_link()
         if lang == "ru":
             return (
