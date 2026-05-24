@@ -1,5 +1,7 @@
 import re
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
@@ -10,6 +12,7 @@ from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
+from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -146,6 +149,75 @@ async def cmd_tz(message: types.Message):
         await message.answer(f"Часовой пояс установлен: {tz}")
     else:
         await message.answer(f"Timezone set: {tz}")
+
+
+@router.message(Command("events"))
+async def cmd_events(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    if not calendar_ready():
+        await message.answer("Calendar not configured." if lang != "ru" else "Календарь не настроен.")
+        return
+    try:
+        events = list_events(10)
+        if not events:
+            await message.answer("No events found." if lang != "ru" else "Событий нет.")
+            return
+        tz = await get_tz(message.from_user.id)
+        out = []
+        for i, ev in enumerate(events, 1):
+            s = ev["start"].get("dateTime", ev["start"].get("date", "?"))
+            date_only = "T" not in s
+            if date_only:
+                time_str = s
+            else:
+                try:
+                    dt = datetime.fromisoformat(s).astimezone(ZoneInfo(tz)) if tz != "UTC" else datetime.fromisoformat(s)
+                    time_str = dt.strftime("%d.%m %H:%M")
+                except Exception:
+                    time_str = s
+            summary = ev.get("summary", "—")
+            out.append(f"{i}. <b>{summary}</b> — {time_str}")
+        if lang == "ru":
+            out.insert(0, "📅 <b>Мои события</b>")
+        else:
+            out.insert(0, "📅 <b>My events</b>")
+        await message.answer("\n".join(out))
+    except Exception as e:
+        logger.error("Events error: %s", e)
+        await message.answer("Error loading events." if lang != "ru" else "Ошибка загрузки событий.")
+
+
+@router.message(Command("delete"))
+async def cmd_delete(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    if not calendar_ready():
+        await message.answer("Calendar not configured." if lang != "ru" else "Календарь не настроен.")
+        return
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip().isdigit():
+        if lang == "ru":
+            await message.answer("Используй: /delete N (где N — номер из /events)")
+        else:
+            await message.answer("Use: /delete N (N is the number from /events)")
+        return
+    idx = int(parts[1].strip()) - 1
+    try:
+        events = list_events(10)
+        if idx < 0 or idx >= len(events):
+            if lang == "ru":
+                await message.answer(f"Нет события под номером {idx + 1}. Сначала /events.")
+            else:
+                await message.answer(f"No event #{idx + 1}. Run /events first.")
+            return
+        ev = events[idx]
+        delete_event(ev["id"])
+        if lang == "ru":
+            await message.answer(f"Удалено: <b>{ev.get('summary', '—')}</b>")
+        else:
+            await message.answer(f"Deleted: <b>{ev.get('summary', '—')}</b>")
+    except Exception as e:
+        logger.error("Delete error: %s", e)
+        await message.answer("Error deleting event." if lang != "ru" else "Ошибка удаления.")
 
 
 @router.message(F.photo)
