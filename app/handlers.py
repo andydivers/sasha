@@ -4,6 +4,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
+from app.database import get_user_lang, set_user_lang, save_chat, log_event
 from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
 from app.i18n import t, TRANSLATIONS
@@ -14,8 +15,6 @@ router = Router()
 config = Config()
 groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 
-user_langs: dict[int, str] = {}
-
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
@@ -25,32 +24,37 @@ LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
     )] for code in LANG_LIST
 ])
 
+_lang_cache: dict[int, str] = {}
 
-def get_lang(user_id: int) -> str:
-    return user_langs.get(user_id, "en")
+
+async def get_lang(user_id: int) -> str:
+    if user_id not in _lang_cache:
+        _lang_cache[user_id] = await get_user_lang(user_id)
+    return _lang_cache.get(user_id, "en")
 
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer(t(get_lang(message.from_user.id), "lang_prompt"), reply_markup=LANG_KEYBOARD)
+    await message.answer(t(await get_lang(message.from_user.id), "lang_prompt"), reply_markup=LANG_KEYBOARD)
 
 
 @router.callback_query(F.data.startswith("lang_"))
 async def on_lang_choice(callback: CallbackQuery):
     lang = callback.data.split("_")[1]
-    user_langs[callback.from_user.id] = lang
+    _lang_cache[callback.from_user.id] = lang
+    await set_user_lang(callback.from_user.id, lang)
     await callback.message.edit_text(t(lang, "lang_changed"))
     await callback.message.answer(t(lang, "welcome"))
 
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer(t(get_lang(message.from_user.id), "help"))
+    await message.answer(t(await get_lang(message.from_user.id), "help"))
 
 
 @router.message(Command("ping"))
 async def cmd_ping(message: types.Message):
-    await message.answer(t(get_lang(message.from_user.id), "ping"))
+    await message.answer(t(await get_lang(message.from_user.id), "ping"))
 
 
 @router.message(Command("lang"))
@@ -61,7 +65,7 @@ async def cmd_lang(message: types.Message):
 @router.message(Command("webhook"))
 async def cmd_webhook(message: types.Message, bot: Bot):
     info = await bot.get_webhook_info()
-    lang = get_lang(message.from_user.id)
+    lang = await get_lang(message.from_user.id)
     await message.answer(t(lang, "webhook",
         url=info.url or t(lang, "webhook_not_set"),
         errors=info.last_error_message or t(lang, "webhook_no_errors"),
@@ -70,8 +74,7 @@ async def cmd_webhook(message: types.Message, bot: Bot):
 
 @router.message(F.photo)
 async def handle_photo(message: types.Message):
-    lang = get_lang(message.from_user.id)
-    caption = message.caption or ""
+    lang = await get_lang(message.from_user.id)
     if lang == "ru":
         await message.answer("Изображение получено! Анализ скриншотов через мультимодальный AI — в День 4. Пока я могу работать только с текстом.")
     else:
@@ -81,22 +84,24 @@ async def handle_photo(message: types.Message):
 @router.message()
 async def handle_message(message: types.Message):
     if not groq or not message.text:
-        lang = get_lang(message.from_user.id)
+        lang = await get_lang(message.from_user.id)
         await message.answer(t(lang, "not_ready"))
         return
 
-    lang = get_lang(message.from_user.id)
+    lang = await get_lang(message.from_user.id)
     await message.answer(t(lang, "thinking"))
 
     try:
         result, latency = detect_intent(groq, message.text, lang=lang)
 
         if isinstance(result, str):
-            await message.answer(result)
+            response_text = result
+            await message.answer(response_text)
         else:
-            response = await handle_tool_call(result, lang=lang)
-            await message.answer(response)
+            response_text = await handle_tool_call(result, lang=lang)
+            await message.answer(response_text)
 
+        await save_chat(message.from_user.id, message.text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)
     except Exception as e:
         logger.error("Groq error: %s", e)
