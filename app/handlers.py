@@ -1,3 +1,4 @@
+import os
 import re
 import logging
 
@@ -265,11 +266,29 @@ async def handle_message(message: types.Message):
 
         if isinstance(result, str):
             response_text = result
-            await message.answer(response_text)
+            if response_text.startswith("__REPORT__:"):
+                parts = response_text.split(":", 2)
+                fmt = parts[1]
+                path = parts[2]
+                fname = f"report.{fmt}"
+                with open(path, "rb") as f:
+                    await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                os.unlink(path)
+            else:
+                await message.answer(response_text)
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
             response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url, tz=tz)
-            await message.answer(response_text)
+            if response_text.startswith("__REPORT__:"):
+                parts = response_text.split(":", 2)
+                fmt = parts[1]
+                path = parts[2]
+                fname = f"report.{fmt}"
+                with open(path, "rb") as f:
+                    await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                os.unlink(path)
+            else:
+                await message.answer(response_text)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)
