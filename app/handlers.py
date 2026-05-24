@@ -1,10 +1,12 @@
 import logging
 
-from aiogram import Bot, types, Router
+from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
 from app.groq_client import create_groq_client, detect_intent
 from app.intents import handle_tool_call
+from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -12,52 +14,64 @@ router = Router()
 config = Config()
 groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 
+user_langs: dict[int, str] = {}
+
+LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="English 🇬🇧", callback_data="lang_en")],
+    [InlineKeyboardButton(text="Русский 🇷🇺", callback_data="lang_ru")],
+])
+
+
+def get_lang(user_id: int) -> str:
+    return user_langs.get(user_id, "en")
+
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer(
-        "Hi! I'm <b>Viktor</b> — your AI assistant.\n\n"
-        "I can:\n"
-        "• Analyze screenshots\n"
-        "• Work with Google Sheets\n"
-        "• Create calendar events\n"
-        "• Generate reports\n\n"
-        "What would you like to do?"
-    )
+    await message.answer(t(get_lang(message.from_user.id), "lang_prompt"), reply_markup=LANG_KEYBOARD)
+
+
+@router.callback_query(F.data.startswith("lang_"))
+async def on_lang_choice(callback: CallbackQuery):
+    lang = callback.data.split("_")[1]
+    user_langs[callback.from_user.id] = lang
+    await callback.message.edit_text(t(lang, "lang_changed"))
+    await callback.message.answer(t(lang, "welcome"))
 
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer(
-        "/start — Restart\n"
-        "/help — This help\n"
-        "/ping — Ping test\n"
-        "/webhook — Webhook status"
-    )
+    await message.answer(t(get_lang(message.from_user.id), "help"))
 
 
 @router.message(Command("ping"))
 async def cmd_ping(message: types.Message):
-    await message.answer("Pong!")
+    await message.answer(t(get_lang(message.from_user.id), "ping"))
+
+
+@router.message(Command("lang"))
+async def cmd_lang(message: types.Message):
+    await message.answer(t("en", "lang_prompt"), reply_markup=LANG_KEYBOARD)
 
 
 @router.message(Command("webhook"))
 async def cmd_webhook(message: types.Message, bot: Bot):
     info = await bot.get_webhook_info()
-    await message.answer(
-        f"<b>Webhook:</b>\n"
-        f"URL: {info.url or 'Not set'}\n"
-        f"Errors: {info.last_error_message or 'None'}"
-    )
+    lang = get_lang(message.from_user.id)
+    await message.answer(t(lang, "webhook",
+        url=info.url or t(lang, "webhook_not_set"),
+        errors=info.last_error_message or t(lang, "webhook_no_errors"),
+    ))
 
 
 @router.message()
 async def handle_message(message: types.Message):
     if not groq or not message.text:
-        await message.answer("I'm not fully set up yet. Try /help")
+        await message.answer(t(get_lang(message.from_user.id), "not_ready"))
         return
 
-    await message.answer("Thinking...")
+    lang = get_lang(message.from_user.id)
+    await message.answer(t(lang, "thinking"))
 
     try:
         result, latency = detect_intent(groq, message.text)
@@ -71,4 +85,4 @@ async def handle_message(message: types.Message):
         logger.info("Handled message in %.2fs", latency)
     except Exception as e:
         logger.error("Groq error: %s", e)
-        await message.answer("Sorry, I ran into an issue. Try again in a moment.")
+        await message.answer(t(lang, "error"))
