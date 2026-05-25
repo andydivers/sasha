@@ -331,6 +331,8 @@ async def handle_photo(message: types.Message, bot: Bot):
         file = await bot.get_file(photo.file_id)
         image_bytes = await bot.download_file(file.file_path)
         result = analyze_image(image_bytes.read(), "image/jpeg", prompt)
+        if len(result) > 4000:
+            result = result[:4000] + "..."
         await message.answer(result)
         await log_event(message.from_user.id, "image_analyzed")
     except Exception as e:
