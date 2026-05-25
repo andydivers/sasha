@@ -162,11 +162,20 @@ async def create_pending_payment(user_id: int, service: str, amount: float) -> d
 
 async def get_pending_payments() -> list[dict]:
     try:
-        resp = get_db().table("pending_payments").select("*").eq("status", "pending").execute()
+        cutoff = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        resp = get_db().table("pending_payments").select("*").eq("status", "pending").gte("created_at", cutoff).execute()
         return resp.data or []
     except Exception as e:
         logger.warning("Failed to get pending payments: %s", e)
         return []
+
+
+async def expire_old_payments():
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        get_db().table("pending_payments").update({"status": "expired"}).eq("status", "pending").lt("created_at", cutoff).execute()
+    except Exception as e:
+        logger.warning("Failed to expire payments: %s", e)
 
 
 async def confirm_payment(payment_id: int, network: str, txid: str):

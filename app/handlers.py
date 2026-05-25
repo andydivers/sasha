@@ -27,13 +27,13 @@ if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
 STAR_PRICES = {
-    "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "stars": 5},
-    "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "stars": 3},
+    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "stars": 400},
+    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "stars": 1000},
 }
 
 CRYPTO_PRICES = {
-    "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "usdc": 0.50},
-    "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "usdc": 0.30},
+    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "usdc": 8.0},
+    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "usdc": 20.0},
 }
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
@@ -272,20 +272,20 @@ def _parse_delay(raw: str) -> int:
 
 
 @router.message(Command("buy"))
-async def cmd_buy(message: types.Message):
+async def cmd_buy(message: types.Message, bot: Bot):
     lang = await get_lang(message.from_user.id)
     btns = [
         [InlineKeyboardButton(
-            text=f"📊 {p['label_en']} — {p['stars']} ⭐" if lang != "ru" else f"📊 {p['label_ru']} — {p['stars']} ⭐",
+            text=f"📊 {p['label_en']} — ${p['usdc']} / {p['stars']} ⭐" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usdc']} / {p['stars']} ⭐",
             callback_data=f"buy_{k}"
         )]
-        for k, p in STAR_PRICES.items()
+        for k, p in CRYPTO_PRICES.items()
     ]
     crypto_label = "💎 Pay with Crypto" if lang != "ru" else "💎 Оплатить криптовалютой"
     btns.append([InlineKeyboardButton(text=crypto_label, callback_data="buy_crypto")])
     kb = InlineKeyboardMarkup(inline_keyboard=btns)
     if lang == "ru":
-        await message.answer("Выбери услугу:", reply_markup=kb)
+        await message.answer("Выбери подписку:", reply_markup=kb)
     else:
         await message.answer("Choose a service:", reply_markup=kb)
 
@@ -337,6 +337,32 @@ async def cmd_crypto(message: types.Message):
             )
         msg += "\nUse /buy to purchase a service."
         await message.answer(msg)
+
+
+@router.message(Command("qr"))
+async def cmd_qr(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    if not config.usdc_address:
+        if lang == "ru":
+            await message.answer("Крипто-платежи не настроены.")
+        else:
+            await message.answer("Crypto payments not configured.")
+        return
+
+    qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=ethereum:{config.usdc_address}&choe=UTF-8"
+    try:
+        qr_bytes = urlopen(qr_url, timeout=10).read()
+        caption = config.usdc_address
+        await message.answer_photo(
+            photo=types.BufferedInputFile(qr_bytes, filename="qr.png"),
+            caption=caption,
+        )
+    except Exception as e:
+        logger.warning("QR failed: %s", e)
+        if lang == "ru":
+            await message.answer("Не удалось сгенерировать QR. Попробуй позже.")
+        else:
+            await message.answer("Failed to generate QR. Try again later.")
 
 
 @router.message(F.text.startswith("/confirm"))
@@ -432,7 +458,7 @@ async def cmd_confirm(message: types.Message):
     })
 
 
-@router.callback_query(F.data.in_({"buy_excel_report", "buy_html_report", "buy_crypto"}))
+@router.callback_query(F.data.in_({"buy_weekly", "buy_monthly", "buy_crypto"}))
 async def on_buy_choice(callback: CallbackQuery, bot: Bot):
     key = callback.data[4:]
     lang = await get_lang(callback.from_user.id)
@@ -456,9 +482,9 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
         ]
         kb = InlineKeyboardMarkup(inline_keyboard=btns)
         if lang == "ru":
-            await callback.message.answer("Выбери услугу для оплаты USDC:", reply_markup=kb)
+            await callback.message.answer("Выбери подписку для оплаты USDC:", reply_markup=kb)
         else:
-            await callback.message.answer("Choose a service to pay with USDC:", reply_markup=kb)
+            await callback.message.answer("Choose a subscription to pay with USDC:", reply_markup=kb)
         await callback.answer()
         return
 
@@ -467,9 +493,10 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
         await callback.answer("Unknown service")
         return
     title = price["label_en"] if lang != "ru" else price["label_ru"]
-    prices = [types.LabeledPrice(label=title, amount=price["stars"])]
+    stars_amount = price["stars"]
+    prices = [types.LabeledPrice(label=title, amount=stars_amount)]
     await callback.message.delete()
-    await bot.send_invoice(
+    kwargs = dict(
         chat_id=callback.from_user.id,
         title=title,
         description=title,
@@ -478,6 +505,9 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
         currency="XTR",
         prices=prices,
     )
+    if key == "monthly":
+        kwargs["subscription_period"] = 2592000
+    await bot.send_invoice(**kwargs)
     await callback.answer()
 
 

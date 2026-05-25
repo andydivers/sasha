@@ -9,7 +9,7 @@ from aiogram.types import Update
 
 from app.config import Config
 from app.bot import create_bot, create_dispatcher, setup_sentry
-from app.database import init_db, get_due_reminders, mark_reminder_done, get_pending_payments, confirm_payment, is_payment_confirmed
+from app.database import init_db, get_due_reminders, mark_reminder_done, get_pending_payments, confirm_payment, is_payment_confirmed, expire_old_payments
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
 from app.crypto_client import fetch_incoming_usdc_transfers, fetch_incoming_usdc_solana_transfers, NETWORKS
@@ -80,7 +80,8 @@ async def lifespan(app: FastAPI):
             if not config.etherscan_api_key:
                 continue
             try:
-                pending = await get_pending_payments()
+                    await expire_old_payments()
+                    pending = await get_pending_payments()
                 if not pending:
                     continue
                 transfers = fetch_incoming_usdc_transfers(config.usdc_address, config.etherscan_api_key)
