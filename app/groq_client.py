@@ -1,10 +1,46 @@
 import logging
 import time
+import re
 from io import BytesIO
 
 from groq import Groq
 
 logger = logging.getLogger(__name__)
+
+
+SIMPLE_GREETINGS_EN = frozenset({"hello", "hi", "hey", "good morning", "good afternoon", "good evening", "thanks", "thank you", "thx", "ok", "okay", "bye", "goodbye", "cool", "great", "nice"})
+SIMPLE_GREETINGS_RU = frozenset({"привет", "здравствуй", "здравствуйте", "дарова", "ку", "спасибо", "благодарю", "ок", "ладно", "понял", "пока", "до свидания", "хорошо", "отлично", "круто"})
+
+SIMPLE_REPLIES_EN = {
+    "hello": "Hello! 👋 How can I help you today?",
+    "hi": "Hi there! What can I do for you?",
+    "good morning": "Good morning! How can I assist you?",
+    "good afternoon": "Good afternoon! What can I help with?",
+    "good evening": "Good evening! Need anything?",
+    "thanks": "You're welcome! 😊",
+    "bye": "Goodbye! Feel free to come back anytime.",
+    "ok": "Got it! Tell me what you need.",
+    "cool": "😊 Let me know if you need anything else!",
+}
+
+SIMPLE_REPLIES_RU = {
+    "привет": "Привет! 👋 Чем могу помочь?",
+    "здравствуй": "Здравствуйте! Чем могу помочь?",
+    "спасибо": "Пожалуйста! 😊",
+    "пока": "До свидания! Обращайся ещё.",
+    "ок": "Понял! Напиши, что нужно сделать.",
+    "хорошо": "Договорились! Напиши, если что.",
+    "круто": "😊 Рад помочь! Напиши, если нужно ещё что-то.",
+}
+
+REASONING_KEYWORDS = frozenset({
+    "analyze", "analysis", "compare", "comparison", "calculate", "calculation",
+    "trend", "statistics", "statistical", "forecast", "predict", "prediction",
+    "summary", "summarize", "deep", "complex", "evaluate", "evaluation",
+    "анализ", "анализировать", "сравнить", "сравнение", "рассчитать",
+    "расчёт", "тенденция", "статистика", "прогноз", "предсказать",
+    "резюме", "суммировать", "оценить", "оценка", "сложный",
+})
 
 
 def create_groq_client(api_key: str) -> Groq:
@@ -25,7 +61,42 @@ LANG_INSTRUCTIONS = {
 }
 
 
+def _is_simple_greeting(text: str, lang: str) -> bool:
+    t = text.strip().lower().rstrip(".!?,")
+    if lang == "ru" and t in SIMPLE_GREETINGS_RU:
+        return True
+    if t in SIMPLE_GREETINGS_EN:
+        return True
+    return False
+
+
+def _get_simple_reply(text: str, lang: str) -> str | None:
+    t = text.strip().lower().rstrip(".!?,")
+    if lang == "ru":
+        return SIMPLE_REPLIES_RU.get(t)
+    return SIMPLE_REPLIES_EN.get(t)
+
+
+def _needs_reasoning(text: str) -> bool:
+    words = set(re.findall(r"[a-zа-яё]+", text.lower()))
+    return bool(words & REASONING_KEYWORDS)
+
+
 def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list | None = None):
+    # fast path — simple greeting, no API call
+    if _is_simple_greeting(text, lang):
+        reply = _get_simple_reply(text, lang)
+        if reply:
+            return reply, 0.0
+
+    # choose model based on complexity
+    if _needs_reasoning(text):
+        model = "deepseek-r1-distill-llama-70b"
+        max_tokens = 1000
+    else:
+        model = "llama-3.3-70b-versatile"
+        max_tokens = 500
+
     tools = [
         {
             "type": "function",
@@ -98,15 +169,15 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
 
     start = time.perf_counter()
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=model,
         messages=messages,
         tools=tools,
         tool_choice="auto",
         temperature=0.1,
-        max_tokens=500,
+        max_tokens=max_tokens,
     )
     elapsed = time.perf_counter() - start
-    logger.info("Groq latency: %.2fs", elapsed)
+    logger.info("Groq %s latency: %.2fs", model, elapsed)
 
     choice = response.choices[0]
     if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
