@@ -11,7 +11,7 @@ from app.bot import create_bot, create_dispatcher, setup_sentry
 from app.database import init_db, get_due_reminders, mark_reminder_done
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
-from app.crypto_client import verify_webhook
+from app.crypto_client import verify_webhook as verify_crypto_webhook
 from app.handlers import router
 
 logging.basicConfig(
@@ -102,8 +102,9 @@ async def health():
 @app.post("/crypto_webhook")
 async def crypto_webhook(request: Request):
     body = await request.body()
-    sig = request.headers.get("x-nowpayments-sig", "")
-    data = verify_webhook(config.nowpayments_ipn_secret, body, sig)
+    merchant = request.headers.get("merchant", "")
+    sign = request.headers.get("sign", "")
+    data = verify_crypto_webhook(config.cryptomus_api_key, body, merchant, sign)
     if data:
         order_id = data.get("order_id", "")
         try:

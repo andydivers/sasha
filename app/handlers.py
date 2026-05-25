@@ -13,7 +13,7 @@ from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
-from app.crypto_client import create_payment
+from app.crypto_client import create_invoice
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -292,7 +292,7 @@ async def cmd_buy(message: types.Message):
 @router.message(Command("crypto"))
 async def cmd_crypto(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    if not config.nowpayments_api_key:
+    if not config.cryptomus_merchant_id or not config.cryptomus_api_key:
         if lang == "ru":
             await message.answer("Крипто-платежи временно недоступны.")
         else:
@@ -322,26 +322,25 @@ async def on_crypto_choice(callback: CallbackQuery):
     lang = await get_lang(callback.from_user.id)
 
     order_id = f"{callback.from_user.id}_{key}_{int(datetime.now().timestamp())}"
-    ipn_url = f"{config.app_url}/crypto_webhook"
+    callback_url = f"{config.app_url}/crypto_webhook"
 
-    result = create_payment(
-        api_key=config.nowpayments_api_key,
+    result = create_invoice(
+        merchant_id=config.cryptomus_merchant_id,
+        api_key=config.cryptomus_api_key,
         price_amount=price["usd"],
         order_id=order_id,
         description=price["label_en"] if lang != "ru" else price["label_ru"],
-        ipn_callback_url=ipn_url,
+        callback_url=callback_url,
     )
 
     await callback.message.delete()
 
-    if result and (result.get("payment_url") or result.get("pay_address")):
-        payment_url = result.get("payment_url") or f"https://nowpayments.io/payment/?iid={result.get('payment_id')}"
-        pay_amount = result.get("pay_amount", price["usd"])
-        pay_currency = result.get("pay_currency", "BTC").upper()
+    if result and result.get("url"):
+        payment_url = result["url"]
         if lang == "ru":
             await callback.message.answer(
                 f"💳 <b>{price['label_ru']}</b>\n"
-                f"Сумма: {pay_amount} {pay_currency}\n\n"
+                f"Сумма: ${price['usd']}\n\n"
                 f"<a href='{payment_url}'>Перейти к оплате</a>\n\n"
                 f"Выбери любую криптовалюту на странице оплаты. "
                 f"Я подтвержу получение автоматически."
@@ -349,7 +348,7 @@ async def on_crypto_choice(callback: CallbackQuery):
         else:
             await callback.message.answer(
                 f"💳 <b>{price['label_en']}</b>\n"
-                f"Amount: {pay_amount} {pay_currency}\n\n"
+                f"Amount: ${price['usd']}\n\n"
                 f"<a href='{payment_url}'>Pay now</a>\n\n"
                 f"Choose any cryptocurrency on the payment page. "
                 f"I'll confirm automatically."
@@ -373,7 +372,7 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
 
     if key == "crypto":
         await callback.message.delete()
-        if not config.nowpayments_api_key:
+        if not config.cryptomus_merchant_id or not config.cryptomus_api_key:
             if lang == "ru":
                 await callback.message.answer("Крипто-платежи временно недоступны.")
             else:

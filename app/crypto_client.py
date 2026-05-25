@@ -1,30 +1,38 @@
 import hashlib
-import hmac
 import json
 import logging
+import base64
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://api.nowpayments.io/v1"
+API_URL = "https://api.cryptomus.com/v1"
 
 
-def create_payment(api_key: str, price_amount: float, order_id: str, description: str, ipn_callback_url: str) -> dict | None:
-    data = json.dumps({
-        "price_amount": price_amount,
-        "price_currency": "usd",
-        "pay_currency": "btc",
+def _sign(payload: str, api_key: str) -> str:
+    return hashlib.md5((payload + api_key).encode()).hexdigest()
+
+
+def create_invoice(merchant_id: str, api_key: str, price_amount: float, order_id: str, description: str, callback_url: str) -> dict | None:
+    body = {
+        "amount": str(price_amount),
+        "currency": "USD",
         "order_id": order_id,
-        "order_description": description,
-        "ipn_callback_url": ipn_callback_url,
-    }).encode()
+        "url_callback": callback_url,
+        "is_payment_multiple": True,
+        "lifetime": 3600,
+    }
+    payload = json.dumps(body)
+    b64_payload = base64.b64encode(payload.encode()).decode()
+    sign = _sign(b64_payload, api_key)
 
     req = Request(
         f"{API_URL}/payment",
-        data=data,
+        data=payload.encode(),
         headers={
-            "x-api-key": api_key,
+            "merchant": merchant_id,
+            "sign": sign,
             "Content-Type": "application/json",
         },
         method="POST",
@@ -33,35 +41,37 @@ def create_payment(api_key: str, price_amount: float, order_id: str, description
     try:
         with urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read())
-            logger.info("NowPayments payment created: %s", result.get("payment_id"))
-            return result
+            if result.get("state") == 0 and result.get("result"):
+                logger.info("Cryptomus invoice created: %s", result["result"].get("uuid"))
+                return result["result"]
+            logger.error("Cryptomus error: %s", result)
+            return None
     except HTTPError as e:
         body = e.read().decode()
-        logger.error("NowPayments payment error %s: %s", e.code, body)
+        logger.error("Cryptomus HTTP error %s: %s", e.code, body)
         return None
     except Exception as e:
-        logger.error("NowPayments request failed: %s", e)
+        logger.error("Cryptomus request failed: %s", e)
         return None
 
 
-def verify_webhook(ipn_secret: str, body: bytes, signature_header: str) -> dict | None:
-    expected_sig = hmac.new(ipn_secret.encode(), body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected_sig, signature_header):
-        logger.warning("NowPayments webhook: invalid signature")
-        return None
-
+def verify_webhook(api_key: str, body: bytes, merchant_header: str, sign_header: str) -> dict | None:
     try:
         data = json.loads(body)
     except json.JSONDecodeError:
-        logger.warning("NowPayments webhook: invalid JSON")
+        logger.warning("Cryptomus webhook: invalid JSON")
         return None
 
-    payment_status = data.get("payment_status")
-    if payment_status != "finished":
-        logger.info("NowPayments webhook: status=%s, not finished yet", payment_status)
+    expected_sign = hashlib.md5(body + api_key.encode()).hexdigest()
+    if expected_sign != sign_header:
+        logger.warning("Cryptomus webhook: invalid signature")
+        return None
+
+    status = data.get("status")
+    if status != "paid":
+        logger.info("Cryptomus webhook: status=%s, not paid yet", status)
         return None
 
     order_id = data.get("order_id", "")
-    pay_amount = data.get("pay_amount", 0)
-    logger.info("NowPayments payment confirmed: order=%s amount=%s", order_id, pay_amount)
+    logger.info("Cryptomus payment confirmed: order=%s", order_id)
     return data
