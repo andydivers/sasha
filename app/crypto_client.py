@@ -1,57 +1,41 @@
 import json
 import logging
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 from urllib.error import HTTPError
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://api.coingate.com/v2"
+API_URL = "https://block.io/api/v2"
 
 
-def create_invoice(api_key: str, price_amount: float, order_id: str, description: str, callback_url: str) -> dict | None:
-    data = json.dumps({
-        "price_amount": price_amount,
-        "price_currency": "USD",
-        "receive_currency": "DO_NOT_CONVERT",
-        "order_id": order_id,
-        "title": description,
-        "description": description,
-        "callback_url": callback_url,
-        "success_url": callback_url,
-        "cancel_url": callback_url,
-    }).encode()
-
-    req = Request(
-        f"{API_URL}/orders",
-        data=data,
-        headers={
-            "Authorization": f"Token {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
+def create_address(api_key: str, label: str) -> dict | None:
     try:
-        with urlopen(req, timeout=15) as resp:
+        with urlopen(f"{API_URL}/get_new_address/?api_key={api_key}&label={label}", timeout=15) as resp:
             result = json.loads(resp.read())
-            logger.info("CoinGate order: %s", result.get("id"))
-            return result
+            if result.get("status") == "success":
+                data = result["data"]
+                logger.info("Block.io address: %s", data.get("address"))
+                return data
+            logger.error("Block.io error: %s", result)
+            return None
     except HTTPError as e:
         body = e.read().decode()
-        logger.error("CoinGate error %s: %s", e.code, body)
+        logger.error("Block.io HTTP error %s: %s", e.code, body)
         return None
     except Exception as e:
-        logger.error("CoinGate request failed: %s", e)
+        logger.error("Block.io request failed: %s", e)
         return None
 
 
-def verify_webhook(body: bytes) -> dict | None:
+def get_address_balance(api_key: str, address: str) -> float:
     try:
-        data = json.loads(body)
-    except json.JSONDecodeError:
-        return None
-
-    if data.get("status") != "paid":
-        return None
-
-    return data
+        with urlopen(f"{API_URL}/get_address_balance/?api_key={api_key}&addresses={address}", timeout=15) as resp:
+            result = json.loads(resp.read())
+            if result.get("status") == "success" and result.get("data"):
+                balances = result["data"].get("balances", [])
+                if balances:
+                    return float(balances[0].get("balance", "0"))
+        return 0.0
+    except Exception as e:
+        logger.error("Block.io balance check failed: %s", e)
+        return 0.0

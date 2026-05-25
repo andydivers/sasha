@@ -13,7 +13,7 @@ from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
-from app.crypto_client import create_invoice
+from app.crypto_client import create_address
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -292,7 +292,7 @@ async def cmd_buy(message: types.Message):
 @router.message(Command("crypto"))
 async def cmd_crypto(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    if not config.coingate_api_key:
+    if not config.blockio_api_key:
         if lang == "ru":
             await message.answer("Крипто-платежи временно недоступны.")
         else:
@@ -321,45 +321,42 @@ async def on_crypto_choice(callback: CallbackQuery):
         return
     lang = await get_lang(callback.from_user.id)
 
-    order_id = f"{callback.from_user.id}_{key}_{int(datetime.now().timestamp())}"
-    callback_url = f"{config.app_url}/crypto_webhook"
+    label = f"{callback.from_user.id}_{key}_{int(datetime.now().timestamp())}"
 
-    result = create_invoice(
-        api_key=config.coingate_api_key,
-        price_amount=price["usd"],
-        order_id=order_id,
-        description=price["label_en"] if lang != "ru" else price["label_ru"],
-        callback_url=callback_url,
+    result = create_address(
+        api_key=config.blockio_api_key,
+        label=label,
     )
 
     await callback.message.delete()
 
-    if result and result.get("payment_url"):
-        payment_url = result["payment_url"]
+    if result and result.get("address"):
+        address = result["address"]
+        qr_code = result.get("qr_code", f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={address}&choe=UTF-8")
         if lang == "ru":
             await callback.message.answer(
                 f"💳 <b>{price['label_ru']}</b>\n"
                 f"Сумма: ${price['usd']}\n\n"
-                f"<a href='{payment_url}'>Перейти к оплате</a>\n\n"
-                f"Выбери любую криптовалюту на странице оплаты. "
-                f"Я подтвержу получение автоматически."
+                f"Отправь BTC на адрес:\n"
+                f"<code>{address}</code>\n\n"
+                f"После подтверждения в сети я уведомлю тебя."
             )
         else:
             await callback.message.answer(
                 f"💳 <b>{price['label_en']}</b>\n"
                 f"Amount: ${price['usd']}\n\n"
-                f"<a href='{payment_url}'>Pay now</a>\n\n"
-                f"Choose any cryptocurrency on the payment page. "
-                f"I'll confirm automatically."
+                f"Send BTC to:\n"
+                f"<code>{address}</code>\n\n"
+                f"I'll notify you once confirmed on-chain."
             )
         await log_event(callback.from_user.id, "crypto_payment_created", {
-            "key": key, "order_id": order_id, "payment_url": payment_url
+            "key": key, "label": label, "address": address
         })
     else:
         if lang == "ru":
-            await callback.message.answer("Не удалось создать платёж. Попробуй позже.")
+            await callback.message.answer("Не удалось создать адрес. Попробуй позже.")
         else:
-            await callback.message.answer("Failed to create payment. Try again later.")
+            await callback.message.answer("Failed to create address. Try again later.")
 
     await callback.answer()
 
@@ -371,7 +368,7 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
 
     if key == "crypto":
         await callback.message.delete()
-        if not config.coingate_api_key:
+        if not config.blockio_api_key:
             if lang == "ru":
                 await callback.message.answer("Крипто-платежи временно недоступны.")
             else:

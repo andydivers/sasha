@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 
@@ -11,7 +12,6 @@ from app.bot import create_bot, create_dispatcher, setup_sentry
 from app.database import init_db, get_due_reminders, mark_reminder_done
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
-from app.crypto_client import verify_webhook
 from app.handlers import router
 
 logging.basicConfig(
@@ -102,19 +102,22 @@ async def health():
 @app.post("/crypto_webhook")
 async def crypto_webhook(request: Request):
     body = await request.body()
-    data = verify_webhook(body)
-    if data and data.get("status") == "paid":
-        order_id = data.get("order_id", "")
+    try:
+        data = json.loads(body)
+    except Exception:
+        return {"ok": True}
+    label = data.get("label", "")
+    if data.get("type") == "incoming_payment" and label:
         try:
-            parts = order_id.split("_")
+            parts = label.split("_")
             user_id = int(parts[0])
             await bot.send_message(
                 chat_id=user_id,
-                text="✅ <b>Payment received!</b>\nThanks for your purchase. How can I help?",
+                text="✅ <b>Payment confirmed!</b>\nBTC received. Thanks for your purchase!",
             )
-            logger.info("Crypto payment confirmed for user %s", user_id)
+            logger.info("Block.io payment confirmed for user %s", user_id)
         except (IndexError, ValueError) as e:
-            logger.warning("Failed to parse order_id: %s", e)
+            logger.warning("Failed to parse label: %s", e)
     return {"ok": True}
 
 
