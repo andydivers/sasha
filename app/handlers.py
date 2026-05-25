@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from datetime import datetime, timezone, timedelta
+from urllib.request import urlopen
 
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
@@ -514,10 +515,14 @@ async def on_crypto_service(callback: CallbackQuery):
             f"No manual confirmation needed."
         )
 
-    await callback.message.answer_photo(
-        photo=qr_url,
-        caption=f"{unique_amount} USDC" if lang != "ru" else f"{unique_amount} USDC"
-    )
+    try:
+        qr_bytes = urlopen(qr_url, timeout=10).read()
+        await callback.message.answer_photo(
+            photo=types.BufferedInputFile(qr_bytes, filename="qr.png"),
+            caption=f"{unique_amount} USDC"
+        )
+    except Exception as e:
+        logger.warning("QR download failed: %s", e)
     await callback.answer()
 
 

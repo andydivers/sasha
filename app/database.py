@@ -179,3 +179,11 @@ async def confirm_payment(payment_id: int, network: str, txid: str):
         }).eq("id", payment_id).execute()
     except Exception as e:
         logger.warning("Failed to confirm payment: %s", e)
+
+
+async def is_payment_confirmed(payment_id: int) -> bool:
+    try:
+        resp = get_db().table("pending_payments").select("status").eq("id", payment_id).single().execute()
+        return resp.data and resp.data.get("status") == "confirmed"
+    except Exception:
+        return False
