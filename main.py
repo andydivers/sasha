@@ -74,6 +74,7 @@ async def lifespan(app: FastAPI):
 
     async def check_payments():
         seen_txids: set[str] = set()
+        notified_ids: set[int] = set()
         while True:
             await asyncio.sleep(60)
             if not config.etherscan_api_key:
@@ -91,7 +92,12 @@ async def lifespan(app: FastAPI):
                     if len(seen_txids) > 10000:
                         seen_txids.clear()
                     for p in pending:
+                        if p["id"] in notified_ids:
+                            continue
                         if abs(tx["value"] - p["unique_amount"]) < 0.000001:
+                            notified_ids.add(p["id"])
+                            if len(notified_ids) > 10000:
+                                notified_ids.clear()
                             await confirm_payment(p["id"], tx["network"], txid)
                             await bot.send_message(
                                 chat_id=p["user_id"],
