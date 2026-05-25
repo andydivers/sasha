@@ -334,28 +334,28 @@ async def on_crypto_choice(callback: CallbackQuery):
 
     await callback.message.delete()
 
-    if result and result.get("pay_address"):
-        pay_address = result["pay_address"]
+    if result and (result.get("payment_url") or result.get("pay_address")):
+        payment_url = result.get("payment_url") or f"https://nowpayments.io/payment/?iid={result.get('payment_id')}"
         pay_amount = result.get("pay_amount", price["usd"])
         pay_currency = result.get("pay_currency", "BTC").upper()
         if lang == "ru":
             await callback.message.answer(
                 f"💳 <b>{price['label_ru']}</b>\n"
                 f"Сумма: {pay_amount} {pay_currency}\n\n"
-                f"Отправь <b>{pay_amount} {pay_currency}</b> на адрес:\n"
-                f"<code>{pay_address}</code>\n\n"
-                f"После подтверждения сети я уведомлю тебя."
+                f"<a href='{payment_url}'>Перейти к оплате</a>\n\n"
+                f"Выбери любую криптовалюту на странице оплаты. "
+                f"Я подтвержу получение автоматически."
             )
         else:
             await callback.message.answer(
                 f"💳 <b>{price['label_en']}</b>\n"
                 f"Amount: {pay_amount} {pay_currency}\n\n"
-                f"Send <b>{pay_amount} {pay_currency}</b> to:\n"
-                f"<code>{pay_address}</code>\n\n"
-                f"I'll notify you once confirmed on-chain."
+                f"<a href='{payment_url}'>Pay now</a>\n\n"
+                f"Choose any cryptocurrency on the payment page. "
+                f"I'll confirm automatically."
             )
         await log_event(callback.from_user.id, "crypto_payment_created", {
-            "key": key, "order_id": order_id, "pay_address": pay_address
+            "key": key, "order_id": order_id, "payment_url": payment_url
         })
     else:
         if lang == "ru":
