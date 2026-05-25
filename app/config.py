@@ -12,9 +12,7 @@ class Config:
     supabase_url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
     supabase_key: str = field(default_factory=lambda: os.getenv("SUPABASE_KEY", ""))
     usdc_address: str = field(default_factory=lambda: os.getenv("USDC_ADDRESS", ""))
-    solana_usdc_address: str = field(default_factory=lambda: os.getenv("SOLANA_USDC_ADDRESS", ""))
     etherscan_api_key: str = field(default_factory=lambda: os.getenv("ETHERSCAN_API_KEY", ""))
-    solana_api_key: str = field(default_factory=lambda: os.getenv("SOLSCAN_API_KEY", ""))
     app_url: str = field(default_factory=lambda: os.getenv("RENDER_EXTERNAL_URL", "") or os.getenv("APP_URL", ""))
     port: int = field(default_factory=lambda: int(os.getenv("PORT", "8000")))
 

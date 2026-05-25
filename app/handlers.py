@@ -15,7 +15,7 @@ from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
-from app.crypto_client import check_usdc_evm, check_usdc_solana, NETWORKS
+from app.crypto_client import check_usdc_evm, NETWORKS
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -367,41 +367,24 @@ async def cmd_crypto(message: types.Message):
         return
 
     supported = ", ".join(NETWORKS.keys())
-    has_solana = bool(config.solana_api_key and config.solana_usdc_address)
-    if has_solana:
-        supported += ", solana"
 
     if lang == "ru":
         msg = (
             f"💳 <b>Оплата USDC</b>\n\n"
             f"Поддерживаемые сети: {supported}\n\n"
-            f"<b>Для EVM-сетей</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
             f"<code>{config.usdc_address}</code>\n"
-            f"(нажми на адрес чтобы скопировать)\n"
+            f"(нажми на адрес чтобы скопировать)\n\n"
+            f"Используй /buy чтобы оплатить услугу."
         )
-        if has_solana:
-            msg += (
-                f"\n<b>Для Solana:</b>\n"
-                f"<code>{config.solana_usdc_address}</code>\n"
-                f"(нажми на адрес чтобы скопировать)\n"
-            )
-        msg += "\nИспользуй /buy чтобы оплатить услугу."
         await message.answer(msg)
     else:
         msg = (
             f"💳 <b>Pay with USDC</b>\n\n"
             f"Supported networks: {supported}\n\n"
-            f"<b>For EVM chains</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
             f"<code>{config.usdc_address}</code>\n"
-            f"(tap the address to copy)\n"
+            f"(tap the address to copy)\n\n"
+            f"Use /buy to purchase a service."
         )
-        if has_solana:
-            msg += (
-                f"\n<b>For Solana:</b>\n"
-                f"<code>{config.solana_usdc_address}</code>\n"
-                f"(tap the address to copy)\n"
-            )
-        msg += "\nUse /buy to purchase a service."
         await message.answer(msg)
 
 
@@ -455,7 +438,6 @@ async def cmd_confirm(message: types.Message):
     checked = []
     txid_lower = txid.lower()
 
-    # Try specified or all EVM networks
     if txid_lower.startswith("0x"):
         evm_nets = [specified_net] if specified_net in NETWORKS else list(NETWORKS.keys())
         for net in evm_nets:
@@ -465,11 +447,6 @@ async def cmd_confirm(message: types.Message):
             result = check_usdc_evm(txid, config.usdc_address, net, config.etherscan_api_key)
             if result:
                 break
-
-    # Try Solana
-    if not result and config.solana_api_key:
-        checked.append("solana")
-        result = check_usdc_solana(txid, config.usdc_address, config.solana_api_key)
 
     if not result:
         checked_str = ", ".join(checked) if checked else "—"
@@ -607,25 +584,15 @@ async def on_crypto_service(callback: CallbackQuery):
     qr_data = quote(f"ethereum:{config.usdc_address}", safe="")
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={qr_data}"
 
-    has_solana = bool(config.solana_api_key and config.solana_usdc_address)
     title = price["label_ru"] if lang == "ru" else price["label_en"]
 
     if lang == "ru":
         msg = (
             f"💳 <b>{title}</b>\n\n"
             f"Отправь <b>ровно {unique_amount} USDC</b>\n\n"
-            f"<b>Для EVM-сетей</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
             f"<code>{config.usdc_address}</code>\n"
-            f"(нажми на адрес чтобы скопировать)\n"
-        )
-        if has_solana:
-            msg += (
-                f"\n<b>Для Solana:</b>\n"
-                f"<code>{config.solana_usdc_address}</code>\n"
-                f"(нажми на адрес чтобы скопировать)\n"
-            )
-        msg += (
-            f"\nПосле отправки бот автоматически проверит платеж.\n"
+            f"(нажми на адрес чтобы скопировать)\n\n"
+            f"После отправки бот автоматически проверит платеж.\n"
             f"Ничего вручную вводить не нужно."
         )
         await callback.message.answer(msg)
@@ -633,18 +600,9 @@ async def on_crypto_service(callback: CallbackQuery):
         msg = (
             f"💳 <b>{title}</b>\n\n"
             f"Send <b>exactly {unique_amount} USDC</b>\n\n"
-            f"<b>For EVM chains</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
             f"<code>{config.usdc_address}</code>\n"
-            f"(tap the address to copy)\n"
-        )
-        if has_solana:
-            msg += (
-                f"\n<b>For Solana:</b>\n"
-                f"<code>{config.solana_usdc_address}</code>\n"
-                f"(tap the address to copy)\n"
-            )
-        msg += (
-            f"\nBot will automatically detect the payment.\n"
+            f"(tap the address to copy)\n\n"
+            f"Bot will automatically detect the payment.\n"
             f"No manual confirmation needed."
         )
         await callback.message.answer(msg)

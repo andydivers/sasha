@@ -16,11 +16,6 @@ NETWORKS = {
     "avalanche": {"chainid": "43114", "usdc": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", "decimals": 6},
 }
 
-SOLSCAN_TX_URL = "https://api.solscan.io/v2/transaction/detail?tx={txid}"
-SOLSCAN_ACCOUNT_TX_URL = "https://api.solscan.io/v2/account/transfer?address={address}&limit=25"
-SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-
-
 def _fetch_json(url: str, api_key: str = "") -> dict | None:
     try:
         req = Request(url, headers={"User-Agent": "SashaBot/1.0"})
@@ -62,40 +57,6 @@ def fetch_incoming_usdc_transfers(address: str, api_key: str) -> list[dict]:
     return transfers
 
 
-def fetch_incoming_usdc_solana_transfers(address: str, api_key: str) -> list[dict]:
-    if not api_key:
-        return []
-    url = SOLSCAN_ACCOUNT_TX_URL.format(address=address)
-    data = _fetch_json(url, api_key)
-    if not data:
-        return []
-    # response can be a dict with "data" key or a list directly
-    items = data.get("data", data) if isinstance(data, dict) else data
-    if not isinstance(items, list):
-        return []
-    transfers = []
-    for tx in items:
-        txid = tx.get("txHash", "")
-        if not txid:
-            continue
-        for change in tx.get("tokenTransfers", []):
-            if change.get("mint") != SOLANA_USDC_MINT:
-                continue
-            dest = change.get("destination", "")
-            if dest.lower() != address.lower():
-                continue
-            value = float(change.get("amount", 0)) / 1_000_000
-            transfers.append({
-                "txid": txid,
-                "value": value,
-                "from": change.get("source", ""),
-                "network": "solana",
-                "confirmations": 1,
-                "timestamp": str(tx.get("blockTime", 0)),
-            })
-    return transfers
-
-
 def check_usdc_evm(txid: str, address: str, network: str, api_key: str) -> dict | None:
     net = NETWORKS.get(network)
     if not net or not api_key:
@@ -119,30 +80,5 @@ def check_usdc_evm(txid: str, address: str, network: str, api_key: str) -> dict 
                 "to": tx.get("to", ""),
                 "confirmations": int(tx.get("confirmations", "0")),
                 "network": network,
-            }
-    return None
-
-
-def check_usdc_solana(txid: str, address: str, api_key: str) -> dict | None:
-    if not api_key:
-        return None
-    data = _fetch_json(SOLSCAN_TX_URL.format(txid=txid), api_key)
-    if not data or "data" not in data:
-        return None
-
-    tx_data = data["data"]
-    for change in tx_data.get("tokenTransfers", []):
-        if change.get("mint") != SOLANA_USDC_MINT:
-            continue
-        dest = change.get("destinationOwner", "")
-        source = change.get("sourceOwner", "")
-        if dest.lower() == address.lower() or source.lower() == address.lower():
-            value = float(change.get("rawTokenAmount", {}).get("tokenAmount", 0)) / 1_000_000
-            return {
-                "value": value,
-                "from": source,
-                "to": dest,
-                "confirmations": min(tx_data.get("blockHeight", 0), 1),
-                "network": "solana",
             }
     return None
