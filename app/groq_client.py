@@ -82,107 +82,135 @@ def _needs_reasoning(text: str) -> bool:
     return bool(words & REASONING_KEYWORDS)
 
 
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_screenshot",
+            "description": "Analyze a screenshot or image. Call this when user sends an image or asks to analyze something visual.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "What to analyze or look for in the image"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_sheets",
+            "description": "Read from or write to Google Sheets. Call this when user asks to track expenses, update budgets, or view spreadsheet data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["read", "write"], "description": "Read or write data"},
+                    "description": {"type": "string", "description": "What data to read or write"},
+                },
+                "required": ["action", "description"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_event",
+            "description": "Create a calendar event. Call this when user asks to schedule a meeting, set a reminder, or create an event.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string", "description": "Event title"},
+                    "date": {"type": "string", "description": "Date of the event"},
+                    "time": {"type": "string", "description": "Time of the event"},
+                },
+                "required": ["summary"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_report",
+            "description": "Generate a PDF, Excel, or HTML report. Call this when user asks for a report, summary, or analytics.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "format": {"type": "string", "enum": ["pdf", "excel", "html"], "description": "Report format"},
+                    "topic": {"type": "string", "description": "What the report should cover"},
+                },
+                "required": ["format", "topic"],
+            },
+        },
+    },
+]
+
+
+def build_system_prompt(lang: str) -> str:
+    lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
+    return f"You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. {lang_instruction}"
+
+
+def build_messages(text: str, lang: str, chat_history: list | None = None) -> list:
+    messages = [{"role": "system", "content": build_system_prompt(lang)}]
+    if chat_history:
+        messages.extend(chat_history[-6:])
+    messages.append({"role": "user", "content": text})
+    return messages
+
+
 def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list | None = None):
     # fast path — simple greeting, no API call
     if _is_simple_greeting(text, lang):
         reply = _get_simple_reply(text, lang)
         if reply:
-            return reply, 0.0
+            return reply, 0.0, None
 
-    # choose model based on complexity
     if _needs_reasoning(text):
-        model = "llama-3.3-70b-versatile"
         max_tokens = 1000
     else:
-        model = "llama-3.3-70b-versatile"
         max_tokens = 500
 
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "analyze_screenshot",
-                "description": "Analyze a screenshot or image. Call this when user sends an image or asks to analyze something visual.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "What to analyze or look for in the image"}
-                    },
-                    "required": ["query"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "manage_sheets",
-                "description": "Read from or write to Google Sheets. Call this when user asks to track expenses, update budgets, or view spreadsheet data.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "action": {"type": "string", "enum": ["read", "write"], "description": "Read or write data"},
-                        "description": {"type": "string", "description": "What data to read or write"},
-                    },
-                    "required": ["action", "description"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "create_event",
-                "description": "Create a calendar event. Call this when user asks to schedule a meeting, set a reminder, or create an event.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "summary": {"type": "string", "description": "Event title"},
-                        "date": {"type": "string", "description": "Date of the event"},
-                        "time": {"type": "string", "description": "Time of the event"},
-                    },
-                    "required": ["summary"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "generate_report",
-                "description": "Generate a PDF, Excel, or HTML report. Call this when user asks for a report, summary, or analytics.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "format": {"type": "string", "enum": ["pdf", "excel", "html"], "description": "Report format"},
-                        "topic": {"type": "string", "description": "What the report should cover"},
-                    },
-                    "required": ["format", "topic"],
-                },
-            },
-        },
-    ]
-
-    lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
-    system_prompt = f"You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. {lang_instruction}"
-    messages = [{"role": "system", "content": system_prompt}]
-    if chat_history:
-        messages.extend(chat_history[-6:])
-    messages.append({"role": "user", "content": text})
+    messages = build_messages(text, lang, chat_history)
 
     start = time.perf_counter()
     response = client.chat.completions.create(
-        model=model,
+        model="llama-3.3-70b-versatile",
         messages=messages,
-        tools=tools,
+        tools=TOOLS,
         tool_choice="auto",
         temperature=0.1,
         max_tokens=max_tokens,
     )
     elapsed = time.perf_counter() - start
-    logger.info("Groq %s latency: %.2fs", model, elapsed)
+    logger.info("Groq latency: %.2fs", elapsed)
 
     choice = response.choices[0]
     if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-        return choice.message.tool_calls[0], elapsed
-    return choice.message.content, elapsed
+        messages.append(choice.message)
+        return choice.message.tool_calls, elapsed, messages
+    return choice.message.content, elapsed, messages
+
+
+def chat_turn(client: Groq, messages: list):
+    """Continue a multi-turn conversation. Returns (text, messages) or (tool_calls, messages)."""
+    start = time.perf_counter()
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=messages,
+        tools=TOOLS,
+        tool_choice="auto",
+        temperature=0.1,
+        max_tokens=1000,
+    )
+    elapsed = time.perf_counter() - start
+    logger.info("Groq chat_turn latency: %.2fs", elapsed)
+
+    choice = response.choices[0]
+    if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
+        messages.append(choice.message)
+        return choice.message.tool_calls, messages
+    return choice.message.content, messages
 
 
 def transcribe_audio(client: Groq, audio_bytes: bytes, filename: str = "voice.ogg") -> str:
