@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment
 from app.groq_client import create_groq_client, detect_intent, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -126,6 +126,7 @@ async def cmd_sheet(message: types.Message):
 
     url = parts[1].strip()
     _sheet_cache[message.from_user.id] = url
+    await set_user_sheet(message.from_user.id, url)
     if lang == "ru":
         await message.answer("Google Таблица подключена! Теперь я могу читать и записывать данные.")
     else:
@@ -722,12 +723,13 @@ async def handle_message(message: types.Message):
         return
 
     lang = await get_lang(message.from_user.id)
-
     text = message.text.strip()
 
     m = re.match(r"https://docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)", text)
     if m:
-        _sheet_cache[message.from_user.id] = m.group(0)
+        url = m.group(0)
+        _sheet_cache[message.from_user.id] = url
+        await set_user_sheet(message.from_user.id, url)
         if lang == "ru":
             await message.answer("Google Таблица подключена! Теперь я могу читать и записывать данные.")
         else:
@@ -739,6 +741,11 @@ async def handle_message(message: types.Message):
         return
 
     tz = await get_tz(message.from_user.id)
+
+    if message.from_user.id not in _sheet_cache:
+        db_url = await get_user_sheet(message.from_user.id)
+        if db_url:
+            _sheet_cache[message.from_user.id] = db_url
 
     await message.answer(t(lang, "thinking"))
 

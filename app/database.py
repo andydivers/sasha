@@ -109,6 +109,23 @@ async def mark_reminder_done(task_id: int):
         logger.warning("Failed to mark reminder done: %s", e)
 
 
+async def get_user_sheet(user_id: int) -> str:
+    try:
+        resp = get_db().table("users").select("sheet_url").eq("id", user_id).execute()
+        if resp.data and resp.data[0].get("sheet_url"):
+            return resp.data[0]["sheet_url"]
+    except Exception as e:
+        logger.warning("Failed to get user sheet: %s", e)
+    return ""
+
+
+async def set_user_sheet(user_id: int, url: str):
+    try:
+        get_db().table("users").upsert({"id": user_id, "sheet_url": url}, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning("Failed to set user sheet: %s", e)
+
+
 async def add_todo(user_id: int, title: str):
     try:
         get_db().table("tasks").insert({

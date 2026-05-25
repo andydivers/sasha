@@ -44,7 +44,7 @@ REASONING_KEYWORDS = frozenset({
 
 
 def create_groq_client(api_key: str) -> Groq:
-    return Groq(api_key=api_key)
+    return Groq(api_key=api_key, timeout=30.0)
 
 
 LANG_INSTRUCTIONS = {
