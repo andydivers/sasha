@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
 from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment
-from app.groq_client import create_groq_client, detect_intent, transcribe_audio
+from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
@@ -684,7 +684,7 @@ async def handle_voice(message: types.Message, bot: Bot):
             return
 
         tz = await get_tz(message.from_user.id)
-        result, latency = detect_intent(groq, text, lang=lang)
+        result, latency, messages = detect_intent(groq, text, lang=lang)
 
         if isinstance(result, str):
             response_text = result
@@ -700,16 +700,32 @@ async def handle_voice(message: types.Message, bot: Bot):
                 await message.answer(response_text)
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
-            response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url, tz=tz)
-            if response_text.startswith("__REPORT__:"):
-                parts = response_text.split(":", 2)
-                fmt = parts[1]
-                path = parts[2]
-                fname = f"report.{fmt}"
-                with open(path, "rb") as f:
-                    await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
-                os.unlink(path)
-            else:
+            all_responses = []
+            turn_count = 0
+            current = result  # list of tool_calls
+            while turn_count < 10:
+                turn_count += 1
+                for tool_call in current:
+                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz)
+                    if resp.startswith("__REPORT__:"):
+                        parts = resp.split(":", 2)
+                        fmt = parts[1]
+                        path = parts[2]
+                        fname = f"report.{fmt}"
+                        with open(path, "rb") as f:
+                            await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                        os.unlink(path)
+                    else:
+                        all_responses.append(resp)
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
+                next_result, messages = chat_turn(groq, messages)
+                if isinstance(next_result, str):
+                    if next_result not in all_responses:
+                        all_responses.append(next_result)
+                    break
+                current = next_result
+            response_text = "\n\n".join(all_responses) if all_responses else "Done."
+            if all_responses:
                 await message.answer(response_text)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
@@ -754,7 +770,7 @@ async def handle_message(message: types.Message):
     await message.answer(t(lang, "thinking"))
 
     try:
-        result, latency = detect_intent(groq, text, lang=lang)
+        result, latency, messages = detect_intent(groq, text, lang=lang)
 
         if isinstance(result, str):
             response_text = result
@@ -770,16 +786,32 @@ async def handle_message(message: types.Message):
                 await message.answer(response_text)
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
-            response_text = await handle_tool_call(result, lang=lang, sheet_url=sheet_url, tz=tz)
-            if response_text.startswith("__REPORT__:"):
-                parts = response_text.split(":", 2)
-                fmt = parts[1]
-                path = parts[2]
-                fname = f"report.{fmt}"
-                with open(path, "rb") as f:
-                    await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
-                os.unlink(path)
-            else:
+            all_responses = []
+            turn_count = 0
+            current = result
+            while turn_count < 10:
+                turn_count += 1
+                for tool_call in current:
+                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz)
+                    if resp.startswith("__REPORT__:"):
+                        parts = resp.split(":", 2)
+                        fmt = parts[1]
+                        path = parts[2]
+                        fname = f"report.{fmt}"
+                        with open(path, "rb") as f:
+                            await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                        os.unlink(path)
+                    else:
+                        all_responses.append(resp)
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
+                next_result, messages = chat_turn(groq, messages)
+                if isinstance(next_result, str):
+                    if next_result not in all_responses:
+                        all_responses.append(next_result)
+                    break
+                current = next_result
+            response_text = "\n\n".join(all_responses) if all_responses else "Done."
+            if all_responses:
                 await message.answer(response_text)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
