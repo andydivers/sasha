@@ -11,8 +11,8 @@ class Config:
     google_sheets_creds: str = field(default_factory=lambda: os.getenv("GOOGLE_SHEETS_CREDENTIALS", ""))
     supabase_url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
     supabase_key: str = field(default_factory=lambda: os.getenv("SUPABASE_KEY", ""))
-    cryptomus_merchant_id: str = field(default_factory=lambda: os.getenv("CRYPTOMUS_MERCHANT_ID", ""))
-    cryptomus_api_key: str = field(default_factory=lambda: os.getenv("CRYPTOMUS_API_KEY", ""))
+    nowpayments_api_key: str = field(default_factory=lambda: os.getenv("NOWPAYMENTS_API_KEY", ""))
+    nowpayments_ipn_secret: str = field(default_factory=lambda: os.getenv("NOWPAYMENTS_IPN_SECRET", ""))
     app_url: str = field(default_factory=lambda: os.getenv("RENDER_EXTERNAL_URL", "") or os.getenv("APP_URL", ""))
     port: int = field(default_factory=lambda: int(os.getenv("PORT", "8000")))
 
