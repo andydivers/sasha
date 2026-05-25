@@ -134,9 +134,13 @@ app = FastAPI(title="Sasha Bot", lifespan=lifespan)
 
 
 @app.post("/webhook")
-async def webhook(request: Request) -> None:
-    update = Update.model_validate(await request.json(), context={"bot": bot})
-    await dp.feed_update(bot, update)
+async def webhook(request: Request) -> dict:
+    try:
+        update = Update.model_validate(await request.json(), context={"bot": bot})
+        await dp.feed_update(bot, update)
+    except Exception as e:
+        logger.error("Webhook error: %s", e, exc_info=True)
+    return {"ok": True}
 
 
 @app.get("/")
