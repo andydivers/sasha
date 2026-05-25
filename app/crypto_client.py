@@ -23,7 +23,7 @@ def create_invoice(merchant_id: str, api_key: str, price_amount: float, order_id
         "is_payment_multiple": True,
         "lifetime": 3600,
     }
-    payload = json.dumps(body)
+    payload = json.dumps(body, separators=(",", ":"))
     b64_payload = base64.b64encode(payload.encode()).decode()
     sign = _sign(b64_payload, api_key)
 
