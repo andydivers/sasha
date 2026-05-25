@@ -17,13 +17,15 @@ NETWORKS = {
 }
 
 SOLSCAN_TX_URL = "https://api.solscan.io/v2/transaction/detail?tx={txid}"
-SOLSCAN_ACCOUNT_TX_URL = "https://api.solscan.io/v2/account/token/tx?address={address}&mint={mint}&limit=25"
+SOLSCAN_ACCOUNT_TX_URL = "https://api.solscan.io/v2/account/transfer?address={address}&limit=25"
 SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
 
-def _fetch_json(url: str) -> dict | None:
+def _fetch_json(url: str, api_key: str = "") -> dict | None:
     try:
         req = Request(url, headers={"User-Agent": "SashaBot/1.0"})
+        if api_key:
+            req.add_header("Authorization", f"Bearer {api_key}")
         with urlopen(req, timeout=15) as resp:
             return json.loads(resp.read())
     except Exception as e:
@@ -63,12 +65,16 @@ def fetch_incoming_usdc_transfers(address: str, api_key: str) -> list[dict]:
 def fetch_incoming_usdc_solana_transfers(address: str, api_key: str) -> list[dict]:
     if not api_key:
         return []
-    url = SOLSCAN_ACCOUNT_TX_URL.format(address=address, mint=SOLANA_USDC_MINT)
-    data = _fetch_json(url)
-    if not data or "data" not in data:
+    url = SOLSCAN_ACCOUNT_TX_URL.format(address=address)
+    data = _fetch_json(url, api_key)
+    if not data:
+        return []
+    # response can be a dict with "data" key or a list directly
+    items = data.get("data", data) if isinstance(data, dict) else data
+    if not isinstance(items, list):
         return []
     transfers = []
-    for tx in data["data"]:
+    for tx in items:
         txid = tx.get("txHash", "")
         if not txid:
             continue
