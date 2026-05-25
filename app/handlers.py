@@ -273,13 +273,16 @@ def _parse_delay(raw: str) -> int:
 @router.message(Command("buy"))
 async def cmd_buy(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    kb = InlineKeyboardMarkup(inline_keyboard=[
+    btns = [
         [InlineKeyboardButton(
             text=f"📊 {p['label_en']} — {p['stars']} ⭐" if lang != "ru" else f"📊 {p['label_ru']} — {p['stars']} ⭐",
             callback_data=f"buy_{k}"
         )]
         for k, p in STAR_PRICES.items()
-    ])
+    ]
+    crypto_label = "💎 Pay with Crypto" if lang != "ru" else "💎 Оплатить криптовалютой"
+    btns.append([InlineKeyboardButton(text=crypto_label, callback_data="buy_crypto")])
+    kb = InlineKeyboardMarkup(inline_keyboard=btns)
     if lang == "ru":
         await message.answer("Выбери услугу:", reply_markup=kb)
     else:
@@ -359,14 +362,40 @@ async def on_crypto_choice(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("buy_"))
+@router.callback_query(F.data.in_({"buy_excel_report", "buy_html_report", "buy_crypto"}))
 async def on_buy_choice(callback: CallbackQuery, bot: Bot):
     key = callback.data[4:]
+    lang = await get_lang(callback.from_user.id)
+
+    if key == "crypto":
+        await callback.message.delete()
+        if not config.nowpayments_api_key:
+            if lang == "ru":
+                await callback.message.answer("Крипто-платежи временно недоступны.")
+            else:
+                await callback.message.answer("Crypto payments temporarily unavailable.")
+            await callback.answer()
+            return
+
+        btns = [
+            [InlineKeyboardButton(
+                text=f"📊 {p['label_en']} — ${p['usd']}" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usd']}",
+                callback_data=f"crypto_{k}"
+            )]
+            for k, p in CRYPTO_PRICES.items()
+        ]
+        kb = InlineKeyboardMarkup(inline_keyboard=btns)
+        if lang == "ru":
+            await callback.message.answer("Оплата криптовалютой. Выбери услугу:", reply_markup=kb)
+        else:
+            await callback.message.answer("Crypto payment. Choose a service:", reply_markup=kb)
+        await callback.answer()
+        return
+
     price = STAR_PRICES.get(key)
     if not price:
         await callback.answer("Unknown service")
         return
-    lang = await get_lang(callback.from_user.id)
     title = price["label_en"] if lang != "ru" else price["label_ru"]
     prices = [types.LabeledPrice(label=title, amount=price["stars"])]
     await callback.message.delete()
