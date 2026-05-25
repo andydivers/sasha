@@ -95,12 +95,16 @@ async def cmd_lang(message: types.Message):
 
 @router.message(Command("webhook"))
 async def cmd_webhook(message: types.Message, bot: Bot):
-    info = await bot.get_webhook_info()
     lang = await get_lang(message.from_user.id)
-    await message.answer(t(lang, "webhook",
-        url=info.url or t(lang, "webhook_not_set"),
-        errors=info.last_error_message or t(lang, "webhook_no_errors"),
-    ))
+    await bot.delete_webhook(drop_pending_updates=True)
+    await bot.set_webhook(url=config.webhook_url)
+    info = await bot.get_webhook_info()
+    msg = (
+        f"✅ Webhook reset\nURL: {info.url}\nErrors: {info.last_error_message or 'None'}"
+        if lang != "ru" else
+        f"✅ Вебхук сброшен\nURL: {info.url}\nОшибки: {info.last_error_message or 'Нет'}"
+    )
+    await message.answer(msg)
 
 
 @router.message(Command("sheet"))
