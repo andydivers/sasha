@@ -91,7 +91,7 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
 
     # choose model based on complexity
     if _needs_reasoning(text):
-        model = "deepseek-r1-distill-llama-70b"
+        model = "llama-3.3-70b-versatile"
         max_tokens = 1000
     else:
         model = "llama-3.3-70b-versatile"
