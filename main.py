@@ -80,8 +80,8 @@ async def lifespan(app: FastAPI):
             if not config.etherscan_api_key:
                 continue
             try:
-                    await expire_old_payments()
-                    pending = await get_pending_payments()
+                await expire_old_payments()
+                pending = await get_pending_payments()
                 if not pending:
                     continue
                 transfers = fetch_incoming_usdc_transfers(config.usdc_address, config.etherscan_api_key)

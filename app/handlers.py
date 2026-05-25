@@ -2,7 +2,7 @@ import os
 import re
 import logging
 from datetime import datetime, timezone, timedelta
-from urllib.request import urlopen
+from urllib.request import urlopen, quote
 
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
@@ -349,7 +349,8 @@ async def cmd_qr(message: types.Message):
             await message.answer("Crypto payments not configured.")
         return
 
-    qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=ethereum:{config.usdc_address}&choe=UTF-8"
+    qr_data = quote(f"ethereum:{config.usdc_address}", safe="")
+    qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={qr_data}&choe=UTF-8"
     try:
         qr_bytes = urlopen(qr_url, timeout=10).read()
         caption = config.usdc_address
@@ -537,7 +538,7 @@ async def on_crypto_service(callback: CallbackQuery):
         return
 
     unique_amount = payment["unique_amount"]
-    qr_data = f"ethereum:{config.usdc_address}"
+    qr_data = quote(f"ethereum:{config.usdc_address}", safe="")
     qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={qr_data}&choe=UTF-8"
 
     has_solana = bool(config.solana_api_key and config.solana_usdc_address)
