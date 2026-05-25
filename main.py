@@ -99,27 +99,5 @@ async def health():
     return {"status": "healthy"}
 
 
-@app.post("/crypto_webhook")
-async def crypto_webhook(request: Request):
-    body = await request.body()
-    try:
-        data = json.loads(body)
-    except Exception:
-        return {"ok": True}
-    label = data.get("label", "")
-    if data.get("type") == "incoming_payment" and label:
-        try:
-            parts = label.split("_")
-            user_id = int(parts[0])
-            await bot.send_message(
-                chat_id=user_id,
-                text="✅ <b>Payment confirmed!</b>\nBTC received. Thanks for your purchase!",
-            )
-            logger.info("Block.io payment confirmed for user %s", user_id)
-        except (IndexError, ValueError) as e:
-            logger.warning("Failed to parse label: %s", e)
-    return {"ok": True}
-
-
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=config.port)

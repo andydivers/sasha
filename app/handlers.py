@@ -13,7 +13,7 @@ from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
-from app.crypto_client import create_address
+from app.crypto_client import check_usdc_evm, check_usdc_solana, NETWORKS
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -28,11 +28,6 @@ if config.gemini_api_key:
 STAR_PRICES = {
     "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "stars": 5},
     "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "stars": 3},
-}
-
-CRYPTO_PRICES = {
-    "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "usd": 0.50},
-    "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "usd": 0.30},
 }
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
@@ -292,73 +287,130 @@ async def cmd_buy(message: types.Message):
 @router.message(Command("crypto"))
 async def cmd_crypto(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    if not config.blockio_api_key:
+    if not config.usdc_address:
         if lang == "ru":
             await message.answer("Крипто-платежи временно недоступны.")
         else:
             await message.answer("Crypto payments temporarily unavailable.")
         return
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text=f"📊 {p['label_en']} — ${p['usd']}" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usd']}",
-            callback_data=f"crypto_{k}"
-        )]
-        for k, p in CRYPTO_PRICES.items()
-    ])
+    supported = ", ".join(NETWORKS.keys())
+    if config.solana_api_key:
+        supported += ", solana"
+
     if lang == "ru":
-        await message.answer("Оплата криптовалютой. Выбери услугу:", reply_markup=kb)
+        await message.answer(
+            f"💳 <b>Оплата USDC</b>\n\n"
+            f"Отправь USDC на адрес:\n"
+            f"<code>{config.usdc_address}</code>\n\n"
+            f"Поддерживаемые сети: {supported}\n\n"
+            f"После отправки напиши:\n"
+            f"<code>/confirm TXID</code>\n"
+            f"или <code>/confirm TXID ethereum</code> (указать сеть)"
+        )
     else:
-        await message.answer("Crypto payment. Choose a service:", reply_markup=kb)
+        await message.answer(
+            f"💳 <b>Pay with USDC</b>\n\n"
+            f"Send USDC to:\n"
+            f"<code>{config.usdc_address}</code>\n\n"
+            f"Supported networks: {supported}\n\n"
+            f"After sending, type:\n"
+            f"<code>/confirm TXID</code>\n"
+            f"or <code>/confirm TXID polygon</code> (specify network)"
+        )
 
 
-@router.callback_query(F.data.startswith("crypto_"))
-async def on_crypto_choice(callback: CallbackQuery):
-    key = callback.data[7:]
-    price = CRYPTO_PRICES.get(key)
-    if not price:
-        await callback.answer("Unknown service")
+@router.message(F.text.startswith("/confirm"))
+async def cmd_confirm(message: types.Message):
+    parts = message.text.split(maxsplit=2)
+    txid = ""
+    specified_net = ""
+    if len(parts) >= 2:
+        txid = parts[1]
+    if len(parts) >= 3:
+        specified_net = parts[2].lower()
+
+    if not txid:
         return
-    lang = await get_lang(callback.from_user.id)
 
-    label = f"{callback.from_user.id}_{key}_{int(datetime.now().timestamp())}"
+    lang = await get_lang(message.from_user.id)
+    if not config.usdc_address:
+        return
 
-    result = create_address(
-        api_key=config.blockio_api_key,
-        label=label,
-    )
+    await message.answer("⏳ Checking transaction..." if lang != "ru" else "⏳ Проверяю транзакцию...")
 
-    await callback.message.delete()
+    result = None
+    checked = []
+    txid_lower = txid.lower()
 
-    if result and result.get("address"):
-        address = result["address"]
-        qr_code = result.get("qr_code", f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={address}&choe=UTF-8")
+    # Try specified or all EVM networks
+    if txid_lower.startswith("0x"):
+        evm_nets = [specified_net] if specified_net in NETWORKS else list(NETWORKS.keys())
+        for net in evm_nets:
+            if not config.etherscan_api_key:
+                continue
+            checked.append(net)
+            result = check_usdc_evm(txid, config.usdc_address, net, config.etherscan_api_key)
+            if result:
+                break
+
+    # Try Solana
+    if not result and config.solana_api_key:
+        checked.append("solana")
+        result = check_usdc_solana(txid, config.usdc_address, config.solana_api_key)
+
+    if not result:
+        checked_str = ", ".join(checked) if checked else "—"
         if lang == "ru":
-            await callback.message.answer(
-                f"💳 <b>{price['label_ru']}</b>\n"
-                f"Сумма: ${price['usd']}\n\n"
-                f"Отправь BTC на адрес:\n"
-                f"<code>{address}</code>\n\n"
-                f"После подтверждения в сети я уведомлю тебя."
+            await message.answer(
+                f"❌ Транзакция не найдена.\n"
+                f"Проверено сетей: {checked_str}\n"
+                f"Убедись, что TXID правильный и USDC отправлен на верный адрес."
             )
         else:
-            await callback.message.answer(
-                f"💳 <b>{price['label_en']}</b>\n"
-                f"Amount: ${price['usd']}\n\n"
-                f"Send BTC to:\n"
-                f"<code>{address}</code>\n\n"
-                f"I'll notify you once confirmed on-chain."
+            await message.answer(
+                f"❌ Transaction not found.\n"
+                f"Checked networks: {checked_str}\n"
+                f"Make sure TXID is correct and USDC was sent to the right address."
             )
-        await log_event(callback.from_user.id, "crypto_payment_created", {
-            "key": key, "label": label, "address": address
-        })
+        return
+
+    value = result["value"]
+    confirmations = result["confirmations"]
+    net_name = result["network"]
+    from_addr = result["from"]
+    to_addr = result["to"]
+    txid_short = txid[:16] + "..."
+
+    if lang == "ru":
+        await message.answer(
+            f"✅ <b>USDC-транзакция найдена!</b>\n"
+            f"Сеть: {net_name}\n"
+            f"Сумма: {value:.2f} USDC\n"
+            f"От: <code>{from_addr[:12]}...</code>\n"
+            f"Кому: <code>{to_addr[:12]}...</code>\n"
+            f"TXID: <code>{txid_short}</code>\n"
+            f"Подтверждений: {confirmations}\n\n"
+            f"{'✅ Платёж подтверждён!' if confirmations > 0 else '⏳ Ожидание подтверждений...'}"
+        )
     else:
-        if lang == "ru":
-            await callback.message.answer("Не удалось создать адрес. Попробуй позже.")
-        else:
-            await callback.message.answer("Failed to create address. Try again later.")
+        await message.answer(
+            f"✅ <b>USDC transaction found!</b>\n"
+            f"Network: {net_name}\n"
+            f"Amount: {value:.2f} USDC\n"
+            f"From: <code>{from_addr[:12]}...</code>\n"
+            f"To: <code>{to_addr[:12]}...</code>\n"
+            f"TXID: <code>{txid_short}</code>\n"
+            f"Confirmations: {confirmations}\n\n"
+            f"{'✅ Payment confirmed!' if confirmations > 0 else '⏳ Waiting for confirmations...'}"
+        )
 
-    await callback.answer()
+    await log_event(message.from_user.id, "usdc_tx_checked", {
+        "txid": txid,
+        "value": value,
+        "network": result["network"],
+        "confirmations": confirmations
+    })
 
 
 @router.callback_query(F.data.in_({"buy_excel_report", "buy_html_report", "buy_crypto"}))
@@ -368,7 +420,7 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
 
     if key == "crypto":
         await callback.message.delete()
-        if not config.blockio_api_key:
+        if not config.usdc_address:
             if lang == "ru":
                 await callback.message.answer("Крипто-платежи временно недоступны.")
             else:
@@ -376,18 +428,20 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
             await callback.answer()
             return
 
-        btns = [
-            [InlineKeyboardButton(
-                text=f"📊 {p['label_en']} — ${p['usd']}" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usd']}",
-                callback_data=f"crypto_{k}"
-            )]
-            for k, p in CRYPTO_PRICES.items()
-        ]
-        kb = InlineKeyboardMarkup(inline_keyboard=btns)
         if lang == "ru":
-            await callback.message.answer("Оплата криптовалютой. Выбери услугу:", reply_markup=kb)
+            await callback.message.answer(
+                f"💳 <b>Оплата USDC</b>\n\n"
+                f"Отправь USDC на адрес:\n"
+                f"<code>{config.usdc_address}</code>\n\n"
+                f"После отправки напиши /confirm TXID [сеть]"
+            )
         else:
-            await callback.message.answer("Crypto payment. Choose a service:", reply_markup=kb)
+            await callback.message.answer(
+                f"💳 <b>Pay with USDC</b>\n\n"
+                f"Send USDC to:\n"
+                f"<code>{config.usdc_address}</code>\n\n"
+                f"After sending, type /confirm TXID [network]"
+            )
         await callback.answer()
         return
 
