@@ -85,12 +85,12 @@ async def lifespan(app: FastAPI):
                     continue
                 transfers = fetch_incoming_usdc_transfers(config.usdc_address, config.etherscan_api_key)
                 for tx in transfers:
-                    txid = tx["txid"]
-                    if txid in seen_txids:
+                    if tx["txid"] in seen_txids:
                         continue
-                    seen_txids.add(txid)
+                    seen_txids.add(tx["txid"])
                     if len(seen_txids) > 10000:
                         seen_txids.clear()
+                    confirmed_this_tx = False
                     for p in pending:
                         if p["id"] in notified_ids:
                             continue
@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI):
                             notified_ids.add(p["id"])
                             if len(notified_ids) > 10000:
                                 notified_ids.clear()
-                            await confirm_payment(p["id"], tx["network"], txid)
+                            await confirm_payment(p["id"], tx["network"], tx["txid"])
                             await bot.send_message(
                                 chat_id=p["user_id"],
                                 text=(
@@ -109,7 +109,10 @@ async def lifespan(app: FastAPI):
                                 ),
                             )
                             logger.info("Payment %s confirmed for user %s", p["id"], p["user_id"])
+                            confirmed_this_tx = True
                             break
+                    if confirmed_this_tx:
+                        break
             except Exception as e:
                 logger.warning("Payment check error: %s", e)
 

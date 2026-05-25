@@ -308,20 +308,18 @@ async def cmd_crypto(message: types.Message):
             f"💳 <b>Оплата USDC</b>\n\n"
             f"Отправь USDC на адрес:\n"
             f"<code>{config.usdc_address}</code>\n\n"
+            f"(нажми на адрес чтобы скопировать)\n\n"
             f"Поддерживаемые сети: {supported}\n\n"
-            f"После отправки напиши:\n"
-            f"<code>/confirm TXID</code>\n"
-            f"или <code>/confirm TXID ethereum</code> (указать сеть)"
+            f"Используй /buy чтобы оплатить услугу."
         )
     else:
         await message.answer(
             f"💳 <b>Pay with USDC</b>\n\n"
             f"Send USDC to:\n"
             f"<code>{config.usdc_address}</code>\n\n"
+            f"(tap the address to copy)\n\n"
             f"Supported networks: {supported}\n\n"
-            f"After sending, type:\n"
-            f"<code>/confirm TXID</code>\n"
-            f"or <code>/confirm TXID polygon</code> (specify network)"
+            f"Use /buy to purchase a service."
         )
 
 
@@ -502,6 +500,7 @@ async def on_crypto_service(callback: CallbackQuery):
             f"💳 <b>{title}</b>\n\n"
             f"Отправь <b>ровно {unique_amount} USDC</b> на адрес:\n"
             f"<code>{config.usdc_address}</code>\n\n"
+            f"(нажми на адрес чтобы скопировать)\n\n"
             f"После отправки бот автоматически проверит платеж.\n"
             f"Ничего вручную вводить не нужно."
         )
@@ -510,6 +509,7 @@ async def on_crypto_service(callback: CallbackQuery):
             f"💳 <b>{title}</b>\n\n"
             f"Send <b>exactly {unique_amount} USDC</b> to:\n"
             f"<code>{config.usdc_address}</code>\n\n"
+            f"(tap the address to copy)\n\n"
             f"Bot will automatically detect the payment.\n"
             f"No manual confirmation needed."
         )
