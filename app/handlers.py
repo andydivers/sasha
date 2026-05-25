@@ -292,7 +292,7 @@ async def cmd_buy(message: types.Message):
 @router.message(Command("crypto"))
 async def cmd_crypto(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    if not config.nowpayments_api_key:
+    if not config.coingate_api_key:
         if lang == "ru":
             await message.answer("Крипто-платежи временно недоступны.")
         else:
@@ -325,7 +325,7 @@ async def on_crypto_choice(callback: CallbackQuery):
     callback_url = f"{config.app_url}/crypto_webhook"
 
     result = create_invoice(
-        api_key=config.nowpayments_api_key,
+        api_key=config.coingate_api_key,
         price_amount=price["usd"],
         order_id=order_id,
         description=price["label_en"] if lang != "ru" else price["label_ru"],
@@ -334,8 +334,8 @@ async def on_crypto_choice(callback: CallbackQuery):
 
     await callback.message.delete()
 
-    if result and result.get("payment_id"):
-        payment_url = f"https://nowpayments.io/payment/?iid={result['payment_id']}"
+    if result and result.get("payment_url"):
+        payment_url = result["payment_url"]
         if lang == "ru":
             await callback.message.answer(
                 f"💳 <b>{price['label_ru']}</b>\n"
@@ -371,7 +371,7 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
 
     if key == "crypto":
         await callback.message.delete()
-        if not config.nowpayments_api_key:
+        if not config.coingate_api_key:
             if lang == "ru":
                 await callback.message.answer("Крипто-платежи временно недоступны.")
             else:

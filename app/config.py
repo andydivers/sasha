@@ -11,8 +11,7 @@ class Config:
     google_sheets_creds: str = field(default_factory=lambda: os.getenv("GOOGLE_SHEETS_CREDENTIALS", ""))
     supabase_url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
     supabase_key: str = field(default_factory=lambda: os.getenv("SUPABASE_KEY", ""))
-    nowpayments_api_key: str = field(default_factory=lambda: os.getenv("NOWPAYMENTS_API_KEY", ""))
-    nowpayments_ipn_secret: str = field(default_factory=lambda: os.getenv("NOWPAYMENTS_IPN_SECRET", ""))
+    coingate_api_key: str = field(default_factory=lambda: os.getenv("COINGATE_API_KEY", ""))
     app_url: str = field(default_factory=lambda: os.getenv("RENDER_EXTERNAL_URL", "") or os.getenv("APP_URL", ""))
     port: int = field(default_factory=lambda: int(os.getenv("PORT", "8000")))
 

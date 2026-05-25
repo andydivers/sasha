@@ -102,9 +102,8 @@ async def health():
 @app.post("/crypto_webhook")
 async def crypto_webhook(request: Request):
     body = await request.body()
-    sig = request.headers.get("x-nowpayments-sig", "")
-    data = verify_webhook(config.nowpayments_ipn_secret, body, sig)
-    if data:
+    data = verify_webhook(body)
+    if data and data.get("status") == "paid":
         order_id = data.get("order_id", "")
         try:
             parts = order_id.split("_")
