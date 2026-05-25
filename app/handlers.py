@@ -416,7 +416,7 @@ async def cmd_qr(message: types.Message):
         return
 
     qr_data = quote(f"ethereum:{config.usdc_address}", safe="")
-    qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={qr_data}&choe=UTF-8"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={qr_data}"
     try:
         qr_bytes = urlopen(qr_url, timeout=10).read()
         caption = config.usdc_address
@@ -605,7 +605,7 @@ async def on_crypto_service(callback: CallbackQuery):
 
     unique_amount = payment["unique_amount"]
     qr_data = quote(f"ethereum:{config.usdc_address}", safe="")
-    qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={qr_data}&choe=UTF-8"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={qr_data}"
 
     has_solana = bool(config.solana_api_key and config.solana_usdc_address)
     title = price["label_ru"] if lang == "ru" else price["label_en"]
