@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import logging
-import time
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
@@ -11,17 +10,18 @@ logger = logging.getLogger(__name__)
 API_URL = "https://api.nowpayments.io/v1"
 
 
-def create_invoice(api_key: str, price_amount: float, order_id: str, description: str, ipn_callback_url: str) -> dict | None:
+def create_payment(api_key: str, price_amount: float, order_id: str, description: str, ipn_callback_url: str) -> dict | None:
     data = json.dumps({
         "price_amount": price_amount,
         "price_currency": "usd",
+        "pay_currency": "btc",
         "order_id": order_id,
         "order_description": description,
         "ipn_callback_url": ipn_callback_url,
     }).encode()
 
     req = Request(
-        f"{API_URL}/invoice",
+        f"{API_URL}/payment",
         data=data,
         headers={
             "x-api-key": api_key,
@@ -33,11 +33,11 @@ def create_invoice(api_key: str, price_amount: float, order_id: str, description
     try:
         with urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read())
-            logger.info("NowPayments invoice created: %s", result.get("id"))
+            logger.info("NowPayments payment created: %s", result.get("payment_id"))
             return result
     except HTTPError as e:
         body = e.read().decode()
-        logger.error("NowPayments invoice error %s: %s", e.code, body)
+        logger.error("NowPayments payment error %s: %s", e.code, body)
         return None
     except Exception as e:
         logger.error("NowPayments request failed: %s", e)

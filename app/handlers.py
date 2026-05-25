@@ -13,7 +13,7 @@ from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
-from app.crypto_client import create_invoice
+from app.crypto_client import create_payment
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -324,7 +324,7 @@ async def on_crypto_choice(callback: CallbackQuery):
     order_id = f"{callback.from_user.id}_{key}_{int(datetime.now().timestamp())}"
     ipn_url = f"{config.app_url}/crypto_webhook"
 
-    result = create_invoice(
+    result = create_payment(
         api_key=config.nowpayments_api_key,
         price_amount=price["usd"],
         order_id=order_id,
@@ -334,30 +334,34 @@ async def on_crypto_choice(callback: CallbackQuery):
 
     await callback.message.delete()
 
-    if result and result.get("invoice_url"):
-        invoice_url = result["invoice_url"]
+    if result and result.get("pay_address"):
+        pay_address = result["pay_address"]
+        pay_amount = result.get("pay_amount", price["usd"])
+        pay_currency = result.get("pay_currency", "BTC").upper()
         if lang == "ru":
             await callback.message.answer(
                 f"💳 <b>{price['label_ru']}</b>\n"
-                f"Сумма: ${price['usd']}\n\n"
-                f"<a href='{invoice_url}'>Перейти к оплате</a>\n\n"
-                f"После оплаты я подтвержу получение."
+                f"Сумма: {pay_amount} {pay_currency}\n\n"
+                f"Отправь <b>{pay_amount} {pay_currency}</b> на адрес:\n"
+                f"<code>{pay_address}</code>\n\n"
+                f"После подтверждения сети я уведомлю тебя."
             )
         else:
             await callback.message.answer(
                 f"💳 <b>{price['label_en']}</b>\n"
-                f"Amount: ${price['usd']}\n\n"
-                f"<a href='{invoice_url}'>Pay now</a>\n\n"
-                f"I'll confirm once payment is received."
+                f"Amount: {pay_amount} {pay_currency}\n\n"
+                f"Send <b>{pay_amount} {pay_currency}</b> to:\n"
+                f"<code>{pay_address}</code>\n\n"
+                f"I'll notify you once confirmed on-chain."
             )
-        await log_event(callback.from_user.id, "crypto_invoice_created", {
-            "key": key, "order_id": order_id, "invoice_url": invoice_url
+        await log_event(callback.from_user.id, "crypto_payment_created", {
+            "key": key, "order_id": order_id, "pay_address": pay_address
         })
     else:
         if lang == "ru":
-            await callback.message.answer("Не удалось создать счёт. Попробуй позже.")
+            await callback.message.answer("Не удалось создать платёж. Попробуй позже.")
         else:
-            await callback.message.answer("Failed to create invoice. Try again later.")
+            await callback.message.answer("Failed to create payment. Try again later.")
 
     await callback.answer()
 
