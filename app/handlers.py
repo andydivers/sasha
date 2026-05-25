@@ -2,7 +2,8 @@ import os
 import re
 import logging
 from datetime import datetime, timezone, timedelta
-from urllib.request import urlopen, quote
+from urllib.request import urlopen
+from urllib.parse import quote
 
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
