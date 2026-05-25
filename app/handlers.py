@@ -7,7 +7,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment
 from app.groq_client import create_groq_client, detect_intent, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -28,6 +28,11 @@ if config.gemini_api_key:
 STAR_PRICES = {
     "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "stars": 5},
     "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "stars": 3},
+}
+
+CRYPTO_PRICES = {
+    "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "usdc": 0.50},
+    "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "usdc": 0.30},
 }
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
@@ -428,20 +433,18 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
             await callback.answer()
             return
 
+        btns = [
+            [InlineKeyboardButton(
+                text=f"📊 {p['label_en']} — ${p['usdc']} USDC" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usdc']} USDC",
+                callback_data=f"crypto_service_{k}"
+            )]
+            for k, p in CRYPTO_PRICES.items()
+        ]
+        kb = InlineKeyboardMarkup(inline_keyboard=btns)
         if lang == "ru":
-            await callback.message.answer(
-                f"💳 <b>Оплата USDC</b>\n\n"
-                f"Отправь USDC на адрес:\n"
-                f"<code>{config.usdc_address}</code>\n\n"
-                f"После отправки напиши /confirm TXID [сеть]"
-            )
+            await callback.message.answer("Выбери услугу для оплаты USDC:", reply_markup=kb)
         else:
-            await callback.message.answer(
-                f"💳 <b>Pay with USDC</b>\n\n"
-                f"Send USDC to:\n"
-                f"<code>{config.usdc_address}</code>\n\n"
-                f"After sending, type /confirm TXID [network]"
-            )
+            await callback.message.answer("Choose a service to pay with USDC:", reply_markup=kb)
         await callback.answer()
         return
 
@@ -460,6 +463,60 @@ async def on_buy_choice(callback: CallbackQuery, bot: Bot):
         provider_token="",
         currency="XTR",
         prices=prices,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("crypto_service_"))
+async def on_crypto_service(callback: CallbackQuery):
+    key = callback.data[len("crypto_service_"):]
+    price = CRYPTO_PRICES.get(key)
+    if not price:
+        await callback.answer("Unknown service")
+        return
+    lang = await get_lang(callback.from_user.id)
+    if not config.etherscan_api_key:
+        if lang == "ru":
+            await callback.message.answer("Платежи временно недоступны.")
+        else:
+            await callback.message.answer("Payments temporarily unavailable.")
+        await callback.answer()
+        return
+
+    payment = await create_pending_payment(callback.from_user.id, key, price["usdc"])
+    if not payment:
+        if lang == "ru":
+            await callback.message.answer("Ошибка создания платежа. Попробуй ещё раз.")
+        else:
+            await callback.message.answer("Failed to create payment. Try again.")
+        await callback.answer()
+        return
+
+    unique_amount = payment["unique_amount"]
+    qr_data = f"ethereum:{config.usdc_address}"
+    qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={qr_data}&choe=UTF-8"
+
+    title = price["label_ru"] if lang == "ru" else price["label_en"]
+    if lang == "ru":
+        await callback.message.answer(
+            f"💳 <b>{title}</b>\n\n"
+            f"Отправь <b>ровно {unique_amount} USDC</b> на адрес:\n"
+            f"<code>{config.usdc_address}</code>\n\n"
+            f"После отправки бот автоматически проверит платеж.\n"
+            f"Ничего вручную вводить не нужно."
+        )
+    else:
+        await callback.message.answer(
+            f"💳 <b>{title}</b>\n\n"
+            f"Send <b>exactly {unique_amount} USDC</b> to:\n"
+            f"<code>{config.usdc_address}</code>\n\n"
+            f"Bot will automatically detect the payment.\n"
+            f"No manual confirmation needed."
+        )
+
+    await callback.message.answer_photo(
+        photo=qr_url,
+        caption=f"{unique_amount} USDC" if lang != "ru" else f"{unique_amount} USDC"
     )
     await callback.answer()
 

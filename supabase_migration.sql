@@ -54,3 +54,18 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT '';
 
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS done BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS pending_payments (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    service TEXT NOT NULL,
+    amount NUMERIC(10,6) NOT NULL,
+    unique_amount NUMERIC(12,6) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    network TEXT,
+    txid TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    confirmed_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_amount ON pending_payments(unique_amount) WHERE status = 'pending';

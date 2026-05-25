@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime, timezone
 from supabase import create_client, Client
 
@@ -135,3 +136,46 @@ async def mark_todo_done(todo_id: int) -> bool:
     except Exception as e:
         logger.warning("Failed to mark todo done: %s", e)
         return False
+
+
+async def create_pending_payment(user_id: int, service: str, amount: float) -> dict | None:
+    for attempt in range(5):
+        fraction = random.randint(1, 999)
+        unique_amount = round(amount + fraction / 1000000, 6)
+        try:
+            resp = get_db().table("pending_payments").insert({
+                "user_id": user_id,
+                "service": service,
+                "amount": amount,
+                "unique_amount": unique_amount,
+                "status": "pending",
+            }).execute()
+            if resp.data:
+                return resp.data[0]
+        except Exception as e:
+            if "idx_pending_amount" in str(e):
+                continue
+            logger.warning("Failed to create payment: %s", e)
+            return None
+    return None
+
+
+async def get_pending_payments() -> list[dict]:
+    try:
+        resp = get_db().table("pending_payments").select("*").eq("status", "pending").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get pending payments: %s", e)
+        return []
+
+
+async def confirm_payment(payment_id: int, network: str, txid: str):
+    try:
+        get_db().table("pending_payments").update({
+            "status": "confirmed",
+            "network": network,
+            "txid": txid,
+            "confirmed_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", payment_id).execute()
+    except Exception as e:
+        logger.warning("Failed to confirm payment: %s", e)

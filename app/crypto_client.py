@@ -30,6 +30,35 @@ def _fetch_json(url: str) -> dict | None:
         return None
 
 
+def fetch_incoming_usdc_transfers(address: str, api_key: str) -> list[dict]:
+    transfers = []
+    for name, net in NETWORKS.items():
+        if not api_key:
+            continue
+        url = (
+            f"{ETHERSCAN_V2}?chainid={net['chainid']}&module=account&action=tokentx"
+            f"&contractaddress={net['usdc']}&address={address}"
+            f"&startblock=0&endblock=99999999&sort=desc&offset=25&apikey={api_key}"
+        )
+        data = _fetch_json(url)
+        if not data or data.get("status") != "1" or "result" not in data:
+            continue
+        for tx in data["result"]:
+            to_addr = tx.get("to", "").lower()
+            if to_addr != address.lower():
+                continue
+            value = int(tx.get("value", "0")) / (10 ** net["decimals"])
+            transfers.append({
+                "txid": tx.get("hash", ""),
+                "value": value,
+                "from": tx.get("from", ""),
+                "network": name,
+                "confirmations": int(tx.get("confirmations", "0")),
+                "timestamp": tx.get("timeStamp", "0"),
+            })
+    return transfers
+
+
 def check_usdc_evm(txid: str, address: str, network: str, api_key: str) -> dict | None:
     net = NETWORKS.get(network)
     if not net or not api_key:

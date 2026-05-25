@@ -9,9 +9,10 @@ from aiogram.types import Update
 
 from app.config import Config
 from app.bot import create_bot, create_dispatcher, setup_sentry
-from app.database import init_db, get_due_reminders, mark_reminder_done
+from app.database import init_db, get_due_reminders, mark_reminder_done, get_pending_payments, confirm_payment
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
+from app.crypto_client import fetch_incoming_usdc_transfers, NETWORKS
 from app.handlers import router
 
 logging.basicConfig(
@@ -71,10 +72,48 @@ async def lifespan(app: FastAPI):
                 logger.warning("Reminder check error: %s", e)
             await asyncio.sleep(30)
 
+    async def check_payments():
+        seen_txids: set[str] = set()
+        while True:
+            await asyncio.sleep(60)
+            if not config.etherscan_api_key:
+                continue
+            try:
+                pending = await get_pending_payments()
+                if not pending:
+                    continue
+                transfers = fetch_incoming_usdc_transfers(config.usdc_address, config.etherscan_api_key)
+                for tx in transfers:
+                    txid = tx["txid"]
+                    if txid in seen_txids:
+                        continue
+                    seen_txids.add(txid)
+                    if len(seen_txids) > 10000:
+                        seen_txids.clear()
+                    for p in pending:
+                        if abs(tx["value"] - p["unique_amount"]) < 0.000001:
+                            await confirm_payment(p["id"], tx["network"], txid)
+                            await bot.send_message(
+                                chat_id=p["user_id"],
+                                text=(
+                                    f"✅ <b>Payment confirmed!</b>\n"
+                                    f"Service: {p['service']}\n"
+                                    f"Amount: {tx['value']} USDC\n"
+                                    f"Network: {tx['network']}"
+                                ),
+                            )
+                            logger.info("Payment %s confirmed for user %s", p["id"], p["user_id"])
+                            break
+            except Exception as e:
+                logger.warning("Payment check error: %s", e)
+
     task = asyncio.create_task(check_reminders())
     logger.info("Reminder checker started")
+    task2 = asyncio.create_task(check_payments())
+    logger.info("Payment checker started")
     yield
     task.cancel()
+    task2.cancel()
     await bot.session.close()
     logger.info("Bot session closed")
 
