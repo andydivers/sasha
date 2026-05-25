@@ -1,9 +1,10 @@
 import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from aiogram.types import Update
 
 from app.config import Config
@@ -134,13 +135,14 @@ app = FastAPI(title="Sasha Bot", lifespan=lifespan)
 
 
 @app.post("/webhook")
-async def webhook(request: Request) -> dict:
+async def webhook(request: Request):
     try:
-        update = Update.model_validate(await request.json(), context={"bot": bot})
+        body = await request.body()
+        update = Update.model_validate(json.loads(body), context={"bot": bot})
         await dp.feed_update(bot, update)
     except Exception as e:
         logger.error("Webhook error: %s", e, exc_info=True)
-    return {"ok": True}
+    return Response(content="ok", status_code=200)
 
 
 @app.get("/")
