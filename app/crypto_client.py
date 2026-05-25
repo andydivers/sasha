@@ -126,7 +126,7 @@ def check_usdc_evm(txid: str, address: str, network: str, api_key: str) -> dict 
 def check_usdc_solana(txid: str, address: str, api_key: str) -> dict | None:
     if not api_key:
         return None
-    data = _fetch_json(SOLSCAN_TX_URL.format(txid=txid))
+    data = _fetch_json(SOLSCAN_TX_URL.format(txid=txid), api_key)
     if not data or "data" not in data:
         return None
 

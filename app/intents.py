@@ -61,7 +61,6 @@ def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None) -
         if action == "write":
             row = [description]
             if "amount" in args or "sum" in description.lower():
-                import re
                 nums = re.findall(r"[\d,.]+", description)
                 if nums:
                     row = [description, nums[0]]

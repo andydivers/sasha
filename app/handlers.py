@@ -227,6 +227,71 @@ async def cmd_delete(message: types.Message):
         await message.answer("Error deleting event." if lang != "ru" else "Ошибка удаления.")
 
 
+@router.message(Command("todo"))
+async def cmd_todo(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) >= 2:
+        title = parts[1].strip()
+        await add_todo(message.from_user.id, title)
+        if lang == "ru":
+            await message.answer(f"✅ Задача добавлена: {title}")
+        else:
+            await message.answer(f"✅ Task added: {title}")
+        return
+    todos = await get_todos(message.from_user.id)
+    if not todos:
+        if lang == "ru":
+            await message.answer("📋 Список задач пуст.\n\nДобавь задачу: /todo купить молоко")
+        else:
+            await message.answer("📋 Todo list is empty.\n\nAdd a task: /todo buy milk")
+        return
+    lines = []
+    for i, t in enumerate(todos, 1):
+        title = t.get("title", "—")
+        lines.append(f"{i}. {title}")
+    text = "📋 <b>Tasks:</b>\n" + "\n".join(lines)
+    if lang == "ru":
+        text = "📋 <b>Задачи:</b>\n" + "\n".join(lines)
+        text += "\n\nОтметить выполненной: /done N"
+    else:
+        text += "\n\nMark as done: /done N"
+    await message.answer(text)
+
+
+@router.message(Command("done"))
+async def cmd_done(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip().isdigit():
+        if lang == "ru":
+            await message.answer("Используй: /done N (где N — номер из /todo)")
+        else:
+            await message.answer("Use: /done N (N is the number from /todo)")
+        return
+    idx = int(parts[1].strip())
+    todos = await get_todos(message.from_user.id)
+    if idx < 1 or idx > len(todos):
+        if lang == "ru":
+            await message.answer(f"Нет задачи под номером {idx}. Сначала /todo.")
+        else:
+            await message.answer(f"No task #{idx}. Run /todo first.")
+        return
+    todo_id = todos[idx - 1]["id"]
+    ok = await mark_todo_done(todo_id)
+    if ok:
+        title = todos[idx - 1].get("title", "—")
+        if lang == "ru":
+            await message.answer(f"✅ Задача выполнена: {title}")
+        else:
+            await message.answer(f"✅ Task done: {title}")
+    else:
+        if lang == "ru":
+            await message.answer("Задача уже выполнена или не найдена.")
+        else:
+            await message.answer("Task already done or not found.")
+
+
 @router.message(Command("remind"))
 async def cmd_remind(message: types.Message):
     lang = await get_lang(message.from_user.id)
