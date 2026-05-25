@@ -17,6 +17,7 @@ NETWORKS = {
 }
 
 SOLSCAN_TX_URL = "https://api.solscan.io/v2/transaction/detail?tx={txid}"
+SOLSCAN_ACCOUNT_TX_URL = "https://api.solscan.io/v2/account/token/tx?address={address}&mint={mint}&limit=25"
 SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
 
@@ -55,6 +56,36 @@ def fetch_incoming_usdc_transfers(address: str, api_key: str) -> list[dict]:
                 "network": name,
                 "confirmations": int(tx.get("confirmations", "0")),
                 "timestamp": tx.get("timeStamp", "0"),
+            })
+    return transfers
+
+
+def fetch_incoming_usdc_solana_transfers(address: str, api_key: str) -> list[dict]:
+    if not api_key:
+        return []
+    url = SOLSCAN_ACCOUNT_TX_URL.format(address=address, mint=SOLANA_USDC_MINT)
+    data = _fetch_json(url)
+    if not data or "data" not in data:
+        return []
+    transfers = []
+    for tx in data["data"]:
+        txid = tx.get("txHash", "")
+        if not txid:
+            continue
+        for change in tx.get("tokenTransfers", []):
+            if change.get("mint") != SOLANA_USDC_MINT:
+                continue
+            dest = change.get("destination", "")
+            if dest.lower() != address.lower():
+                continue
+            value = float(change.get("amount", 0)) / 1_000_000
+            transfers.append({
+                "txid": txid,
+                "value": value,
+                "from": change.get("source", ""),
+                "network": "solana",
+                "confirmations": 1,
+                "timestamp": str(tx.get("blockTime", 0)),
             })
     return transfers
 

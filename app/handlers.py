@@ -301,27 +301,42 @@ async def cmd_crypto(message: types.Message):
         return
 
     supported = ", ".join(NETWORKS.keys())
-    if config.solana_api_key:
+    has_solana = bool(config.solana_api_key and config.solana_usdc_address)
+    if has_solana:
         supported += ", solana"
 
     if lang == "ru":
-        await message.answer(
+        msg = (
             f"💳 <b>Оплата USDC</b>\n\n"
-            f"Отправь USDC на адрес:\n"
-            f"<code>{config.usdc_address}</code>\n\n"
-            f"(нажми на адрес чтобы скопировать)\n\n"
             f"Поддерживаемые сети: {supported}\n\n"
-            f"Используй /buy чтобы оплатить услугу."
+            f"<b>Для EVM-сетей</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
+            f"<code>{config.usdc_address}</code>\n"
+            f"(нажми на адрес чтобы скопировать)\n"
         )
+        if has_solana:
+            msg += (
+                f"\n<b>Для Solana:</b>\n"
+                f"<code>{config.solana_usdc_address}</code>\n"
+                f"(нажми на адрес чтобы скопировать)\n"
+            )
+        msg += "\nИспользуй /buy чтобы оплатить услугу."
+        await message.answer(msg)
     else:
-        await message.answer(
+        msg = (
             f"💳 <b>Pay with USDC</b>\n\n"
-            f"Send USDC to:\n"
-            f"<code>{config.usdc_address}</code>\n\n"
-            f"(tap the address to copy)\n\n"
             f"Supported networks: {supported}\n\n"
-            f"Use /buy to purchase a service."
+            f"<b>For EVM chains</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
+            f"<code>{config.usdc_address}</code>\n"
+            f"(tap the address to copy)\n"
         )
+        if has_solana:
+            msg += (
+                f"\n<b>For Solana:</b>\n"
+                f"<code>{config.solana_usdc_address}</code>\n"
+                f"(tap the address to copy)\n"
+            )
+        msg += "\nUse /buy to purchase a service."
+        await message.answer(msg)
 
 
 @router.message(F.text.startswith("/confirm"))
@@ -495,25 +510,47 @@ async def on_crypto_service(callback: CallbackQuery):
     qr_data = f"ethereum:{config.usdc_address}"
     qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={qr_data}&choe=UTF-8"
 
+    has_solana = bool(config.solana_api_key and config.solana_usdc_address)
     title = price["label_ru"] if lang == "ru" else price["label_en"]
+
     if lang == "ru":
-        await callback.message.answer(
+        msg = (
             f"💳 <b>{title}</b>\n\n"
-            f"Отправь <b>ровно {unique_amount} USDC</b> на адрес:\n"
-            f"<code>{config.usdc_address}</code>\n\n"
-            f"(нажми на адрес чтобы скопировать)\n\n"
-            f"После отправки бот автоматически проверит платеж.\n"
+            f"Отправь <b>ровно {unique_amount} USDC</b>\n\n"
+            f"<b>Для EVM-сетей</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
+            f"<code>{config.usdc_address}</code>\n"
+            f"(нажми на адрес чтобы скопировать)\n"
+        )
+        if has_solana:
+            msg += (
+                f"\n<b>Для Solana:</b>\n"
+                f"<code>{config.solana_usdc_address}</code>\n"
+                f"(нажми на адрес чтобы скопировать)\n"
+            )
+        msg += (
+            f"\nПосле отправки бот автоматически проверит платеж.\n"
             f"Ничего вручную вводить не нужно."
         )
+        await callback.message.answer(msg)
     else:
-        await callback.message.answer(
+        msg = (
             f"💳 <b>{title}</b>\n\n"
-            f"Send <b>exactly {unique_amount} USDC</b> to:\n"
-            f"<code>{config.usdc_address}</code>\n\n"
-            f"(tap the address to copy)\n\n"
-            f"Bot will automatically detect the payment.\n"
+            f"Send <b>exactly {unique_amount} USDC</b>\n\n"
+            f"<b>For EVM chains</b> (Ethereum, Polygon, Arbitrum, Base, BSC, Optimism, Avalanche):\n"
+            f"<code>{config.usdc_address}</code>\n"
+            f"(tap the address to copy)\n"
+        )
+        if has_solana:
+            msg += (
+                f"\n<b>For Solana:</b>\n"
+                f"<code>{config.solana_usdc_address}</code>\n"
+                f"(tap the address to copy)\n"
+            )
+        msg += (
+            f"\nBot will automatically detect the payment.\n"
             f"No manual confirmation needed."
         )
+        await callback.message.answer(msg)
 
     try:
         qr_bytes = urlopen(qr_url, timeout=10).read()
