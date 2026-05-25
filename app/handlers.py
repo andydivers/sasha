@@ -277,10 +277,10 @@ async def cmd_buy(message: types.Message, bot: Bot):
     lang = await get_lang(message.from_user.id)
     btns = [
         [InlineKeyboardButton(
-            text=f"📊 {p['label_en']} — ${p['usdc']} / {p['stars']} ⭐" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usdc']} / {p['stars']} ⭐",
+            text=f"📊 {p['label_en']} — {p['stars']} ⭐" if lang != "ru" else f"📊 {p['label_ru']} — {p['stars']} ⭐",
             callback_data=f"buy_{k}"
         )]
-        for k, p in CRYPTO_PRICES.items()
+        for k, p in STAR_PRICES.items()
     ]
     crypto_label = "💎 Pay with Crypto" if lang != "ru" else "💎 Оплатить криптовалютой"
     btns.append([InlineKeyboardButton(text=crypto_label, callback_data="buy_crypto")])

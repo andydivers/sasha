@@ -1,6 +1,6 @@
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
