@@ -13,6 +13,7 @@ from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
+from app.crypto_client import create_invoice
 from app.i18n import t, TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,11 @@ if config.gemini_api_key:
 STAR_PRICES = {
     "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "stars": 5},
     "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "stars": 3},
+}
+
+CRYPTO_PRICES = {
+    "excel_report": {"label_en": "Excel report", "label_ru": "Отчёт Excel", "usd": 0.50},
+    "html_report": {"label_en": "HTML report", "label_ru": "Отчёт HTML", "usd": 0.30},
 }
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
@@ -280,68 +286,77 @@ async def cmd_buy(message: types.Message):
         await message.answer("Choose a service:", reply_markup=kb)
 
 
-@router.message(Command("todo"))
-async def cmd_todo(message: types.Message):
+@router.message(Command("crypto"))
+async def cmd_crypto(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    parts = message.text.split(maxsplit=1)
-    if len(parts) >= 2:
-        title = parts[1].strip()
-        await add_todo(message.from_user.id, title)
+    if not config.nowpayments_api_key:
         if lang == "ru":
-            await message.answer(f"✅ Добавлено: {title}")
+            await message.answer("Крипто-платежи временно недоступны.")
         else:
-            await message.answer(f"✅ Added: {title}")
+            await message.answer("Crypto payments temporarily unavailable.")
         return
 
-    todos = await get_todos(message.from_user.id)
-    if not todos:
-        if lang == "ru":
-            await message.answer("📋 Список дел пуст. Добавь: /todo купить молоко")
-        else:
-            await message.answer("📋 No tasks. Add one: /todo buy milk")
-        return
-
-    lines = []
-    for i, t in enumerate(todos, 1):
-        lines.append(f"{i}. {t['title']}")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=f"📊 {p['label_en']} — ${p['usd']}" if lang != "ru" else f"📊 {p['label_ru']} — ${p['usd']}",
+            callback_data=f"crypto_{k}"
+        )]
+        for k, p in CRYPTO_PRICES.items()
+    ])
     if lang == "ru":
-        lines.insert(0, "📋 <b>Мои задачи:</b>")
-        lines.append("")
-        lines.append("Готово? /done 1 (номер задачи)")
+        await message.answer("Оплата криптовалютой. Выбери услугу:", reply_markup=kb)
     else:
-        lines.insert(0, "📋 <b>My tasks:</b>")
-        lines.append("")
-        lines.append("Done? /done 1 (task number)")
-    await message.answer("\n".join(lines))
+        await message.answer("Crypto payment. Choose a service:", reply_markup=kb)
 
 
-@router.message(Command("done"))
-async def cmd_done(message: types.Message):
-    lang = await get_lang(message.from_user.id)
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip().isdigit():
-        if lang == "ru":
-            await message.answer("Используй: /done N (N — номер задачи из /todo)")
-        else:
-            await message.answer("Use: /done N (N is the task number from /todo)")
+@router.callback_query(F.data.startswith("crypto_"))
+async def on_crypto_choice(callback: CallbackQuery):
+    key = callback.data[7:]
+    price = CRYPTO_PRICES.get(key)
+    if not price:
+        await callback.answer("Unknown service")
         return
+    lang = await get_lang(callback.from_user.id)
 
-    idx = int(parts[1].strip())
-    todos = await get_todos(message.from_user.id)
-    if idx < 1 or idx > len(todos):
+    order_id = f"{callback.from_user.id}_{key}_{int(datetime.now().timestamp())}"
+    ipn_url = f"{config.app_url}/crypto_webhook"
+
+    result = create_invoice(
+        api_key=config.nowpayments_api_key,
+        price_amount=price["usd"],
+        order_id=order_id,
+        description=price["label_en"] if lang != "ru" else price["label_ru"],
+        ipn_callback_url=ipn_url,
+    )
+
+    await callback.message.delete()
+
+    if result and result.get("invoice_url"):
+        invoice_url = result["invoice_url"]
         if lang == "ru":
-            await message.answer(f"Нет задачи под номером {idx}. Сначала /todo.")
+            await callback.message.answer(
+                f"💳 <b>{price['label_ru']}</b>\n"
+                f"Сумма: ${price['usd']}\n\n"
+                f"<a href='{invoice_url}'>Перейти к оплате</a>\n\n"
+                f"После оплаты я подтвержу получение."
+            )
         else:
-            await message.answer(f"No task #{idx}. Run /todo first.")
-        return
-
-    todo_id = todos[idx - 1]["id"]
-    await mark_todo_done(todo_id)
-    title = todos[idx - 1]["title"]
-    if lang == "ru":
-        await message.answer(f"✅ Выполнено: {title}")
+            await callback.message.answer(
+                f"💳 <b>{price['label_en']}</b>\n"
+                f"Amount: ${price['usd']}\n\n"
+                f"<a href='{invoice_url}'>Pay now</a>\n\n"
+                f"I'll confirm once payment is received."
+            )
+        await log_event(callback.from_user.id, "crypto_invoice_created", {
+            "key": key, "order_id": order_id, "invoice_url": invoice_url
+        })
     else:
-        await message.answer(f"✅ Done: {title}")
+        if lang == "ru":
+            await callback.message.answer("Не удалось создать счёт. Попробуй позже.")
+        else:
+            await callback.message.answer("Failed to create invoice. Try again later.")
+
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("buy_"))
