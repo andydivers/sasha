@@ -26,15 +26,23 @@ def _call_gemini(model: str, image_bytes: bytes, mime_type: str, prompt: str) ->
         }]
     }
     url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={_api_key}"
-    resp = httpx.post(url, json=body, timeout=30)
-    if resp.status_code == 200:
-        data = resp.json()
-        candidates = data.get("candidates", [])
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            return "".join(p.get("text", "") for p in parts), None
-        return None, "No analysis returned."
-    return None, resp.text[:300]
+
+    for attempt in range(3):
+        resp = httpx.post(url, json=body, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return "".join(p.get("text", "") for p in parts), None
+            return None, "No analysis returned."
+        if resp.status_code == 429 and attempt < 2:
+            wait = 2 ** attempt
+            logger.info("Gemini 429 on %s, retrying in %ds", model, wait)
+            time.sleep(wait)
+            continue
+        return None, resp.text[:300]
+    return None, "Still rate-limited after retries."
 
 
 def analyze_image(image_bytes: bytes, mime_type: str, prompt: str = "Describe what you see in this image.") -> str:
