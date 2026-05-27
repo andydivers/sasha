@@ -2,7 +2,7 @@ TRANSLATIONS = {
     "en": {
         "name": "English",
         "flag": "🇬🇧",
-        "welcome": "Hi! I'm <b>Sasha</b> — your AI assistant.\n\nI can:\n• Analyze screenshots\n• Work with Google Sheets\n• Create calendar events\n• Generate reports\n• Process voice messages\n• Manage task list\n\n<i>Language can be changed anytime with /lang</i>",
+        "welcome": "Hi! I'm <b>Sasha</b> — your AI assistant.\n\n🎤 <b>Just send a voice message or type what you need.</b>\n\nExamples:\n\"Add coffee $5 to expenses\"\n\"Create a meeting Friday 10am\"\n\"What's my budget look like?\"\n\nI can work with Google Sheets, Calendar, reports, screenshots, todos, and reminders.\n\n<i>Language can be changed anytime with /lang</i>",
         "help": "/start — Restart\n/help — This help\n/ping — Ping test\n/lang — Change language\n/webhook — Webhook status\n/sheet — Connect Google Sheet\n/tz — Set timezone (e.g. Asia/Bangkok)\n/events — List my events\n/delete N — Delete event #N\n/remind — Set reminder (e.g. /remind 1h check email)\n/todo — Manage task list\n/done N — Mark task as done\n/buy — Subscribe weekly ($4.99) / monthly ($14.99)\n/crypto — USDC payment info\n/qr — Show QR code for USDC address",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErrors: {errors}",
@@ -17,7 +17,7 @@ TRANSLATIONS = {
     "ru": {
         "name": "Русский",
         "flag": "🇷🇺",
-        "welcome": "Привет! Я <b>Sasha</b> — твой AI-ассистент.\n\nЯ умею:\n• Анализировать скриншоты\n• Работать с Google Таблицами\n• Создавать события в календаре\n• Формировать отчёты\n• Распознавать голосовые сообщения\n• Вести список задач\n\n<i>Язык можно сменить через /lang</i>",
+        "welcome": "Привет! Я <b>Sasha</b> — твой AI-ассистент.\n\n🎤 <b>Просто отправь голосовое или напиши, что нужно.</b>\n\nПримеры:\n\"Добавь кофе 300 рублей в расходы\"\n\"Создай встречу в пятницу в 10\"\n\"Сколько я потратил на этой неделе?\"\n\nЯ умею работать с таблицами, календарём, отчётами, скриншотами, задачами и напоминаниями.\n\n<i>Язык можно сменить через /lang</i>",
         "help": "/start — Начать\n/help — Справка\n/ping — Проверка\n/lang — Сменить язык\n/webhook — Статус вебхука\n/sheet — Подключить таблицу\n/tz — Часовой пояс (/tz Asia/Bangkok)\n/events — Мои события\n/delete N — Удалить событие №N\n/remind — Напомнить (/remind 1h проверить почту)\n/todo — Список задач\n/done N — Отметить задачу выполненной\n/buy — Подписка неделя ($4.99) / месяц ($14.99)\n/crypto — Инфо об оплате USDC\n/qr — QR-код для USDC-адреса",
         "ping": "Понг!",
         "webhook": "<b>Вебхук:</b>\nURL: {url}\nОшибок: {errors}",
@@ -32,7 +32,7 @@ TRANSLATIONS = {
     "es": {
         "name": "Español",
         "flag": "🇪🇸",
-        "welcome": "¡Hola! Soy <b>Sasha</b> — tu asistente AI.\n\nPuedo:\n• Analizar capturas de pantalla\n• Trabajar con Google Sheets\n• Crear eventos de calendario\n• Generar informes\n• Procesar mensajes de voz\n• Gestionar lista de tareas\n\n<i>Idioma cambiable con /lang</i>",
+        "welcome": "¡Hola! Soy <b>Sasha</b> — tu asistente AI.\n\n🎤 <b>Envía un mensaje de voz o escribe lo que necesites.</b>\n\nEjemplos:\n\"Añadir café $5 a gastos\"\n\"Crear reunión viernes 10am\"\n\"¿Cómo van mis gastos esta semana?\"\n\nTrabajo con Google Sheets, calendario, informes, capturas, tareas y recordatorios.\n\n<i>Idioma cambiable con /lang</i>",
         "help": "/start — Iniciar\n/help — Ayuda\n/ping — Ping\n/lang — Cambiar idioma\n/webhook — Estado del webhook\n/sheet — Conectar Google Sheet\n/tz — Zona horaria\n/events — Mis eventos\n/delete N — Eliminar evento\n/remind — Recordatorio\n/todo — Lista de tareas\n/done N — Marcar como hecha\n/buy — Suscribirse semanal ($4.99) / mensual ($14.99)\n/crypto — Info de pago USDC\n/qr — Código QR para dirección USDC",
         "ping": "¡Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErrores: {errors}",
@@ -47,7 +47,7 @@ TRANSLATIONS = {
     "fr": {
         "name": "Français",
         "flag": "🇫🇷",
-        "welcome": "Bonjour ! Je suis <b>Sasha</b> — votre assistant IA.\n\nJe peux :\n• Analyser des captures d'écran\n• Travailler avec Google Sheets\n• Créer des événements calendrier\n• Générer des rapports\n• Traiter les messages vocaux\n• Gérer la liste de tâches\n\n<i>Langue modifiable avec /lang</i>",
+        "welcome": "Bonjour ! Je suis <b>Sasha</b> — votre assistant IA.\n\n🎤 <b>Envoyez un message vocal ou écrivez ce dont vous avez besoin.</b>\n\nExemples :\n\"Ajouter café 5€ aux dépenses\"\n\"Créer un rendez-vous vendredi 10h\"\n\"Quel est mon budget cette semaine ?\"\n\nJe travaille avec Sheets, calendrier, rapports, captures d'écran, tâches et rappels.\n\n<i>Langue modifiable avec /lang</i>",
         "help": "/start — Démarrer\n/help — Aide\n/ping — Ping\n/lang — Changer de langue\n/webhook — Statut du webhook\n/sheet — Connecter Google Sheet\n/tz — Fuseau horaire\n/events — Mes événements\n/delete N — Supprimer\n/remind — Rappel\n/todo — Liste de tâches\n/done N — Marquer comme faite\n/buy — Abonnement hebdo ($4.99) / mensuel ($14.99)\n/crypto — Infos paiement USDC\n/qr — Code QR pour adresse USDC",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErreurs: {errors}",
@@ -62,7 +62,7 @@ TRANSLATIONS = {
     "zh": {
         "name": "中文",
         "flag": "🇨🇳",
-        "welcome": "你好！我是 <b>Sasha</b> — 你的AI助手。\n\n我可以：\n• 分析截图\n• 处理Google表格\n• 创建日历事件\n• 生成报告\n• 处理语音消息\n• 管理任务列表\n\n<i>语言可通过 /lang 更改</i>",
+        "welcome": "你好！我是 <b>Sasha</b> — 你的AI助手。\n\n🎤 <b>发送语音消息或输入你需要的任务。</b>\n\n例子：\n\"添加咖啡5美元到支出\"\n\"创建周五上午10点的会议\"\n\"我这周的预算怎么样？\"\n\n我可以处理表格、日历、报告、截图、任务和提醒。\n\n<i>语言可通过 /lang 更改</i>",
         "help": "/start — 开始\n/help — 帮助\n/ping — 测试\n/lang — 更改语言\n/webhook — Webhook状态\n/sheet — 连接表格\n/tz — 时区\n/events — 我的事件\n/delete N — 删除事件\n/remind — 提醒\n/todo — 任务列表\n/done N — 标记完成\n/buy — 订阅每周 ($4.99) / 每月 ($14.99)\n/crypto — USDC支付信息\n/qr — USDC地址二维码",
         "ping": "乒！",
         "webhook": "<b>Webhook:</b>\nURL: {url}\n错误: {errors}",
@@ -77,7 +77,7 @@ TRANSLATIONS = {
     "ar": {
         "name": "العربية",
         "flag": "🇸🇦",
-        "welcome": "مرحباً! أنا <b>Sasha</b> — مساعدك الذكي.\n\nيمكنني:\n• تحليل لقطات الشاشة\n• العمل مع Google Sheets\n• إنشاء أحداث التقويم\n• إنشاء التقارير\n• معالجة الرسائل الصوتية\n• إدارة قائمة المهام\n\n<i>يمكن تغيير اللغة عبر /lang</i>",
+        "welcome": "مرحباً! أنا <b>Sasha</b> — مساعدك الذكي.\n\n🎤 <b>أرسل رسالة صوتية أو اكتب ما تحتاجه.</b>\n\nأمثلة:\n\"أضف قهوة 5 دولارات للمصروفات\"\n\"أنشئ موعداً الجمعة 10 صباحاً\"\n\"كم أنفقت هذا الأسبوع؟\"\n\nأعمل مع الجداول، التقويم، التقارير، اللقطات، المهام والتذكيرات.\n\n<i>يمكن تغيير اللغة عبر /lang</i>",
         "help": "/start — ابدأ\n/help — المساعدة\n/ping — اختبار\n/lang — تغيير اللغة\n/webhook — حالة الويب هوك\n/sheet — ربط الجدول\n/tz — المنطقة الزمنية\n/events — أحداثي\n/delete N — حذف\n/remind — تذكير\n/todo — قائمة المهام\n/done N — إكتمال\n/buy — اشتراك أسبوعي ($4.99) / شهري ($14.99)\n/crypto — معلومات الدفع USDC\n/qr — رمز QR لعنوان USDC",
         "ping": "بونغ!",
         "webhook": "<b>الويب هوك:</b>\nالرابط: {url}\nالأخطاء: {errors}",
@@ -92,7 +92,7 @@ TRANSLATIONS = {
     "pt": {
         "name": "Português",
         "flag": "🇧🇷",
-        "welcome": "Olá! Sou o <b>Sasha</b> — seu assistente de IA.\n\nPosso:\n• Analisar capturas de tela\n• Trabalhar com Google Sheets\n• Criar eventos no calendário\n• Gerar relatórios\n• Processar mensagens de voz\n• Gerenciar lista de tarefas\n\n<i>Idioma pode ser alterado com /lang</i>",
+        "welcome": "Olá! Sou o <b>Sasha</b> — seu assistente de IA.\n\n🎤 <b>Envie um áudio ou digite o que precisa.</b>\n\nExemplos:\n\"Adicionar café $5 às despesas\"\n\"Criar reunião sexta 10h\"\n\"Quanto gastei essa semana?\"\n\nTrabalho com planilhas, calendário, relatórios, capturas de tela, tarefas e lembretes.\n\n<i>Idioma pode ser alterado com /lang</i>",
         "help": "/start — Iniciar\n/help — Ajuda\n/ping — Teste\n/lang — Mudar idioma\n/webhook — Status do webhook\n/sheet — Conectar planilha\n/tz — Fuso horário\n/events — Meus eventos\n/delete N — Excluir\n/remind — Lembrete\n/todo — Lista de tarefas\n/done N — Concluir\n/buy — Assinar semanal ($4.99) / mensal ($14.99)\n/crypto — Informações de pagamento USDC\n/qr — Código QR para endereço USDC",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nErros: {errors}",
@@ -107,7 +107,7 @@ TRANSLATIONS = {
     "de": {
         "name": "Deutsch",
         "flag": "🇩🇪",
-        "welcome": "Hallo! Ich bin <b>Sasha</b> — dein KI-Assistent.\n\nIch kann:\n• Screenshots analysieren\n• Mit Google Sheets arbeiten\n• Kalendertermine erstellen\n• Berichte generieren\n• Sprachnachrichten verarbeiten\n• Aufgabenliste verwalten\n\n<i>Sprache jederzeit mit /lang änderbar</i>",
+        "welcome": "Hallo! Ich bin <b>Sasha</b> — dein KI-Assistent.\n\n🎤 <b>Sende eine Sprachnachricht oder schreibe, was du brauchst.</b>\n\nBeispiele:\n\"Füge Kaffee 5€ zu Ausgaben hinzu\"\n\"Erstelle Termin Freitag 10 Uhr\"\n\"Wie sieht mein Budget diese Woche aus?\"\n\nIch arbeite mit Tabellen, Kalender, Berichten, Screenshots, Aufgaben und Erinnerungen.\n\n<i>Sprache jederzeit mit /lang änderbar</i>",
         "help": "/start — Start\n/help — Hilfe\n/ping — Ping\n/lang — Sprache ändern\n/webhook — Webhook-Status\n/sheet — Tabelle verbinden\n/tz — Zeitzone\n/events — Meine Termine\n/delete N — Löschen\n/remind — Erinnerung\n/todo — Aufgabenliste\n/done N — Erledigt\n/buy — Abo wöchentlich ($4.99) / monatlich ($14.99)\n/crypto — USDC-Zahlungsinfo\n/qr — QR-Code für USDC-Adresse",
         "ping": "Pong!",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nFehler: {errors}",
@@ -122,7 +122,7 @@ TRANSLATIONS = {
     "hi": {
         "name": "हिन्दी",
         "flag": "🇮🇳",
-        "welcome": "नमस्ते! मैं <b>Sasha</b> हूँ — आपका AI सहायक।\n\nमैं कर सकता हूँ:\n• स्क्रीनशॉट का विश्लेषण\n• Google Sheets के साथ काम\n• कैलेंडर इवेंट बनाना\n• रिपोर्ट तैयार करना\n• वॉइस संदेशों को प्रोसेस करना\n• कार्य सूची प्रबंधित करना\n\n<i>/lang से भाषा बदलें</i>",
+        "welcome": "नमस्ते! मैं <b>Sasha</b> हूँ — आपका AI सहायक।\n\n🎤 <b>वॉइस मैसेज भेजें या लिखें कि आपको क्या चाहिए।</b>\n\nउदाहरण:\n\"खर्चों में कॉफ़ी $5 जोड़ें\"\n\"शुक्रवार सुबह 10 बजे मीटिंग बनाएँ\"\n\"इस हफ़्ते मेरा बजट कैसा है?\"\n\nमैं शीट्स, कैलेंडर, रिपोर्ट, स्क्रीनशॉट, कार्य और रिमाइंडर के साथ काम करता हूँ।\n\n<i>/lang से भाषा बदलें</i>",
         "help": "/start — शुरू\n/help — सहायता\n/ping — परीक्षण\n/lang — भाषा बदलें\n/webhook — वेबहुक स्थिति\n/sheet — शीट जोड़ें\n/tz — समय क्षेत्र\n/events — मेरे इवेंट\n/delete N — हटाएँ\n/remind — याद दिलाना\n/todo — कार्य सूची\n/done N — पूर्ण चिह्नित करें\n/buy — साप्ताहिक सदस्यता ($4.99) / मासिक ($14.99)\n/crypto — USDC भुगतान जानकारी\n/qr — USDC पते के लिए QR कोड",
         "ping": "पोंग!",
         "webhook": "<b>वेबहुक:</b>\nURL: {url}\nत्रुटियाँ: {errors}",
@@ -137,7 +137,7 @@ TRANSLATIONS = {
     "ja": {
         "name": "日本語",
         "flag": "🇯🇵",
-        "welcome": "こんにちは！<b>Sasha</b> — AIアシスタントです。\n\n私は以下ができます：\n• スクリーンショットの分析\n• Google Sheetsの操作\n• カレンダーイベントの作成\n• レポートの生成\n• 音声メッセージの処理\n• タスクリストの管理\n\n<i>/lang で言語変更可能</i>",
+        "welcome": "こんにちは！<b>Sasha</b> — AIアシスタントです。\n\n🎤 <b>音声メッセージを送るか、必要なことを入力してください。</b>\n\n例：\n\"コーヒー5ドルを支出に追加\"\n\"金曜10時にミーティングを作成\"\n\"今週の予算はどうなってる？\"\n\nシート、カレンダー、レポート、スクリーンショット、タスク、リマインダーを処理できます。\n\n<i>/lang で言語変更可能</i>",
         "help": "/start — 開始\n/help — ヘルプ\n/ping — テスト\n/lang — 言語変更\n/webhook — Webhook状態\n/sheet — シート接続\n/tz — タイムゾーン\n/events — イベント\n/delete N — 削除\n/remind — リマインダー\n/todo — タスク一覧\n/done N — 完了にする\n/buy — 購読 週次 ($4.99) / 月次 ($14.99)\n/crypto — USDC支払い情報\n/qr — USDCアドレスのQRコード",
         "ping": "ポン！",
         "webhook": "<b>Webhook:</b>\nURL: {url}\nエラー: {errors}",
