@@ -297,6 +297,15 @@ async def get_unsynced_items(user_id: int) -> list[dict]:
         return []
 
 
+async def get_expenses_range(user_id: int, start: str, end: str) -> list[dict]:
+    try:
+        resp = get_db().table("expenses").select("*").eq("user_id", user_id).gte("created_at", "T".join([start, "00:00:00"])).lte("created_at", "T".join([end, "23:59:59"])).order("created_at").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get expenses range: %s", e)
+        return []
+
+
 async def mark_items_synced(item_ids: list[int]):
     try:
         get_db().table("expenses").update({"synced": True}).in_("id", item_ids).execute()
