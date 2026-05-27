@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 from app.database import get_yesterday_expenses, get_today_movements, get_todos, get_user_tz
 from app.timezone_utils import format_dual_time, MSK
+from app.anomaly import detect_anomalies
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,15 @@ async def generate_digest(user_id: int, lang: str = "en") -> str:
             lines.append(f"\n💰 <b>Вчера:</b> расходов нет")
         else:
             lines.append(f"\n💰 <b>Yesterday:</b> no expenses")
+
+    # anomalies
+    try:
+        anomalies = await detect_anomalies(user_id, lang)
+        if anomalies:
+            lines.append(f"\n🔍 <b>{'Anomalies' if lang != 'ru' else 'Аномалии'}:</b>")
+            lines.extend(f"  {a}" for a in anomalies[:3])
+    except Exception:
+        pass
 
     # movements
     if movements:
