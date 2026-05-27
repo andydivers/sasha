@@ -426,6 +426,37 @@ async def bump_recurring_payment(payment_id: int):
         logger.warning("Failed to bump recurring payment: %s", e)
 
 
+async def get_inactive_users(days: int = 3) -> list[dict]:
+    try:
+        from datetime import datetime, timezone, timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        resp = get_db().table("chats").select("user_id, MAX(created_at) as last_seen").group("user_id").having("MAX(created_at) <", cutoff).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get inactive users: %s", e)
+        return []
+
+
+async def get_candidates_for_reengagement() -> list[dict]:
+    try:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc).isoformat()
+        # users who have chatted but never got re-engagement, or last got it 7+ days ago
+        resp = get_db().table("users").select("id,language,last_reengagement").is_("last_reengagement", "null").or_("last_reengagement.lt." + (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get re-engagement candidates: %s", e)
+        return []
+
+
+async def mark_reengagement_sent(user_id: int):
+    try:
+        from datetime import datetime, timezone
+        get_db().table("users").upsert({"id": user_id, "last_reengagement": datetime.now(timezone.utc).isoformat()}, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning("Failed to mark re-engagement: %s", e)
+
+
 async def mark_seen_sheet_offer(user_id: int):
     try:
         get_db().table("users").upsert({"id": user_id, "has_seen_sheet_offer": True}, on_conflict="id").execute()
