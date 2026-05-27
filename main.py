@@ -14,7 +14,7 @@ from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
 from app.crypto_client import fetch_incoming_usdc_transfers
 from app.digest import is_digest_due
-from app.database import get_digest_users, get_user_lang
+from app.database import get_digest_users, get_user_lang, get_due_recurring_payments, bump_recurring_payment
 from app.handlers import router
 
 logging.basicConfig(
@@ -147,16 +147,48 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Digest check error: %s", e)
 
+    async def check_recurring():
+        notified: set[int] = set()
+        while True:
+            await asyncio.sleep(300)
+            try:
+                due = await get_due_recurring_payments()
+                for p in due:
+                    pid = p["id"]
+                    if pid in notified:
+                        continue
+                    name = p.get("name", "")
+                    amt = p.get("amount", 0)
+                    cur = p.get("currency", "USD")
+                    uid = p.get("user_id", 0)
+                    if uid:
+                        notified.add(pid)
+                        await bump_recurring_payment(pid)
+                        try:
+                            await bot.send_message(
+                                chat_id=uid,
+                                text=f"🔄 <b>Payment due:</b> {name} — {amt:.0f} {cur}",
+                                parse_mode="HTML",
+                            )
+                            logger.info("Recurring reminder sent to user %s: %s", uid, name)
+                        except Exception as e:
+                            logger.warning("Failed to send recurring reminder: %s", e)
+            except Exception as e:
+                logger.warning("Recurring check error: %s", e)
+
     task = asyncio.create_task(check_reminders())
     logger.info("Reminder checker started")
     task2 = asyncio.create_task(check_payments())
     logger.info("Payment checker started")
     task3 = asyncio.create_task(check_digests())
     logger.info("Digest checker started")
+    task4 = asyncio.create_task(check_recurring())
+    logger.info("Recurring checker started")
     yield
     task.cancel()
     task2.cancel()
     task3.cancel()
+    task4.cancel()
     await bot.session.close()
     logger.info("Bot session closed")
 
