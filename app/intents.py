@@ -7,7 +7,7 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_user_items, has_seen_sheet_offer, mark_seen_sheet_offer
+from app.database import add_expense, get_user_items, add_movement, has_seen_sheet_offer, mark_seen_sheet_offer
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,9 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
 
     if name == "generate_report":
         return _handle_generate_report(args, lang, sheet_url)
+
+    if name == "track_movement":
+        return await _handle_track_movement(args, lang, user_id)
 
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
@@ -213,6 +216,19 @@ def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
         if lang == "ru":
             return "Не удалось создать событие. Проверь, что сервис-аккаунт имеет доступ к календарю."
         return "Failed to create event. Make sure the service account has calendar access."
+
+
+async def _handle_track_movement(args: dict, lang: str, user_id: int = 0) -> str:
+    location = args.get("location", "somewhere")
+    description = args.get("description", "")
+    try:
+        await add_movement(user_id, location, description)
+    except Exception:
+        pass
+    now = datetime.now().strftime("%H:%M")
+    if lang == "ru":
+        return f"📍 Записал: {location} ({now}){' — ' + description if description else ''}"
+    return f"📍 Logged: {location} ({now}){' — ' + description if description else ''}"
 
 
 def _handle_generate_report(args: dict, lang: str, sheet_url: str | None = None) -> str:
