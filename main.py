@@ -13,6 +13,8 @@ from app.database import init_db, get_due_reminders, mark_reminder_done, get_pen
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
 from app.crypto_client import fetch_incoming_usdc_transfers
+from app.digest import is_digest_due
+from app.database import get_digest_users, get_user_lang
 from app.handlers import router
 
 logging.basicConfig(
@@ -120,13 +122,41 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Payment check error: %s", e)
 
+    async def check_digests():
+        sent_today: set[int] = set()
+        while True:
+            await asyncio.sleep(180)
+            try:
+                users = await get_digest_users()
+                for u in users:
+                    uid = u["id"]
+                    if uid in sent_today:
+                        continue
+                    tz = u.get("timezone", "")
+                    dt = u.get("digest_time", "09:00")
+                    if is_digest_due(tz, dt):
+                        from app.digest import generate_digest
+                        lang = await get_user_lang(uid) or "en"
+                        text = await generate_digest(uid, lang)
+                        try:
+                            await bot.send_message(chat_id=uid, text=text, parse_mode="HTML")
+                            sent_today.add(uid)
+                            logger.info("Digest sent to user %s", uid)
+                        except Exception as e:
+                            logger.warning("Failed to send digest to %s: %s", uid, e)
+            except Exception as e:
+                logger.warning("Digest check error: %s", e)
+
     task = asyncio.create_task(check_reminders())
     logger.info("Reminder checker started")
     task2 = asyncio.create_task(check_payments())
     logger.info("Payment checker started")
+    task3 = asyncio.create_task(check_digests())
+    logger.info("Digest checker started")
     yield
     task.cancel()
     task2.cancel()
+    task3.cancel()
     await bot.session.close()
     logger.info("Bot session closed")
 
