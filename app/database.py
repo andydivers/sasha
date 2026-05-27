@@ -215,23 +215,27 @@ async def is_payment_confirmed(payment_id: int) -> bool:
         return False
 
 
-async def add_expense(user_id: int, description: str, amount: str = ""):
+async def add_expense(user_id: int, description: str, amount: str = "", category: str = ""):
     try:
         get_db().table("expenses").insert({
             "user_id": user_id,
             "description": description,
             "amount": amount,
+            "category": category,
         }).execute()
     except Exception as e:
         logger.warning("Failed to add expense: %s", e)
 
 
-async def get_expenses(user_id: int, limit: int = 20) -> list[dict]:
+async def get_user_items(user_id: int, category: str | None = None, limit: int = 20) -> list[dict]:
     try:
-        resp = get_db().table("expenses").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+        q = get_db().table("expenses").select("*").eq("user_id", user_id)
+        if category:
+            q = q.eq("category", category)
+        resp = q.order("created_at", desc=True).limit(limit).execute()
         return resp.data or []
     except Exception as e:
-        logger.warning("Failed to get expenses: %s", e)
+        logger.warning("Failed to get user items: %s", e)
         return []
 
 
