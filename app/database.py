@@ -213,3 +213,59 @@ async def is_payment_confirmed(payment_id: int) -> bool:
         return resp.data and resp.data.get("status") == "confirmed"
     except Exception:
         return False
+
+
+async def add_expense(user_id: int, description: str, amount: str = ""):
+    try:
+        get_db().table("expenses").insert({
+            "user_id": user_id,
+            "description": description,
+            "amount": amount,
+        }).execute()
+    except Exception as e:
+        logger.warning("Failed to add expense: %s", e)
+
+
+async def get_expenses(user_id: int, limit: int = 20) -> list[dict]:
+    try:
+        resp = get_db().table("expenses").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get expenses: %s", e)
+        return []
+
+
+async def get_expense_stats(user_id: int) -> dict:
+    try:
+        resp = get_db().table("expenses").select("amount,description").eq("user_id", user_id).execute()
+        if not resp.data:
+            return {"total": 0, "count": 0, "categories": {}}
+        total = 0
+        count = len(resp.data)
+        for row in resp.data:
+            amt = row.get("amount", "")
+            try:
+                total += float(amt.replace("$", "").replace("₽", "").replace("€", "").strip())
+            except (ValueError, AttributeError):
+                pass
+        return {"total": round(total, 2), "count": count}
+    except Exception as e:
+        logger.warning("Failed to get expense stats: %s", e)
+        return {"total": 0, "count": 0}
+
+
+async def has_seen_sheet_offer(user_id: int) -> bool:
+    try:
+        resp = get_db().table("users").select("has_seen_sheet_offer").eq("id", user_id).execute()
+        if resp.data:
+            return resp.data[0].get("has_seen_sheet_offer", False)
+    except Exception:
+        pass
+    return False
+
+
+async def mark_seen_sheet_offer(user_id: int):
+    try:
+        get_db().table("users").upsert({"id": user_id, "has_seen_sheet_offer": True}, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning("Failed to mark sheet offer: %s", e)
