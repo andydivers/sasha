@@ -7,7 +7,8 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_user_items, add_movement, has_seen_sheet_offer, mark_seen_sheet_offer
+from app.database import add_expense, get_user_items, add_movement, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz
+from app.timezone_utils import find_timezone, format_dual_time
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,10 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
         return _handle_generate_report(args, lang, sheet_url)
 
     if name == "track_movement":
-        return await _handle_track_movement(args, lang, user_id)
+        return await _handle_track_movement(args, lang, user_id, tz)
+
+    if name == "set_timezone_by_location":
+        return await _handle_set_timezone_by_location(args, lang, user_id)
 
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
@@ -200,15 +204,28 @@ def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
     try:
         link = create_event(summary, date, time, tz=tz)
         cal_link = get_calendar_link()
+        time_str = f"{time} {tz}"
+        msk_time = ""
+        if tz and tz != "UTC":
+            try:
+                import zoneinfo
+                from datetime import timezone, timedelta
+                utc_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+                user_tz_obj = zoneinfo.ZoneInfo(tz)
+                user_dt = utc_dt.replace(tzinfo=user_tz_obj)
+                msk_dt = user_dt.astimezone(timezone(timedelta(hours=3)))
+                msk_time = f" ({msk_dt.strftime('%H:%M')} MSK)"
+            except Exception:
+                pass
         if lang == "ru":
             return (
                 f"Событие создано: <a href='{link}'><b>{summary}</b></a>\n"
-                f"Дата: {date}\nВремя: {time}\n\n"
+                f"Дата: {date}\nВремя: {time_str}{msk_time}\n\n"
                 f"📅 <a href='{cal_link}'>Подписаться на календарь Sasha</a>"
             )
         return (
             f"Event created: <a href='{link}'><b>{summary}</b></a>\n"
-            f"Date: {date}\nTime: {time}\n\n"
+            f"Date: {date}\nTime: {time_str}{msk_time}\n\n"
             f"📅 <a href='{cal_link}'>Subscribe to Sasha Calendar</a>"
         )
     except Exception as e:
@@ -218,17 +235,37 @@ def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
         return "Failed to create event. Make sure the service account has calendar access."
 
 
-async def _handle_track_movement(args: dict, lang: str, user_id: int = 0) -> str:
+async def _handle_track_movement(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
     location = args.get("location", "somewhere")
     description = args.get("description", "")
     try:
         await add_movement(user_id, location, description)
     except Exception:
         pass
-    now = datetime.now().strftime("%H:%M")
+    time_str = format_dual_time(user_tz=tz)
     if lang == "ru":
-        return f"📍 Записал: {location} ({now}){' — ' + description if description else ''}"
-    return f"📍 Logged: {location} ({now}){' — ' + description if description else ''}"
+        return f"📍 {location} ({time_str}){' — ' + description if description else ''}"
+    return f"📍 {location} ({time_str}){' — ' + description if description else ''}"
+
+
+async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int = 0) -> str:
+    location = args.get("location", "")
+    if not location:
+        if lang == "ru":
+            return "Не понял, где ты находишься. Назови город или страну."
+        return "I didn't catch where you are. Tell me a city or country."
+    tz_name = find_timezone(location)
+    if not tz_name:
+        if lang == "ru":
+            return f"Не знаю часовой пояс для «{location}». Установи вручную: /tz Europe/Moscow"
+        return f"Don't know timezone for '{location}'. Set manually: /tz Europe/Moscow"
+    try:
+        await set_user_tz(user_id, tz_name)
+    except Exception:
+        pass
+    if lang == "ru":
+        return f"🕐 Часовой пояс установлен: {tz_name}. Теперь время показываю как MSK + местное."
+    return f"🕐 Timezone set to {tz_name}. Now showing times as MSK + local."
 
 
 def _handle_generate_report(args: dict, lang: str, sheet_url: str | None = None) -> str:
