@@ -268,6 +268,22 @@ async def has_seen_sheet_offer(user_id: int) -> bool:
     return False
 
 
+async def get_unsynced_items(user_id: int) -> list[dict]:
+    try:
+        resp = get_db().table("expenses").select("id,description,amount,category,created_at").eq("user_id", user_id).eq("synced", False).order("created_at").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get unsynced items: %s", e)
+        return []
+
+
+async def mark_items_synced(item_ids: list[int]):
+    try:
+        get_db().table("expenses").update({"synced": True}).in_("id", item_ids).execute()
+    except Exception as e:
+        logger.warning("Failed to mark items synced: %s", e)
+
+
 async def mark_seen_sheet_offer(user_id: int):
     try:
         get_db().table("users").upsert({"id": user_id, "has_seen_sheet_offer": True}, on_conflict="id").execute()
