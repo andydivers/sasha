@@ -67,13 +67,13 @@ async def get_tz(user_id: int) -> str:
 START_MENU_EN = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🎤 How it works", callback_data="menu_howto")],
     [InlineKeyboardButton(text="📋 Commands", callback_data="menu_help")],
-    [InlineKeyboardButton(text="💳 Buy subscription", callback_data="buy_monthly")],
+    [InlineKeyboardButton(text="💳 Buy subscription", callback_data="buy_show")],
     [InlineKeyboardButton(text="🌐 Language", callback_data="menu_lang")],
 ])
 START_MENU_RU = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🎤 Как работать", callback_data="menu_howto")],
     [InlineKeyboardButton(text="📋 Команды", callback_data="menu_help")],
-    [InlineKeyboardButton(text="💳 Купить подписку", callback_data="buy_monthly")],
+    [InlineKeyboardButton(text="💳 Купить подписку", callback_data="buy_show")],
     [InlineKeyboardButton(text="🌐 Язык", callback_data="menu_lang")],
 ])
 
@@ -96,17 +96,39 @@ async def cmd_start(message: types.Message):
         )
 
 
-@router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang"}))
+@router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang", "menu_back", "buy_show"}))
 async def on_menu_callback(callback: CallbackQuery):
     lang = await get_lang(callback.from_user.id)
-    if callback.data == "menu_howto":
-        await callback.message.edit_text(t(lang, "onboarding_voice"), parse_mode="HTML")
-        menu = START_MENU_RU if lang == "ru" else START_MENU_EN
-        await callback.message.answer("🏠 <b>Menu</b>" if lang != "ru" else "🏠 <b>Меню</b>", reply_markup=menu, parse_mode="HTML")
-    elif callback.data == "menu_help":
-        await callback.message.edit_text(t(lang, "help"), parse_mode="HTML")
-    elif callback.data == "menu_lang":
+    data = callback.data
+    menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    if data == "menu_howto":
+        back = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")]
+        ])
+        await callback.message.edit_text(t(lang, "onboarding_voice"), parse_mode="HTML", reply_markup=back)
+    elif data == "menu_help":
+        back = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")]
+        ])
+        await callback.message.edit_text(t(lang, "help"), parse_mode="HTML", reply_markup=back)
+    elif data == "menu_lang":
         await callback.message.edit_text(t(lang, "lang_prompt"), reply_markup=LANG_KEYBOARD)
+    elif data == "menu_back":
+        await callback.message.edit_text(
+            "🏠 <b>Sasha</b> — " + ("your AI assistant" if lang != "ru" else "твой AI-ассистент"),
+            reply_markup=menu, parse_mode="HTML"
+        )
+    elif data == "buy_show":
+        btns = [
+            [InlineKeyboardButton(text="📊 Weekly $4.99 / 400⭐" if lang != "ru" else "📊 Неделя $4.99 / 400⭐", callback_data="buy_weekly")],
+            [InlineKeyboardButton(text="📊 Monthly $14.99 / 1000⭐" if lang != "ru" else "📊 Месяц $14.99 / 1000⭐", callback_data="buy_monthly")],
+            [InlineKeyboardButton(text="💎 USDC Crypto" if lang != "ru" else "💎 USDC Крипта", callback_data="buy_crypto")],
+            [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")],
+        ]
+        await callback.message.edit_text(
+            "💳 <b>Subscription</b>" if lang != "ru" else "💳 <b>Подписка</b>",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=btns), parse_mode="HTML"
+        )
     await callback.answer()
 
 
@@ -118,7 +140,11 @@ async def on_lang_choice(callback: CallbackQuery):
     await callback.message.edit_text(t(lang, "lang_changed"))
     await callback.message.answer(t(lang, "welcome"))
     menu = START_MENU_RU if lang == "ru" else START_MENU_EN
-    await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML", reply_markup=menu)
+    await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
+    await callback.message.answer(
+        "🏠 <b>Sasha</b>" if lang != "ru" else "🏠 <b>Sasha</b>",
+        reply_markup=menu, parse_mode="HTML"
+    )
 
 
 @router.message(Command("help"))
