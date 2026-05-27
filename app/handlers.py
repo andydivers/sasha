@@ -262,6 +262,21 @@ async def cmd_digest(message: types.Message):
         await message.answer("Usage: /digest on HH:MM, /digest off, /digest now")
 
 
+@router.message(Command("anomalies"))
+async def cmd_anomalies(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    from app.anomaly import detect_anomalies
+    alerts = await detect_anomalies(message.from_user.id, lang)
+    if not alerts:
+        if lang == "ru":
+            await message.answer("✅ Аномалий не обнаружено.")
+        else:
+            await message.answer("✅ No anomalies detected.")
+        return
+    header = "🔍 <b>Anomalies:</b>" if lang != "ru" else "🔍 <b>Аномалии:</b>"
+    await message.answer(header + "\n" + "\n".join(alerts), parse_mode="HTML")
+
+
 @router.message(Command("tz"))
 async def cmd_tz(message: types.Message):
     lang = await get_lang(message.from_user.id)
