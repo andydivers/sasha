@@ -7,11 +7,12 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
+from app.database import add_expense, get_expenses, get_expense_stats, has_seen_sheet_offer, mark_seen_sheet_offer
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = None, tz: str = "UTC") -> str:
+async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = None, tz: str = "UTC", user_id: int = 0) -> str:
     name = tool_call.function.name
     try:
         args = json.loads(tool_call.function.arguments)
@@ -19,7 +20,7 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
         args = {}
 
     if name == "manage_sheets":
-        return _handle_manage_sheets(args, lang, sheet_url)
+        return await _handle_manage_sheets(args, lang, sheet_url, user_id=user_id)
 
     if name == "create_event":
         return _handle_create_event(args, lang, tz)
@@ -43,14 +44,39 @@ def _handle_analyze_screenshot(args: dict, lang: str) -> str:
     return "Got it! I'll analyze that screenshot. Send me the image and I'll process it."
 
 
-def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None) -> str:
+async def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None, user_id: int = 0) -> str:
     action = args.get("action", "read")
     description = args.get("description", "")
 
     if not sheet_url:
+        if action == "write":
+            amount = ""
+            nums = re.findall(r"[\d,.]+", description)
+            if nums:
+                amount = nums[0]
+            try:
+                await add_expense(user_id, description, amount)
+            except Exception:
+                pass
+            offer = ""
+            if user_id:
+                try:
+                    seen = await has_seen_sheet_offer(user_id)
+                    if not seen:
+                        await mark_seen_sheet_offer(user_id)
+                        if lang == "ru":
+                            offer = "\n\n💡 Хочешь, чтобы расходы отображались в Google Таблице? Просто отправь ссылку на неё."
+                        else:
+                            offer = "\n\n💡 Want to see expenses in a Google Sheet? Just send the sheet link."
+                except Exception:
+                    pass
+            if lang == "ru":
+                return f"✅ Записал: {description}{offer}"
+            return f"✅ Saved: {description}{offer}"
+        # read from local when no sheet
         if lang == "ru":
-            return "Запомнил! Чтобы я записывал это в Google Таблицу, просто отправь ссылку на неё — и я подключусь автоматически."
-        return "Noted! To save this to your Google Sheet, just send me the sheet link — I'll connect automatically."
+            return "У тебя пока нет подключённой таблицы. Отправь ссылку на Google Таблицу, и я буду читать из неё."
+        return "You don't have a sheet connected yet. Send me a Google Sheet link and I'll read from it."
 
     if not sheets_ready():
         if lang == "ru":
@@ -179,8 +205,8 @@ def _handle_generate_report(args: dict, lang: str, sheet_url: str | None = None)
 
     if not sheet_url:
         if lang == "ru":
-            return "Сначала подключи таблицу через /sheet https://..."
-        return "First connect your sheet via /sheet https://..."
+            return "Нет данных для отчёта. Подключи Google Таблицу через /sheet https://..."
+        return "No data for report. Connect a Google Sheet via /sheet https://..."
 
     if not sheets_ready():
         if lang == "ru":
