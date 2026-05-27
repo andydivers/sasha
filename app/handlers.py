@@ -64,9 +64,50 @@ async def get_tz(user_id: int) -> str:
     return _tz_cache.get(user_id, "UTC")
 
 
+START_MENU_EN = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="🎤 How it works", callback_data="menu_howto")],
+    [InlineKeyboardButton(text="📋 Commands", callback_data="menu_help")],
+    [InlineKeyboardButton(text="💳 Buy subscription", callback_data="buy_monthly")],
+    [InlineKeyboardButton(text="🌐 Language", callback_data="menu_lang")],
+])
+START_MENU_RU = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="🎤 Как работать", callback_data="menu_howto")],
+    [InlineKeyboardButton(text="📋 Команды", callback_data="menu_help")],
+    [InlineKeyboardButton(text="💳 Купить подписку", callback_data="buy_monthly")],
+    [InlineKeyboardButton(text="🌐 Язык", callback_data="menu_lang")],
+])
+
+
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer(t(await get_lang(message.from_user.id), "lang_prompt"), reply_markup=LANG_KEYBOARD)
+    lang = await get_lang(message.from_user.id)
+    menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    if lang == "ru":
+        await message.answer(
+            "🏠 <b>Sasha</b> — твой AI-ассистент\n\n"
+            "🎤 Просто отправь голосовое или напиши, что нужно. Я сам разберусь: запишу расходы, создам встречи, отмечу где ты, поставлю напоминания.",
+            reply_markup=menu, parse_mode="HTML"
+        )
+    else:
+        await message.answer(
+            "🏠 <b>Sasha</b> — your AI assistant\n\n"
+            "🎤 Just send a voice message or type what you need. I'll figure it out: log expenses, create events, track your location, set reminders.",
+            reply_markup=menu, parse_mode="HTML"
+        )
+
+
+@router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang"}))
+async def on_menu_callback(callback: CallbackQuery):
+    lang = await get_lang(callback.from_user.id)
+    if callback.data == "menu_howto":
+        await callback.message.edit_text(t(lang, "onboarding_voice"), parse_mode="HTML")
+        menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+        await callback.message.answer("🏠 <b>Menu</b>" if lang != "ru" else "🏠 <b>Меню</b>", reply_markup=menu, parse_mode="HTML")
+    elif callback.data == "menu_help":
+        await callback.message.edit_text(t(lang, "help"), parse_mode="HTML")
+    elif callback.data == "menu_lang":
+        await callback.message.edit_text(t(lang, "lang_prompt"), reply_markup=LANG_KEYBOARD)
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("lang_"))
@@ -76,12 +117,13 @@ async def on_lang_choice(callback: CallbackQuery):
     await set_user_lang(callback.from_user.id, lang)
     await callback.message.edit_text(t(lang, "lang_changed"))
     await callback.message.answer(t(lang, "welcome"))
-    await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
+    menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML", reply_markup=menu)
 
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer(t(await get_lang(message.from_user.id), "help"))
+    await message.answer(t(await get_lang(message.from_user.id), "help"), parse_mode="HTML")
 
 
 @router.message(Command("ping"))
