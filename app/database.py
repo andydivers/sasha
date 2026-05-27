@@ -304,6 +304,55 @@ async def mark_items_synced(item_ids: list[int]):
         logger.warning("Failed to mark items synced: %s", e)
 
 
+async def get_digest_config(user_id: int) -> dict:
+    try:
+        resp = get_db().table("users").select("digest_enabled,digest_time").eq("id", user_id).execute()
+        if resp.data:
+            return resp.data[0]
+    except Exception:
+        pass
+    return {"digest_enabled": False, "digest_time": "09:00"}
+
+
+async def set_digest_config(user_id: int, enabled: bool, time: str = "09:00"):
+    try:
+        get_db().table("users").upsert({"id": user_id, "digest_enabled": enabled, "digest_time": time}, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning("Failed to set digest config: %s", e)
+
+
+async def get_digest_users() -> list[dict]:
+    try:
+        resp = get_db().table("users").select("id,digest_time,timezone").eq("digest_enabled", True).not_.is_("digest_time", "null").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get digest users: %s", e)
+        return []
+
+
+async def get_yesterday_expenses(user_id: int) -> list[dict]:
+    try:
+        from datetime import datetime, timezone, timedelta
+        start = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT00:00:00+00:00")
+        end = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00+00:00")
+        resp = get_db().table("expenses").select("*").eq("user_id", user_id).gte("created_at", start).lt("created_at", end).order("created_at").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get yesterday expenses: %s", e)
+        return []
+
+
+async def get_today_movements(user_id: int) -> list[dict]:
+    try:
+        from datetime import datetime, timezone, timedelta
+        start = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00+00:00")
+        resp = get_db().table("movements").select("*").eq("user_id", user_id).gte("created_at", start).order("created_at").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get today movements: %s", e)
+        return []
+
+
 async def mark_seen_sheet_offer(user_id: int):
     try:
         get_db().table("users").upsert({"id": user_id, "has_seen_sheet_offer": True}, on_conflict="id").execute()
