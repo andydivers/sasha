@@ -362,6 +362,70 @@ async def get_today_movements(user_id: int) -> list[dict]:
         return []
 
 
+async def add_recurring_payment(user_id: int, name: str, amount: float, currency: str = "USD", frequency: str = "monthly", day_of_month: int = 1):
+    try:
+        from datetime import date, timedelta
+        today = date.today()
+        next_due = today.replace(day=min(day_of_month, 28))
+        if next_due <= today:
+            if next_due.month == 12:
+                next_due = next_due.replace(year=next_due.year + 1, month=1)
+            else:
+                next_due = next_due.replace(month=next_due.month + 1)
+        get_db().table("recurring_payments").insert({
+            "user_id": user_id, "name": name, "amount": amount,
+            "currency": currency, "frequency": frequency,
+            "day_of_month": day_of_month, "next_due": next_due.isoformat(),
+        }).execute()
+    except Exception as e:
+        logger.warning("Failed to add recurring payment: %s", e)
+
+
+async def get_recurring_payments(user_id: int) -> list[dict]:
+    try:
+        resp = get_db().table("recurring_payments").select("*").eq("user_id", user_id).eq("active", True).order("next_due").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get recurring payments: %s", e)
+        return []
+
+
+async def delete_recurring_payment(payment_id: int):
+    try:
+        get_db().table("recurring_payments").update({"active": False}).eq("id", payment_id).execute()
+    except Exception as e:
+        logger.warning("Failed to delete recurring payment: %s", e)
+
+
+async def get_due_recurring_payments() -> list[dict]:
+    try:
+        from datetime import date
+        today = date.today().isoformat()
+        resp = get_db().table("recurring_payments").select("*,users!inner(id)").eq("active", True).lte("next_due", today).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get due recurring payments: %s", e)
+        return []
+
+
+async def bump_recurring_payment(payment_id: int):
+    try:
+        from datetime import date, timedelta
+        now = date.today()
+        resp = get_db().table("recurring_payments").select("day_of_month,frequency").eq("id", payment_id).single().execute()
+        if resp.data:
+            day = resp.data.get("day_of_month", 1)
+            next_due = now.replace(day=min(day, 28))
+            if next_due <= now:
+                if next_due.month == 12:
+                    next_due = next_due.replace(year=next_due.year + 1, month=1)
+                else:
+                    next_due = next_due.replace(month=next_due.month + 1)
+            get_db().table("recurring_payments").update({"next_due": next_due.isoformat()}).eq("id", payment_id).execute()
+    except Exception as e:
+        logger.warning("Failed to bump recurring payment: %s", e)
+
+
 async def mark_seen_sheet_offer(user_id: int):
     try:
         get_db().table("users").upsert({"id": user_id, "has_seen_sheet_offer": True}, on_conflict="id").execute()
