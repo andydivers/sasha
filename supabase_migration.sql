@@ -88,6 +88,19 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS synced BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS digest_enabled BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS digest_time TEXT DEFAULT '09:00';
 
+CREATE TABLE IF NOT EXISTS recurring_payments (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    name TEXT NOT NULL,
+    amount NUMERIC(10,2) DEFAULT 0,
+    currency TEXT DEFAULT 'USD',
+    frequency TEXT NOT NULL DEFAULT 'monthly',
+    day_of_month INT DEFAULT 1,
+    next_due DATE,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS movements (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(id),
