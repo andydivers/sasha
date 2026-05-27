@@ -667,6 +667,11 @@ async def handle_voice(message: types.Message, bot: Bot):
         await message.answer(t(lang, "not_ready"))
         return
 
+    if message.from_user.id not in _sheet_cache:
+        db_url = await get_user_sheet(message.from_user.id)
+        if db_url:
+            _sheet_cache[message.from_user.id] = db_url
+
     await message.answer(t(lang, "thinking"))
 
     try:
