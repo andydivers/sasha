@@ -33,8 +33,8 @@ STAR_PRICES = {
 }
 
 CRYPTO_PRICES = {
-    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "usdc": 8.0},
-    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "usdc": 20.0},
+    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "usdc": 5.0},
+    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "usdc": 15.0},
 }
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
