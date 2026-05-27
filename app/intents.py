@@ -7,7 +7,7 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_expenses, get_expense_stats, has_seen_sheet_offer, mark_seen_sheet_offer
+from app.database import add_expense, get_user_items, has_seen_sheet_offer, mark_seen_sheet_offer
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +54,9 @@ async def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = N
             nums = re.findall(r"[\d,.]+", description)
             if nums:
                 amount = nums[0]
+            category = "expense" if amount else "note"
             try:
-                await add_expense(user_id, description, amount)
+                await add_expense(user_id, description, amount, category)
             except Exception:
                 pass
             offer = ""
@@ -65,18 +66,38 @@ async def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = N
                     if not seen:
                         await mark_seen_sheet_offer(user_id)
                         if lang == "ru":
-                            offer = "\n\n💡 Хочешь, чтобы расходы отображались в Google Таблице? Просто отправь ссылку на неё."
+                            offer = "\n\n💡 Хочешь, чтобы записи отображались в Google Таблице? Просто отправь ссылку."
                         else:
-                            offer = "\n\n💡 Want to see expenses in a Google Sheet? Just send the sheet link."
+                            offer = "\n\n💡 Want to see items in a Google Sheet? Just send the sheet link."
                 except Exception:
                     pass
             if lang == "ru":
-                return f"✅ Записал: {description}{offer}"
-            return f"✅ Saved: {description}{offer}"
+                emoji = "💰" if category == "expense" else "📝"
+                return f"{emoji} Записал: {description}{offer}"
+            emoji = "💰" if category == "expense" else "📝"
+            return f"{emoji} Saved: {description}{offer}"
         # read from local when no sheet
-        if lang == "ru":
-            return "У тебя пока нет подключённой таблицы. Отправь ссылку на Google Таблицу, и я буду читать из неё."
-        return "You don't have a sheet connected yet. Send me a Google Sheet link and I'll read from it."
+        try:
+            items = await get_user_items(user_id, limit=15)
+        except Exception:
+            items = []
+        if not items:
+            if lang == "ru":
+                return "Пока нет записей. Скажи что-нибудь — я сохраню!"
+            return "No items yet. Tell me something and I'll save it!"
+        lines = []
+        for it in items:
+            desc = it.get("description", "")
+            amt = it.get("amount", "")
+            cat = it.get("category", "")
+            cat_label = {"expense": "💰", "note": "📝"}.get(cat, "📌")
+            if amt:
+                lines.append(f"{cat_label} {desc} — {amt}")
+            else:
+                lines.append(f"{cat_label} {desc}")
+        joined = "\n".join(lines)
+        label = "Recent items" if lang != "ru" else "Последние записи"
+        return f"<b>{label}:</b>\n<pre>{joined}</pre>"
 
     if not sheets_ready():
         if lang == "ru":
