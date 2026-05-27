@@ -12,7 +12,8 @@ TRANSLATIONS = {
         "lang_changed": "Language changed to English!",
         "thinking": "Thinking...",
         "error": "Sorry, I ran into an issue. Try again in a moment.",
-        "not_ready": "I'm not fully set up yet. Try /help",
+        "onboarding_voice": "🎤 <b>Try saying:</b>\n\"Add coffee $5\"\n\"I'm at work\"\n\"Create meeting Friday 10am\"\n\"What did I spend this week?\"\n\nOr just send a voice message — I'll figure it out!",
+"not_ready": "I'm not fully set up yet. Try /help",
     },
     "ru": {
         "name": "Русский",
@@ -28,6 +29,7 @@ TRANSLATIONS = {
         "thinking": "Думаю...",
         "error": "Извини, произошла ошибка. Попробуй ещё раз.",
         "not_ready": "Я ещё не до конца настроен. Попробуй /help",
+        "onboarding_voice": "🎤 <b>Попробуй сказать:</b>\n\"Добавь кофе 300₽\"\n\"Я на работе\"\n\"Создай встречу в пятницу в 10\"\n\"Сколько потратил на этой неделе?\"\n\nИли просто отправь голосовое — я разберусь!",
     },
     "es": {
         "name": "Español",
@@ -43,6 +45,7 @@ TRANSLATIONS = {
         "thinking": "Pensando...",
         "error": "Lo siento, ocurrió un error. Intenta de nuevo.",
         "not_ready": "No estoy completamente configurado. Prueba /help",
+        "onboarding_voice": "🎤 <b>Prueba a decir:</b>\n\"Añadir café $5\"\n\"Estoy en el trabajo\"\n\"Crear reunión viernes 10am\"\n\"¿Cuánto gasté esta semana?\"\n\n¡O simplemente envía un audio!",
     },
     "fr": {
         "name": "Français",
@@ -58,6 +61,7 @@ TRANSLATIONS = {
         "thinking": "Je réfléchis...",
         "error": "Désolé, une erreur est survenue. Réessayez.",
         "not_ready": "Je ne suis pas encore prêt. Essayez /help",
+        "onboarding_voice": "🎤 <b>Essayez de dire :</b>\n\"Ajouter café 5€\"\n\"Je suis au travail\"\n\"Créer un rendez-vous vendredi 10h\"\n\"Mes dépenses cette semaine ?\"\n\nOu envoyez simplement un message vocal !",
     },
     "zh": {
         "name": "中文",
@@ -73,6 +77,7 @@ TRANSLATIONS = {
         "thinking": "思考中...",
         "error": "抱歉，出现了问题。请稍后再试。",
         "not_ready": "我还没完全设置好。试试 /help",
+        "onboarding_voice": "🎤 <b>试试说：</b>\n\"添加咖啡5美元\"\n\"我在工作\"\n\"创建周五上午10点的会议\"\n\"这周花了多少？\"\n\n或者直接发送语音！",
     },
     "ar": {
         "name": "العربية",
@@ -88,6 +93,7 @@ TRANSLATIONS = {
         "thinking": "أفكر...",
         "error": "عذراً، حدث خطأ. حاول مرة أخرى.",
         "not_ready": "لم يتم إعدادي بالكامل بعد. جرب /help",
+        "onboarding_voice": "🎤 <b>جرب أن تقول:</b>\n\"أضف قهوة 5 دولارات\"\n\"أنا في العمل\"\n\"أنشئ موعداً الجمعة 10 صباحاً\"\n\"كم أنفقت هذا الأسبوع؟\"\n\nأو فقط أرسل رسالة صوتية!",
     },
     "pt": {
         "name": "Português",
@@ -103,6 +109,7 @@ TRANSLATIONS = {
         "thinking": "Pensando...",
         "error": "Desculpe, ocorreu um erro. Tente novamente.",
         "not_ready": "Ainda não estou totalmente configurado. Tente /help",
+        "onboarding_voice": "🎤 <b>Experimente dizer:</b>\n\"Adicionar café $5\"\n\"Estou no trabalho\"\n\"Criar reunião sexta 10h\"\n\"Quanto gastei essa semana?\"\n\nOu apenas envie um áudio!",
     },
     "de": {
         "name": "Deutsch",
@@ -118,6 +125,7 @@ TRANSLATIONS = {
         "thinking": "Denke nach...",
         "error": "Entschuldigung, ein Fehler ist aufgetreten. Versuche es erneut.",
         "not_ready": "Ich bin noch nicht vollständig eingerichtet. Versuche /help",
+        "onboarding_voice": "🎤 <b>Probiere zu sagen:</b>\n\"Füge Kaffee 5€ hinzu\"\n\"Ich bin bei der Arbeit\"\n\"Erstelle Termin Freitag 10 Uhr\"\n\"Meine Ausgaben diese Woche?\"\n\nOder sende einfach eine Sprachnachricht!",
     },
     "hi": {
         "name": "हिन्दी",
@@ -133,6 +141,7 @@ TRANSLATIONS = {
         "thinking": "सोच रहा हूँ...",
         "error": "क्षमा करें, एक समस्या आ गई। कृपया पुनः प्रयास करें।",
         "not_ready": "मैं अभी पूरी तरह से तैयार नहीं हूँ। /help आज़माएँ",
+        "onboarding_voice": "🎤 <b>कहकर देखें:</b>\n\"खर्चों में कॉफ़ी $5 जोड़ें\"\n\"मैं काम पर हूँ\"\n\"शुक्रवार सुबह 10 बजे मीटिंग बनाएँ\"\n\"इस हफ़्ते कितना खर्च किया?\"\n\nया बस वॉइस मैसेज भेजें!",
     },
     "ja": {
         "name": "日本語",
@@ -148,6 +157,7 @@ TRANSLATIONS = {
         "thinking": "考え中...",
         "error": "申し訳ありません、エラーが発生しました。もう一度お試しください。",
         "not_ready": "まだ完全にセットアップされていません。/help をお試しください",
+        "onboarding_voice": "🎤 <b>試してみて：</b>\n\"コーヒー5ドルを追加\"\n\"仕事中\"\n\"金曜10時にミーティングを作成\"\n\"今週の支出は？\"\n\nまたは音声メッセージを送ってください！",
     },
 }
 
