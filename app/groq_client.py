@@ -163,9 +163,9 @@ TOOLS = [
 
 def build_system_prompt(lang: str) -> str:
     lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
-    return f"You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. {lang_instruction}
-
-IMPORTANT: If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе', 'я в магазине'), call track_movement to log it with a timestamp. This is NOT a calendar event — use track_movement instead of create_event."
+    base = "You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. " + lang_instruction
+    base += "\n\nIMPORTANT: If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе', 'я в магазине'), call track_movement to log it with a timestamp. This is NOT a calendar event — use track_movement instead of create_event."
+    return base
 
 
 def build_messages(text: str, lang: str, chat_history: list | None = None) -> list:
