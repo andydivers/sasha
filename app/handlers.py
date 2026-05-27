@@ -697,14 +697,34 @@ async def cmd_qr(message: types.Message):
             await message.answer("Crypto payments not configured.")
         return
 
+    supported = ", ".join(n.capitalize() for n in ["ethereum", "polygon", "arbitrum", "base", "bsc", "optimism", "avalanche"])
+    if lang == "ru":
+        await message.answer(
+            f"💳 <b>USDC</b>\n\n"
+            f"<code>{config.usdc_address}</code>\n"
+            f"(нажми на адрес чтобы скопировать)\n\n"
+            f"✅ <b>Поддерживаемые сети:</b>\n{supported}\n\n"
+            f"⚠️ <b>Важно:</b> Отправляй ТОЛЬКО в одну из этих сетей. "
+            f"Если отправишь в другую сеть — средства будут утеряны, "
+            f"подписка не будет оформлена, и вернуть их невозможно."
+        )
+    else:
+        await message.answer(
+            f"💳 <b>USDC</b>\n\n"
+            f"<code>{config.usdc_address}</code>\n"
+            f"(tap the address to copy)\n\n"
+            f"✅ <b>Supported networks:</b>\n{supported}\n\n"
+            f"⚠️ <b>Important:</b> Send ONLY on one of these networks. "
+            f"If you send on a different network — funds will be lost, "
+            f"subscription will not be activated, and recovery is impossible."
+        )
     qr_data = quote(f"ethereum:{config.usdc_address}", safe="")
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={qr_data}"
     try:
         qr_bytes = urlopen(qr_url, timeout=10).read()
-        caption = config.usdc_address
         await message.answer_photo(
             photo=types.BufferedInputFile(qr_bytes, filename="qr.png"),
-            caption=caption,
+            caption=config.usdc_address,
         )
     except Exception as e:
         logger.warning("QR failed: %s", e)
@@ -884,6 +904,7 @@ async def on_crypto_service(callback: CallbackQuery):
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={qr_data}"
 
     title = price["label_ru"] if lang == "ru" else price["label_en"]
+    supported = ", ".join(n.capitalize() for n in ["ethereum", "polygon", "arbitrum", "base", "bsc", "optimism", "avalanche"])
 
     if lang == "ru":
         msg = (
@@ -891,7 +912,11 @@ async def on_crypto_service(callback: CallbackQuery):
             f"Отправь <b>ровно {unique_amount} USDC</b>\n\n"
             f"<code>{config.usdc_address}</code>\n"
             f"(нажми на адрес чтобы скопировать)\n\n"
-            f"После отправки бот автоматически проверит платеж.\n"
+            f"✅ <b>Поддерживаемые сети:</b>\n{supported}\n\n"
+            f"⚠️ <b>Важно:</b> Отправляй ТОЛЬКО в одну из этих сетей. "
+            f"Если отправишь в другую сеть — средства будут утеряны, "
+            f"подписка не будет оформлена, и вернуть их невозможно.\n\n"
+            f"После отправки бот автоматически проверит платёж.\n"
             f"Ничего вручную вводить не нужно."
         )
         await callback.message.answer(msg)
@@ -901,6 +926,10 @@ async def on_crypto_service(callback: CallbackQuery):
             f"Send <b>exactly {unique_amount} USDC</b>\n\n"
             f"<code>{config.usdc_address}</code>\n"
             f"(tap the address to copy)\n\n"
+            f"✅ <b>Supported networks:</b>\n{supported}\n\n"
+            f"⚠️ <b>Important:</b> Send ONLY on one of these networks. "
+            f"If you send on a different network — funds will be lost, "
+            f"subscription will not be activated, and recovery is impossible.\n\n"
             f"Bot will automatically detect the payment.\n"
             f"No manual confirmation needed."
         )
