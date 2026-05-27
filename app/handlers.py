@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -480,6 +480,92 @@ def _parse_delay(raw: str) -> int:
             return n * 86400
         return n * 60
     raise ValueError(f"Can't parse: {raw}")
+
+
+@router.message(Command("recurring"))
+async def cmd_recurring(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
+    parts = message.text.split(maxsplit=4)
+    if len(parts) < 2:
+        payments = await get_recurring_payments(user_id)
+        if not payments:
+            if lang == "ru":
+                await message.answer("📋 Нет регулярных платежей.\n\nДобавь: /recurring add Netflix 9.99 USD monthly 1\nУдали: /recurring del 1\nСписок: /recurring list")
+            else:
+                await message.answer("📋 No recurring payments.\n\nAdd: /recurring add Netflix 9.99 USD monthly 1\nDelete: /recurring del 1\nList: /recurring list")
+            return
+        total = 0
+        lines = []
+        for i, p in enumerate(payments, 1):
+            amt = float(p.get("amount", 0))
+            total += amt
+            cur = p.get("currency", "USD")
+            name = p.get("name", "")
+            day = p.get("day_of_month", 1)
+            due = p.get("next_due", "")[:10]
+            lines.append(f"{i}. {name} — {amt:.0f} {cur} (day {day}, next: {due})")
+        header = "📋 <b>Regular payments:</b>" if lang != "ru" else "📋 <b>Регулярные платежи:</b>"
+        total_line = f"\n<b>Total monthly: {total:.0f}</b>" if lang != "ru" else f"\n<b>В месяц: {total:.0f}</b>"
+        await message.answer(header + "\n" + "\n".join(lines) + total_line, parse_mode="HTML")
+        return
+
+    cmd = parts[1].lower()
+    if cmd == "list":
+        payments = await get_recurring_payments(user_id)
+        if not payments:
+            if lang == "ru":
+                await message.answer("Нет регулярных платежей.")
+            else:
+                await message.answer("No recurring payments.")
+            return
+        lines = []
+        for i, p in enumerate(payments, 1):
+            amt = p.get("amount", 0)
+            cur = p.get("currency", "USD")
+            name = p.get("name", "")
+            day = p.get("day_of_month", 1)
+            due = p.get("next_due", "")[:10]
+            lines.append(f"{i}. {name} — {amt} {cur} (day {day}, next: {due})")
+        await message.answer("📋 " + "\n".join(lines))
+    elif cmd == "add" and len(parts) >= 5:
+        name = parts[2]
+        try:
+            amount = float(parts[3])
+        except ValueError:
+            if lang == "ru":
+                await message.answer("Сумма должна быть числом.")
+            else:
+                await message.answer("Amount must be a number.")
+            return
+        currency = parts[4].upper() if len(parts) > 4 else "USD"
+        frequency = parts[5] if len(parts) > 5 else "monthly"
+        day = int(parts[6]) if len(parts) > 6 else 1
+        await add_recurring_payment(user_id, name, amount, currency, frequency, day)
+        if lang == "ru":
+            await message.answer(f"✅ Добавлен: {name} — {amount:.0f} {currency} (каждый {day}-й день месяца)")
+        else:
+            await message.answer(f"✅ Added: {name} — {amount:.0f} {currency} (every {day}th)")
+    elif cmd == "del" and len(parts) >= 3:
+        try:
+            idx = int(parts[2])
+            payments = await get_recurring_payments(user_id)
+            if idx < 1 or idx > len(payments):
+                if lang == "ru": await message.answer("Неверный номер.")
+                else: await message.answer("Invalid number.")
+                return
+            pid = payments[idx - 1]["id"]
+            await delete_recurring_payment(pid)
+            if lang == "ru":
+                await message.answer(f"✅ Платёж {idx} удалён.")
+            else:
+                await message.answer(f"✅ Payment {idx} deleted.")
+        except ValueError:
+            if lang == "ru": await message.answer("Укажи номер из списка.")
+            else: await message.answer("Specify the number from the list.")
+    else:
+        if lang == "ru": await message.answer("/recurring add Netflix 9.99 USD monthly 1\n/recurring del 1\n/recurring list")
+        else: await message.answer("/recurring add Netflix 9.99 USD monthly 1\n/recurring del 1\n/recurring list")
 
 
 @router.message(Command("buy"))
