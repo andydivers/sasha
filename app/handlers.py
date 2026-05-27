@@ -76,6 +76,7 @@ async def on_lang_choice(callback: CallbackQuery):
     await set_user_lang(callback.from_user.id, lang)
     await callback.message.edit_text(t(lang, "lang_changed"))
     await callback.message.answer(t(lang, "welcome"))
+    await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
 
 
 @router.message(Command("help"))
