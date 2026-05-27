@@ -49,8 +49,8 @@ def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None) -
 
     if not sheet_url:
         if lang == "ru":
-            return "Сначала подключи таблицу через /sheet https://..."
-        return "First connect your sheet via /sheet https://..."
+            return "Запомнил! Чтобы я записывал это в Google Таблицу, просто отправь ссылку на неё — и я подключусь автоматически."
+        return "Noted! To save this to your Google Sheet, just send me the sheet link — I'll connect automatically."
 
     if not sheets_ready():
         if lang == "ru":
