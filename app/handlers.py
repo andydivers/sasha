@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -195,6 +195,71 @@ async def cmd_sync(message: types.Message):
             await message.answer(f"Ошибка синхронизации: {e}")
         else:
             await message.answer(f"Sync error: {e}")
+
+
+@router.message(Command("digest"))
+async def cmd_digest(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 2:
+        cfg = await get_digest_config(user_id)
+        status = "✅ On" if cfg.get("digest_enabled") else "❌ Off"
+        t = cfg.get("digest_time", "09:00")
+        if lang == "ru":
+            await message.answer(
+                f"📋 <b>Ежедневный дайджест</b>\n"
+                f"Статус: {status}\n"
+                f"Время: {t}\n\n"
+                f"<code>/digest on 09:00</code> — включить\n"
+                f"<code>/digest off</code> — выключить\n"
+                f"<code>/digest now</code> — показать сейчас"
+            )
+        else:
+            await message.answer(
+                f"📋 <b>Daily Digest</b>\n"
+                f"Status: {status}\n"
+                f"Time: {t}\n\n"
+                f"<code>/digest on 09:00</code> — enable\n"
+                f"<code>/digest off</code> — disable\n"
+                f"<code>/digest now</code> — show now"
+            )
+        return
+
+    cmd = parts[1].lower()
+    if cmd == "off":
+        await set_digest_config(user_id, False)
+        if lang == "ru":
+            await message.answer("📋 Дайджест выключен.")
+        else:
+            await message.answer("📋 Digest disabled.")
+        return
+
+    if cmd == "now":
+        from app.digest import generate_digest
+        digest_text = await generate_digest(user_id, lang)
+        await message.answer(digest_text, parse_mode="HTML")
+        return
+
+    if cmd == "on":
+        time = parts[2] if len(parts) > 2 else "09:00"
+        if not re.match(r"^\d{2}:\d{2}$", time):
+            if lang == "ru":
+                await message.answer("Формат времени: HH:MM (например, 09:00)")
+            else:
+                await message.answer("Time format: HH:MM (e.g., 09:00)")
+            return
+        await set_digest_config(user_id, True, time)
+        if lang == "ru":
+            await message.answer(f"📋 Дайджест включён в {time} ежедневно.")
+        else:
+            await message.answer(f"📋 Digest enabled at {time} daily.")
+        return
+
+    if lang == "ru":
+        await message.answer("Команды: /digest on HH:MM, /digest off, /digest now")
+    else:
+        await message.answer("Usage: /digest on HH:MM, /digest off, /digest now")
 
 
 @router.message(Command("tz"))
