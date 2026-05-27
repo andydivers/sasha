@@ -70,3 +70,17 @@ CREATE TABLE IF NOT EXISTS pending_payments (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_amount ON pending_payments(unique_amount) WHERE status = 'pending';
+
+-- Local expense storage (no sheet required)
+CREATE TABLE IF NOT EXISTS expenses (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    description TEXT NOT NULL,
+    amount TEXT DEFAULT '',
+    category TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS has_seen_sheet_offer BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS synced BOOLEAN DEFAULT FALSE;
