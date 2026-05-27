@@ -904,12 +904,13 @@ async def on_crypto_service(callback: CallbackQuery):
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={qr_data}"
 
     title = price["label_ru"] if lang == "ru" else price["label_en"]
+    clean_amount = int(price["usdc"])
     supported = ", ".join(n.capitalize() for n in ["ethereum", "polygon", "arbitrum", "base", "bsc", "optimism", "avalanche"])
 
     if lang == "ru":
         msg = (
             f"💳 <b>{title}</b>\n\n"
-            f"Отправь <b>ровно {unique_amount} USDC</b>\n\n"
+            f"Отправь <b>{clean_amount} USDC</b>\n\n"
             f"<code>{config.usdc_address}</code>\n"
             f"(нажми на адрес чтобы скопировать)\n\n"
             f"✅ <b>Поддерживаемые сети:</b>\n{supported}\n\n"
@@ -923,7 +924,7 @@ async def on_crypto_service(callback: CallbackQuery):
     else:
         msg = (
             f"💳 <b>{title}</b>\n\n"
-            f"Send <b>exactly {unique_amount} USDC</b>\n\n"
+            f"Send <b>{clean_amount} USDC</b>\n\n"
             f"<code>{config.usdc_address}</code>\n"
             f"(tap the address to copy)\n\n"
             f"✅ <b>Supported networks:</b>\n{supported}\n\n"
@@ -939,7 +940,7 @@ async def on_crypto_service(callback: CallbackQuery):
         qr_bytes = urlopen(qr_url, timeout=10).read()
         await callback.message.answer_photo(
             photo=types.BufferedInputFile(qr_bytes, filename="qr.png"),
-            caption=f"{unique_amount} USDC"
+            caption=f"{clean_amount} USDC"
         )
     except Exception as e:
         logger.warning("QR download failed: %s", e)
