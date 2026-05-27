@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from app.database import get_yesterday_expenses, get_today_movements, get_todos, get_user_tz
 from app.timezone_utils import format_dual_time, MSK
 from app.anomaly import detect_anomalies
+from app.database import get_recurring_payments
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,24 @@ async def generate_digest(user_id: int, lang: str = "en") -> str:
             lines.append(f"\n✅ <b>Задачи:</b> всё выполнено!")
         else:
             lines.append(f"\n✅ <b>Todos:</b> all done!")
+
+    # recurring payments due this week
+    try:
+        recurring = await get_recurring_payments(user_id)
+        due_soon = [p for p in recurring if p.get("next_due") and p["next_due"][:10] <= (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d")]
+        if due_soon:
+            if lang == "ru":
+                lines.append(f"\n🔄 <b>Скоро спишут:</b>")
+            else:
+                lines.append(f"\n🔄 <b>Due soon:</b>")
+            for p in due_soon:
+                amt = p.get("amount", 0)
+                cur = p.get("currency", "USD")
+                name = p.get("name", "")
+                due = p.get("next_due", "")[:10]
+                lines.append(f"  {name} — {amt:.0f} {cur} ({due})")
+    except Exception:
+        pass
 
     # time
     now = format_dual_time(user_tz=tz)
