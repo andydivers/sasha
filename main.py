@@ -14,7 +14,8 @@ from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
 from app.crypto_client import fetch_incoming_usdc_transfers
 from app.digest import is_digest_due
-from app.database import get_digest_users, get_user_lang, get_due_recurring_payments, bump_recurring_payment
+from app.database import get_digest_users, get_user_lang, get_due_recurring_payments, bump_recurring_payment, get_candidates_for_reengagement, mark_reengagement_sent
+from app.reengagement import get_reengagement_message
 from app.handlers import router
 
 logging.basicConfig(
@@ -176,6 +177,32 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Recurring check error: %s", e)
 
+    async def check_reengagement():
+        index = 0
+        while True:
+            await asyncio.sleep(3600)
+            try:
+                candidates = await get_candidates_for_reengagement()
+                if not candidates:
+                    continue
+                sent = 0
+                for u in candidates:
+                    if sent >= 5:
+                        break
+                    uid = u["id"]
+                    lang = u.get("language", "en") or "en"
+                    try:
+                        msg = get_reengagement_message(lang, index)
+                        await bot.send_message(chat_id=uid, text=msg, parse_mode="HTML")
+                        await mark_reengagement_sent(uid)
+                        sent += 1
+                        logger.info("Re-engagement sent to user %s", uid)
+                    except Exception as e:
+                        logger.warning("Re-engagement failed for %s: %s", uid, e)
+                index += 1
+            except Exception as e:
+                logger.warning("Re-engagement check error: %s", e)
+
     task = asyncio.create_task(check_reminders())
     logger.info("Reminder checker started")
     task2 = asyncio.create_task(check_payments())
@@ -184,11 +211,14 @@ async def lifespan(app: FastAPI):
     logger.info("Digest checker started")
     task4 = asyncio.create_task(check_recurring())
     logger.info("Recurring checker started")
+    task5 = asyncio.create_task(check_reengagement())
+    logger.info("Re-engagement checker started")
     yield
     task.cancel()
     task2.cancel()
     task3.cancel()
     task4.cancel()
+    task5.cancel()
     await bot.session.close()
     logger.info("Bot session closed")
 
