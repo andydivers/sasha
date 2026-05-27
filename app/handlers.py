@@ -711,7 +711,7 @@ async def handle_voice(message: types.Message, bot: Bot):
             while turn_count < 10:
                 turn_count += 1
                 for tool_call in current:
-                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz)
+                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
                     if resp.startswith("__REPORT__:"):
                         parts = resp.split(":", 2)
                         fmt = parts[1]
@@ -797,7 +797,7 @@ async def handle_message(message: types.Message):
             while turn_count < 10:
                 turn_count += 1
                 for tool_call in current:
-                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz)
+                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
                     if resp.startswith("__REPORT__:"):
                         parts = resp.split(":", 2)
                         fmt = parts[1]
