@@ -215,6 +215,26 @@ async def is_payment_confirmed(payment_id: int) -> bool:
         return False
 
 
+async def add_movement(user_id: int, location: str, description: str = ""):
+    try:
+        get_db().table("movements").insert({
+            "user_id": user_id,
+            "location": location,
+            "description": description,
+        }).execute()
+    except Exception as e:
+        logger.warning("Failed to add movement: %s", e)
+
+
+async def get_movements(user_id: int, limit: int = 20) -> list[dict]:
+    try:
+        resp = get_db().table("movements").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get movements: %s", e)
+        return []
+
+
 async def add_expense(user_id: int, description: str, amount: str = "", category: str = ""):
     try:
         get_db().table("expenses").insert({
