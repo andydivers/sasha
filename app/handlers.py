@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -135,6 +135,65 @@ async def cmd_sheet(message: types.Message):
         await message.answer("Google Таблица подключена! Теперь я могу читать и записывать данные.")
     else:
         await message.answer("Google Sheet connected! I can now read and write data.")
+
+
+@router.message(Command("sync"))
+async def cmd_sync(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
+
+    sheet_url = _sheet_cache.get(user_id) or await get_user_sheet(user_id)
+    if not sheet_url:
+        if lang == "ru":
+            await message.answer("Сначала подключи Google Таблицу через /sheet https://...")
+        else:
+            await message.answer("First connect a Google Sheet via /sheet https://...")
+        return
+
+    if not sheets_ready():
+        if lang == "ru":
+            await message.answer("Google Sheets не настроен на сервере.")
+        else:
+            await message.answer("Google Sheets is not configured.")
+        return
+
+    items = await get_unsynced_items(user_id)
+    if not items:
+        if lang == "ru":
+            await message.answer("Нет несинхронизированных записей.")
+        else:
+            await message.answer("No unsynced items.")
+        return
+
+    try:
+        # write header if table is empty
+        header = [["Category", "Description", "Amount", "Date"]]
+        existing = read_sheet(sheet_url, "A1:D1")
+        if not existing or existing == [[""]]:
+            write_sheet(sheet_url, header, "A1:D1")
+
+        synced_ids = []
+        for item in items:
+            cat = item.get("category", "")
+            desc = item.get("description", "")
+            amt = item.get("amount", "")
+            dt = item.get("created_at", "")
+            append_row(sheet_url, [cat, desc, amt, dt])
+            synced_ids.append(item["id"])
+
+        if synced_ids:
+            await mark_items_synced(synced_ids)
+
+        if lang == "ru":
+            await message.answer(f"✅ Синхронизировано {len(synced_ids)} записей в Google Таблицу.")
+        else:
+            await message.answer(f"✅ Synced {len(synced_ids)} items to Google Sheet.")
+    except Exception as e:
+        logger.error("Sync error: %s", e)
+        if lang == "ru":
+            await message.answer(f"Ошибка синхронизации: {e}")
+        else:
+            await message.answer(f"Sync error: {e}")
 
 
 @router.message(Command("tz"))
