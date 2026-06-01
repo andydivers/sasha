@@ -242,7 +242,7 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
 
     start = time.perf_counter()
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=messages,
         tools=TOOLS,
         tool_choice="auto",
@@ -263,7 +263,7 @@ def chat_turn(client: Groq, messages: list):
     """Continue a multi-turn conversation. Returns (text, messages) or (tool_calls, messages)."""
     start = time.perf_counter()
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=messages,
         tools=TOOLS,
         tool_choice="auto",
