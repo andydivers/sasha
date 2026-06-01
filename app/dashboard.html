@@ -45,6 +45,26 @@ if (!userId) {
   document.body.innerHTML = '<div class="error">Open from Telegram</div>';
 }
 
+const T = {
+  en: { expenses: "Expenses", movements: "Movements", todos: "Todos", digest: "Digest",
+    no_expenses: 'No expenses yet. Say "coffee $5" to Sasha!',
+    no_movements: 'No movements yet. Say "at work" to Sasha!',
+    no_todos: 'All done! Say "add task" to Sasha.',
+    digest_text: '📋 Say <b>"how did I spend this week?"</b> or <b>"digest now"</b> in chat.',
+    loading: "Loading..." },
+  ru: { expenses: "Расходы", movements: "Перемещения", todos: "Задачи", digest: "Дайджест",
+    no_expenses: 'Расходов нет. Скажи "кофе 300₽" Саше!',
+    no_movements: 'Перемещений нет. Скажи "я на работе" Саше!',
+    no_todos: 'Всё выполнено! Скажи "добавь задачу" Саше.',
+    digest_text: '📋 Скажи <b>"сколько потратил на неделе?"</b> или <b>"дайджест"</b> в чате.',
+    loading: "Загрузка..." },
+  es: { expenses: "Gastos", movements: "Ubicación", todos: "Tareas", digest: "Resumen",
+    no_expenses: 'Sin gastos. Di "café $5" a Sasha.',
+    no_movements: 'Sin movimientos. Di "en el trabajo" a Sasha.',
+    no_todos: 'Todo listo. Di "añadir tarea" a Sasha.',
+    digest_text: '📋 Di <b>"¿cuánto gasté?"</b> o <b>"resumen"</b> en el chat.' },
+};
+
 function showTab(name) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab button').forEach(b => b.classList.remove('active'));
@@ -58,35 +78,35 @@ async function loadData() {
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
 
-    // Expenses
+    const lang = json.lang === 'ru' ? T.ru : json.lang === 'es' ? T.es : T.en;
+    document.querySelectorAll('.tab button')[0].textContent = lang.expenses;
+    document.querySelectorAll('.tab button')[1].textContent = lang.movements;
+    document.querySelectorAll('.tab button')[2].textContent = lang.todos;
+    document.querySelectorAll('.tab button')[3].textContent = lang.digest;
+
     document.getElementById('expenses').innerHTML = json.expenses?.length
       ? '<table>' + json.expenses.map(e =>
           `<tr><td>${e.description || e.category || ''}</td><td><strong>${e.amount || ''}</strong></td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${(e.created_at||'').slice(0,10)}</td></tr>`
         ).join('') + '</table>'
-      : '<div class="card"><p>No expenses yet. Say "coffee $5" to Sasha!</p></div>';
+      : '<div class="card"><p>' + lang.no_expenses + '</p></div>';
 
-    // Movements
     document.getElementById('movements').innerHTML = json.movements?.length
       ? '<table>' + json.movements.map(m =>
           `<tr><td>📍 ${m.location}</td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${(m.created_at||'').replace('T',' ').slice(0,16)}</td></tr>`
         ).join('') + '</table>'
-      : '<div class="card"><p>No movements yet. Say "at work" to Sasha!</p></div>';
+      : '<div class="card"><p>' + lang.no_movements + '</p></div>';
 
-    // Todos
     document.getElementById('todos').innerHTML = json.todos?.length
       ? '<table>' + json.todos.filter(t => !t.done).map(t =>
           `<tr><td>☐ ${t.title}</td></tr>`
         ).join('') + '</table>'
-      : '<div class="card"><p>All done! Say "add task" to Sasha.</p></div>';
+      : '<div class="card"><p>' + lang.no_todos + '</p></div>';
 
-    // Digest
-    document.getElementById('digest').innerHTML =
-      '<div class="card"><p>📋 Say <b>"how did I spend this week?"</b> or <b>"digest now"</b> in chat to get your daily digest.</p></div>';
+    document.getElementById('digest').innerHTML = '<div class="card"><p>' + lang.digest_text + '</p></div>';
 
   } catch (e) {
-    document.getElementById('expenses').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
-    document.getElementById('movements').innerHTML = '<div class="error">Error</div>';
-    document.getElementById('todos').innerHTML = '<div class="error">Error</div>';
+    const l = T.ru;
+    document.getElementById('expenses').innerHTML = '<div class="error">' + l.loading + '</div>';
   }
 }
 

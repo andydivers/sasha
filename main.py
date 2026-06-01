@@ -253,13 +253,14 @@ async def dashboard():
 
 @app.get("/api/dashboard")
 async def api_dashboard(user_id: int):
-    from app.database import get_user_items, get_movements, get_todos
+    from app.database import get_user_items, get_movements, get_todos, get_user_lang
     from fastapi.responses import JSONResponse
     try:
         expenses = await get_user_items(user_id) or []
         movements = await get_movements(user_id) or []
         todos = await get_todos(user_id) or []
-        return JSONResponse({"ok": True, "expenses": expenses, "movements": movements, "todos": todos})
+        lang = await get_user_lang(user_id) or "en"
+        return JSONResponse({"ok": True, "lang": lang, "expenses": expenses, "movements": movements, "todos": todos})
     except Exception as e:
         logger.error("Dashboard API error: %s", e)
         return JSONResponse({"ok": False, "error": str(e)})
