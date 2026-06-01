@@ -1,50 +1,49 @@
 REENGAGEMENT_MESSAGES = {
     "en": [
-        "Hey! Just send a voice message — tell me what's happened since we last talked. 🎤",
-        "Quick check-in. Any new expenses? Just press the mic and say it. 🎤",
-        "Still here! Send a voice message whenever something comes up — I'll log it. 🎤",
-        "How's your day going? Any coffee, meetings, or reminders to add? Just talk. 🎤",
+        "Hi! Just tap the mic and say what's new.\n\n\"coffee $5\" or \"at work\" or \"remind me in 1h\"\n\nI'll log it.",
+        "Quick check-in. Press the mic and tell me:\n\n\"coffee $5\" or \"meeting Friday 10am\" or \"all good\"",
+        "Any new expenses? Tap the mic and say it in 3 seconds.\n\n\"lunch $12\" or \"at the gym\" or \"nope\"",
+        "How's your day? One voice message and I'll handle it.\n\n\"takeaway $8\" or \"remind me tomorrow\"",
     ],
     "ru": [
-        "Привет! Отправь голосовое — расскажи, что произошло. 🎤",
-        "Быстрый чек-ин. Новые траты? Нажми микрофон и скажи. 🎤",
-        "Я тут! Отправь голосовое, когда что-то случится — я запишу. 🎤",
-        "Как день? Кофе, встречи, напоминания? Просто говори вслух. 🎤",
+        "Привет! Нажми микрофон и скажи, что нового.\n\n«кофе 300₽» или «я на работе» или «напомни через час»\n\nЯ запишу.",
+        "Быстрый чек-ин. Нажми микрофон и скажи:\n\n«кофе 300₽» или «встреча в пятницу в 10» или «всё ок»",
+        "Новые траты? Нажми микрофон и скажи за 3 секунды.\n\n«обед 500₽» или «я в зале» или «нет»",
+        "Как день? Одно голосовое — и я всё понял.\n\n«доставка 800₽» или «напомни завтра»",
     ],
     "es": [
-        "¡Hola! Envía un mensaje de voz y cuéntame qué ha pasado. 🎤",
-        "¿Cómo va el día? ¿Café, reuniones, gastos? Solo habla. 🎤",
+        "¡Hola! Toca el micrófono y dime qué hay de nuevo.\n\n\"café $5\" o \"en el trabajo\" o \"recuérdame en 1h\"",
+        "¿Nuevos gastos? Toca el micrófono y dilo en 3 segundos.\n\n\"comida $12\" o \"en el gimnasio\" o \"no\"",
     ],
     "fr": [
-        "Salut ! Envoie un message vocal, raconte-moi tout. 🎤",
-        "Ça va ? Nouveaux frais ? Appuie sur le micro et dis-le. 🎤",
+        "Salut ! Appuie sur le micro et dis ce qui est nouveau.\n\n\"café 5€\" ou \"au travail\" ou \"rappelle-moi dans 1h\"",
+        "Nouveaux frais ? Appuie sur le micro et dis-le en 3 secondes.\n\n\"déjeuner 12€\" ou \"à la salle\" ou \"non\"",
     ],
     "zh": [
-        "嘿！发送语音消息，告诉我发生了什么。🎤",
-        "今天怎么样？有咖啡、会议或提醒要添加吗？直接说就行。🎤",
+        "嘿！按下麦克风，说说新鲜事。\n\n“咖啡5美元”或“在工作”或“1小时后提醒我”",
+        "新支出？按麦克风，3秒说完。\n\n“午餐12美元”或“在健身房”或“没有”",
     ],
     "ar": [
-        "مرحباً! أرسل رسالة صوتية وأخبرني what الجديد. 🎤",
-        "كيف يومك؟ قهوة، اجتماعات، مصروفات؟ فقط تكلم. 🎤",
+        "مرحباً! اضغط على الميكروفون وقل ما الجديد.\n\n«قهوة 5 دولارات» أو «في العمل» أو «ذكرني بعد ساعة»",
+        "مصروفات جديدة؟ اضغط على الميكروفون وقلها في 3 ثوانٍ.\n\n«غداء 12 دولاراً» أو «في النادي» أو «لا»",
     ],
     "pt": [
-        "Olá! Envia um áudio e me conta as novidades. 🎤",
-        "Como está o dia? Café, reuniões, gastos? Só falar. 🎤",
+        "Olá! Aperte o mic e diga o que há de novo.\n\n\"café $5\" ou \"no trabalho\" ou \"lembre-me em 1h\"",
+        "Novos gastos? Aperte o mic e diga em 3 segundos.\n\n\"almoço $12\" ou \"na academia\" ou \"não\"",
     ],
     "de": [
-        "Hallo! Schick eine Sprachnachricht und erzähl mir, was los ist. 🎤",
-        "Wie läuft's? Kaffee, Termine, Ausgaben? Einfach sprechen. 🎤",
+        "Hallo! Tipp aufs Mikro und sag, was los ist.\n\n\"Kaffee 5€\" oder \"bei der Arbeit\" oder \"erinnere mich in 1h\"",
+        "Neue Ausgaben? Tipp aufs Mikro und sag's in 3 Sekunden.\n\n\"Mittagessen 12€\" oder \"im Fitness\" oder \"nein\"",
     ],
     "hi": [
-        "नमस्ते! वॉइस मैसेज भेजें और बताएं क्या हुआ। 🎤",
-        "दिन कैसा है? कॉफ़ी, मीटिंग, खर्च? बस बोलें। 🎤",
+        "नमस्ते! माइक दबाएँ और बताएँ क्या नया है।\n\n\"कॉफ़ी ₹400\" या \"काम पर\" या \"1 घंटे में याद दिलाएं\"",
+        "नए खर्च? माइक दबाएँ और 3 सेकंड में बताएँ।\n\n\"लंच ₹600\" या \"जिम में\" या \"नहीं\"",
     ],
     "ja": [
-        "お久しぶり！音声メッセージで最近のことを教えて。🎤",
-        "今日はどう？コーヒー、会議、支出？話すだけ。🎤",
+        "こんにちは！マイクを押して、近況を教えて。\n\n「コーヒー5ドル」または「仕事中」または「1時間後にリマインド」",
+        "新しい支出は？マイクを押して3秒で言って。\n\n「昼食12ドル」または「ジム」または「なし」",
     ],
 }
-
 
 def get_reengagement_message(lang: str, index: int = 0) -> str:
     msgs = REENGAGEMENT_MESSAGES.get(lang, REENGAGEMENT_MESSAGES["en"])

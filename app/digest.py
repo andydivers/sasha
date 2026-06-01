@@ -122,10 +122,19 @@ async def generate_digest(user_id: int, lang: str = "en") -> str:
     lines.append(f"\n🕐 {now}")
 
     # voice prompt
-    if lang == "ru":
-        lines.append(f"\n\n🎤 <b>Ответь голосовым</b> — я пойму.")
-    else:
-        lines.append(f"\n\n🎤 <b>Reply with a voice message</b> — I'll understand.")
+    voice_prompts = {
+        "ru": "\n\n🎤 <b>Нажми микрофон и скажи:</b>\n«кофе 300₽» или «я на работе» или «всё ок»\n\nЯ запишу.",
+        "en": "\n\n🎤 <b>Tap the mic and say:</b>\n\"coffee $5\" or \"at work\" or \"all good\"\n\nI'll log it.",
+        "es": "\n\n🎤 <b>Toca el micrófono y di:</b>\n\"café $5\" o \"en el trabajo\" o \"todo bien\"\n\nLo registraré.",
+        "fr": "\n\n🎤 <b>Appuie sur le micro et dis :</b>\n\"café 5€\" ou \"au travail\" ou \"tout va bien\"\n\nJe note.",
+        "zh": "\n\n🎤 <b>按下麦克风说：</b>\n“咖啡5美元”或“在工作”或“都好”\n\n我会记录。",
+        "ar": "\n\n🎤 <b>اضغط على الميكروفون وقل:</b>\n«قهوة 5 دولارات» أو «في العمل» أو «كل شيء بخير»\n\nسأسجله.",
+        "pt": "\n\n🎤 <b>Aperte o mic e diga:</b>\n\"café $5\" ou \"no trabalho\" ou \"tudo bem\"\n\nVou registrar.",
+        "de": "\n\n🎤 <b>Tipp aufs Mikro und sag:</b>\n\"Kaffee 5€\" oder \"bei der Arbeit\" oder \"alles gut\"\n\nIch notiere es.",
+        "hi": "\n\n🎤 <b>माइक दबाएँ और कहें:</b>\n\"कॉफ़ी ₹400\" या \"काम पर\" या \"सब ठीक\"\n\nमैं लिख लूँगा।",
+        "ja": "\n\n🎤 <b>マイクを押して言って：</b>\n「コーヒー5ドル」または「仕事中」または「大丈夫」\n\n記録します。",
+    }
+    lines.append(voice_prompts.get(lang, voice_prompts["en"]))
 
     return "\n".join(lines)
 
