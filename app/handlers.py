@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -55,6 +55,26 @@ async def get_lang(user_id: int) -> str:
     if user_id not in _lang_cache:
         _lang_cache[user_id] = await get_user_lang(user_id)
     return _lang_cache.get(user_id, "en")
+
+
+_EXPENSE_PATTERN = re.compile(
+    r"(\d[\d.,]*)\s*(?:\$|USD|₽|руб|€|EUR|£|GBP|usdc?)?"
+    r"|"
+    r"(?:купил|потратил|оплатил|spent|bought|paid|cost|кофе|обед|lunch|coffee|uber|такси|билет|ticket)\b.*",
+    re.IGNORECASE,
+)
+
+
+async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
+    if not _EXPENSE_PATTERN.search(text):
+        return None
+    nums = re.findall(r"[\d,.]+", text)
+    amount = nums[0].replace(",", ".") if nums else ""
+    try:
+        await add_expense(user_id, text.strip(), amount, "expense" if amount else "note")
+        return amount
+    except Exception:
+        return None
 
 
 async def get_tz(user_id: int) -> str:
@@ -117,7 +137,12 @@ async def on_menu_callback(callback: CallbackQuery):
         ])
         await callback.message.edit_text(t(lang, "help"), parse_mode="HTML", reply_markup=back)
     elif data == "menu_lang":
-        await callback.message.edit_text(t(lang, "lang_prompt"), reply_markup=LANG_KEYBOARD)
+        langs = {l: TRANSLATIONS.get(l, {}).get("name", l) for l in LANG_LIST}
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"{TRANSLATIONS.get(l, {}).get('flag', '')} {langs[l]}", callback_data=f"lang_{l}")]
+            for l in LANG_LIST
+        ])
+        await callback.message.edit_text(t(lang, "lang_prompt"), reply_markup=kb)
     elif data == "menu_back":
         await callback.message.edit_text(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
     elif data == "buy_show":
@@ -157,7 +182,13 @@ async def cmd_ping(message: types.Message):
 
 @router.message(Command("lang"))
 async def cmd_lang(message: types.Message):
-    await message.answer(t("en", "lang_prompt"), reply_markup=LANG_KEYBOARD)
+    lang = await get_lang(message.from_user.id)
+    langs = {l: TRANSLATIONS.get(l, {}).get("name", l) for l in LANG_LIST}
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"{TRANSLATIONS.get(l, {}).get('flag', '')} {langs[l]}", callback_data=f"lang_{l}")]
+        for l in LANG_LIST
+    ])
+    await message.answer(t(lang, "lang_prompt"), reply_markup=kb)
 
 
 @router.message(Command("webhook"))
@@ -1044,6 +1075,9 @@ async def handle_voice(message: types.Message, bot: Bot):
                     await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                 os.unlink(path)
             else:
+                saved = await _try_save_expense_fallback(text, message.from_user.id)
+                if saved is not None:
+                    response_text = f"💰 {text}" if lang != "ru" else f"💰 {text}"
                 await message.answer(response_text + t(lang, "voice_prompt"))
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
@@ -1130,6 +1164,9 @@ async def handle_message(message: types.Message):
                     await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                 os.unlink(path)
             else:
+                saved = await _try_save_expense_fallback(text, message.from_user.id)
+                if saved is not None:
+                    response_text = f"💰 {text}" if lang != "ru" else f"💰 {text}"
                 await message.answer(response_text + t(lang, "voice_prompt"))
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
