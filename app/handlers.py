@@ -24,6 +24,27 @@ router = Router()
 config = Config()
 groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 
+BOT_USERNAME = "HeySasha_bot"
+MENTION_RE = re.compile(r"@HeySasha_bot\s*", re.IGNORECASE)
+
+
+def _is_group(message: types.Message) -> bool:
+    return message.chat.type in ("group", "supergroup")
+
+
+def _should_respond(message: types.Message) -> bool:
+    if not _is_group(message):
+        return True
+    if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
+        return True
+    if message.text and f"@{BOT_USERNAME}" in message.text.lower():
+        return True
+    return False
+
+
+def _strip_mention(text: str) -> str:
+    return MENTION_RE.sub("", text, count=1).strip()
+
 if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
@@ -1043,8 +1064,22 @@ async def on_paid(message: types.Message):
         await message.answer(f"✅ Payment received! Service: {payload}. What now?")
 
 
+@router.my_chat_member()
+async def on_chat_member(update: types.ChatMemberUpdated):
+    if update.new_chat_member.status == "member":
+        name = update.chat.title or update.chat.username or "group"
+        await update.bot.send_message(
+            update.chat.id,
+            f"Hi! I'm Sasha. Say @{BOT_USERNAME} coffee 4 bucks to log an expense, or add a task, or any other voice command."
+        )
+
+
 @router.message(F.photo)
 async def handle_photo(message: types.Message, bot: Bot):
+    if _is_group(message):
+        caption = (message.caption or "").strip()
+        if not message.reply_to_message and not MENTION_RE.match(caption):
+            return
     lang = await get_lang(message.from_user.id)
     caption = message.caption or ""
     prompt = caption if caption else ("What do you see in this image?" if lang != "ru" else "Что ты видишь на этом изображении?")
@@ -1072,6 +1107,9 @@ async def handle_voice(message: types.Message, bot: Bot):
         await message.answer(t(lang, "not_ready"))
         return
 
+    if _is_group(message) and not message.reply_to_message:
+        return
+
     if message.from_user.id not in _sheet_cache:
         db_url = await get_user_sheet(message.from_user.id)
         if db_url:
@@ -1095,11 +1133,12 @@ async def handle_voice(message: types.Message, bot: Bot):
 
         tz = await get_tz(message.from_user.id)
 
+        suffix = "" if _is_group(message) else t(lang, "voice_prompt")
         _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
 
         if _saved_amount is not None:
             response_text = f"💰 {text}"
-            await message.answer(response_text + t(lang, "voice_prompt"))
+            await message.answer(response_text + suffix)
             latency = 0
         else:
             result, latency, messages = detect_intent(groq, text, lang=lang)
@@ -1115,7 +1154,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                         await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                     os.unlink(path)
                 else:
-                    await message.answer(response_text + t(lang, "voice_prompt"))
+                    await message.answer(response_text + suffix)
             else:
                 sheet_url = _sheet_cache.get(message.from_user.id)
                 all_responses = []
@@ -1144,7 +1183,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                     current = next_result
                 response_text = "\n\n".join(all_responses) if all_responses else "Done."
                 if all_responses:
-                    await message.answer(response_text + t(lang, "voice_prompt"))
+                    await message.answer(response_text + suffix)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled voice in %.2fs", latency)
@@ -1160,8 +1199,11 @@ async def handle_message(message: types.Message):
         await message.answer(t(lang, "not_ready"))
         return
 
+    if not _should_respond(message):
+        return
+
     lang = await get_lang(message.from_user.id)
-    text = message.text.strip()
+    text = _strip_mention(message.text.strip())
 
     m = re.match(r"https://docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)", text)
     if m:
@@ -1187,12 +1229,14 @@ async def handle_message(message: types.Message):
 
     await message.answer(t(lang, "thinking"))
 
+    suffix = "" if _is_group(message) else t(lang, "voice_prompt")
+
     try:
         _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
 
         if _saved_amount is not None:
             response_text = f"💰 {text}"
-            await message.answer(response_text + t(lang, "voice_prompt"))
+            await message.answer(response_text + suffix)
             latency = 0
         else:
             result, latency, messages = detect_intent(groq, text, lang=lang)
@@ -1208,7 +1252,7 @@ async def handle_message(message: types.Message):
                         await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                     os.unlink(path)
                 else:
-                    await message.answer(response_text + t(lang, "voice_prompt"))
+                    await message.answer(response_text + suffix)
             else:
                 sheet_url = _sheet_cache.get(message.from_user.id)
                 all_responses = []
@@ -1237,7 +1281,7 @@ async def handle_message(message: types.Message):
                     current = next_result
                 response_text = "\n\n".join(all_responses) if all_responses else "Done."
                 if all_responses:
-                    await message.answer(response_text + t(lang, "voice_prompt"))
+                    await message.answer(response_text + suffix)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)
