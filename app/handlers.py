@@ -57,23 +57,22 @@ async def get_lang(user_id: int) -> str:
     return _lang_cache.get(user_id, "en")
 
 
-_EXPENSE_PATTERN = re.compile(
-    r"(\d[\d.,]*)\s*(?:\$|USD|₽|руб|€|EUR|£|GBP|usdc?)?"
-    r"|"
-    r"(?:купил|потратил|оплатил|spent|bought|paid|cost|кофе|обед|lunch|coffee|uber|такси|билет|ticket)\b.*",
-    re.IGNORECASE,
-)
+_EXPENSE_WORDS = {"купил","потратил","оплатил","заплатил","spent","bought","paid","cost","кофе","обед","ужин","завтрак","lunch","dinner","coffee","uber","такси","билет","проезд","бензин","gas","food","еда","продукты","покупка","delivery","доставка"}
 
 
 async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
-    if not _EXPENSE_PATTERN.search(text):
-        return None
-    nums = re.findall(r"[\d,.]+", text)
+    lowered = text.lower().strip()
+    nums = re.findall(r"\d[\d.,]*", text)
     amount = nums[0].replace(",", ".") if nums else ""
+
+    if not nums:
+        return None
+
     try:
-        await add_expense(user_id, text.strip(), amount, "expense" if amount else "note")
+        await add_expense(user_id, text.strip(), amount, "expense")
         return amount
-    except Exception:
+    except Exception as e:
+        logger.error("Fallback save expense failed for user %s: %s", user_id, e)
         return None
 
 
