@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sasha Dashboard</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); padding: 16px; }
+h1 { font-size: 20px; margin-bottom: 16px; color: var(--tg-theme-accent-text-color, #2481cc); }
+.tab { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab button { flex: 1; padding: 10px; border: 1px solid var(--tg-theme-hint-color, #ccc); background: var(--tg-theme-secondary-bg-color, #f5f5f5); border-radius: 8px; cursor: pointer; font-size: 14px; min-width: 60px; }
+.tab button.active { background: var(--tg-theme-accent-text-color, #2481cc); color: #fff; border-color: var(--tg-theme-accent-text-color, #2481cc); }
+.section { display: none; }
+.section.active { display: block; }
+.card { background: var(--tg-theme-secondary-bg-color, #f5f5f5); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.card p { font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+td { padding: 8px 4px; border-bottom: 1px solid var(--tg-theme-hint-color, #ddd); }
+.loading { text-align: center; padding: 40px; color: var(--tg-theme-hint-color, #888); }
+.error { color: red; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Sasha</h1>
+<div class="tab">
+  <button class="active" onclick="showTab('expenses')">Expenses</button>
+  <button onclick="showTab('movements')">Movements</button>
+  <button onclick="showTab('todos')">Todos</button>
+  <button onclick="showTab('digest')">Digest</button>
+  <button onclick="showTab('events')">Calendar</button>
+</div>
+<div id="expenses" class="section active"><div class="loading">Loading...</div></div>
+<div id="movements" class="section"><div class="loading">Loading...</div></div>
+<div id="todos" class="section"><div class="loading">Loading...</div></div>
+<div id="digest" class="section"><div class="loading">Loading...</div></div>
+<div id="events" class="section"><div class="loading">Loading...</div></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.expand();
+tg.ready();
+
+const userId = tg.initDataUnsafe?.user?.id;
+if (!userId) {
+  document.body.innerHTML = '<div class="error">Open from Telegram</div>';
+}
+
+const T = {
+  en: { expenses: "Expenses", movements: "Movements", todos: "Todos", digest: "Digest", events: "Calendar",
+    no_expenses: 'No expenses yet. Say "coffee $5" to Sasha!',
+    no_movements: 'No movements yet. Say "at work" to Sasha!',
+    no_todos: 'All done! Say "add task" to Sasha.',
+    no_events: 'No events. Say "meeting tomorrow at 2pm" to create one!',
+    digest_text: '📋 Say <b>"how did I spend this week?"</b> or <b>"digest now"</b> in chat.',
+    loading: "Loading..." },
+  ru: { expenses: "Расходы", movements: "Перемещения", todos: "Задачи", digest: "Дайджест", events: "Календарь",
+    no_expenses: 'Расходов нет. Скажи "кофе 300₽" Саше!',
+    no_movements: 'Перемещений нет. Скажи "я на работе" Саше!',
+    no_todos: 'Всё выполнено! Скажи "добавь задачу" Саше.',
+    no_events: 'Событий нет. Скажи "встреча завтра в 14:00" чтобы создать!',
+    digest_text: '📋 Скажи <b>"сколько потратил на неделе?"</b> или <b>"дайджест"</b> в чате.',
+    loading: "Загрузка..." },
+  es: { expenses: "Gastos", movements: "Ubicación", todos: "Tareas", digest: "Resumen", events: "Calendario",
+    no_expenses: 'Sin gastos. Di "café $5" a Sasha.',
+    no_movements: 'Sin movimientos. Di "en el trabajo" a Sasha.',
+    no_todos: 'Todo listo. Di "añadir tarea" a Sasha.',
+    no_events: 'Sin eventos. Di "reunión mañana a las 14:00" para crear uno.',
+    digest_text: '📋 Di <b>"¿cuánto gasté?"</b> o <b>"resumen"</b> en el chat.' },
+};
+
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab button').forEach(b => b.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.querySelector(`.tab button[onclick*="${name}"]`).classList.add('active');
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('/api/dashboard?user_id=' + userId);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+
+    const lang = json.lang === 'ru' ? T.ru : json.lang === 'es' ? T.es : T.en;
+    document.querySelectorAll('.tab button')[0].textContent = lang.expenses;
+    document.querySelectorAll('.tab button')[1].textContent = lang.movements;
+    document.querySelectorAll('.tab button')[2].textContent = lang.todos;
+    document.querySelectorAll('.tab button')[3].textContent = lang.digest;
+    document.querySelectorAll('.tab button')[4].textContent = lang.events;
+
+    document.getElementById('expenses').innerHTML = json.expenses?.length
+      ? '<table>' + json.expenses.map(e =>
+          `<tr><td>${e.description || e.category || ''}</td><td><strong>${e.amount || ''}</strong></td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${(e.created_at||'').slice(0,10)}</td></tr>`
+        ).join('') + '</table>'
+      : '<div class="card"><p>' + lang.no_expenses + '</p></div>';
+
+    document.getElementById('movements').innerHTML = json.movements?.length
+      ? '<table>' + json.movements.map(m =>
+          `<tr><td>📍 ${m.location}</td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${(m.created_at||'').replace('T',' ').slice(0,16)}</td></tr>`
+        ).join('') + '</table>'
+      : '<div class="card"><p>' + lang.no_movements + '</p></div>';
+
+    document.getElementById('todos').innerHTML = json.todos?.length
+      ? '<table>' + json.todos.filter(t => !t.done).map(t =>
+          `<tr><td>☐ ${t.title}</td></tr>`
+        ).join('') + '</table>'
+      : '<div class="card"><p>' + lang.no_todos + '</p></div>';
+
+    document.getElementById('events').innerHTML = json.events?.length
+      ? '<table>' + json.events.map(e => {
+          const d = e.event_data || {};
+          return `<tr><td>📅 ${d.summary || 'Event'}</td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${d.date || ''} ${d.time || ''}</td></tr>`;
+        }).join('') + '</table>'
+      : '<div class="card"><p>' + lang.no_events + '</p></div>';
+
+    document.getElementById('digest').innerHTML = '<div class="card"><p>' + lang.digest_text + '</p></div>';
+
+  } catch (e) {
+    const l = T.ru;
+    document.getElementById('expenses').innerHTML = '<div class="error">' + l.loading + '</div>';
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
