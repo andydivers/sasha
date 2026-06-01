@@ -1097,51 +1097,54 @@ async def handle_voice(message: types.Message, bot: Bot):
 
         _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
 
-        result, latency, messages = detect_intent(groq, text, lang=lang)
-
-        if isinstance(result, str):
-            response_text = result
-            if response_text.startswith("__REPORT__:"):
-                parts = response_text.split(":", 2)
-                fmt = parts[1]
-                path = parts[2]
-                fname = f"report.{fmt}"
-                with open(path, "rb") as f:
-                    await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
-                os.unlink(path)
-            else:
-                if _saved_amount is not None:
-                    response_text = f"💰 {text}"
-                await message.answer(response_text + t(lang, "voice_prompt"))
+        if _saved_amount is not None:
+            response_text = f"💰 {text}"
+            await message.answer(response_text + t(lang, "voice_prompt"))
+            latency = 0
         else:
-            sheet_url = _sheet_cache.get(message.from_user.id)
-            all_responses = []
-            turn_count = 0
-            current = result
-            while turn_count < 10:
-                turn_count += 1
-                for tool_call in current:
-                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
-                    if resp.startswith("__REPORT__:"):
-                        parts = resp.split(":", 2)
-                        fmt = parts[1]
-                        path = parts[2]
-                        fname = f"report.{fmt}"
-                        with open(path, "rb") as f:
-                            await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
-                        os.unlink(path)
-                    else:
-                        all_responses.append(resp)
-                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
-                next_result, messages = chat_turn(groq, messages)
-                if isinstance(next_result, str):
-                    if next_result not in all_responses:
-                        all_responses.append(next_result)
-                    break
-                current = next_result
-            response_text = "\n\n".join(all_responses) if all_responses else "Done."
-            if all_responses:
-                await message.answer(response_text + t(lang, "voice_prompt"))
+            result, latency, messages = detect_intent(groq, text, lang=lang)
+
+            if isinstance(result, str):
+                response_text = result
+                if response_text.startswith("__REPORT__:"):
+                    parts = response_text.split(":", 2)
+                    fmt = parts[1]
+                    path = parts[2]
+                    fname = f"report.{fmt}"
+                    with open(path, "rb") as f:
+                        await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                    os.unlink(path)
+                else:
+                    await message.answer(response_text + t(lang, "voice_prompt"))
+            else:
+                sheet_url = _sheet_cache.get(message.from_user.id)
+                all_responses = []
+                turn_count = 0
+                current = result
+                while turn_count < 10:
+                    turn_count += 1
+                    for tool_call in current:
+                        resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
+                        if resp.startswith("__REPORT__:"):
+                            parts = resp.split(":", 2)
+                            fmt = parts[1]
+                            path = parts[2]
+                            fname = f"report.{fmt}"
+                            with open(path, "rb") as f:
+                                await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                            os.unlink(path)
+                        else:
+                            all_responses.append(resp)
+                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
+                    next_result, messages = chat_turn(groq, messages)
+                    if isinstance(next_result, str):
+                        if next_result not in all_responses:
+                            all_responses.append(next_result)
+                        break
+                    current = next_result
+                response_text = "\n\n".join(all_responses) if all_responses else "Done."
+                if all_responses:
+                    await message.answer(response_text + t(lang, "voice_prompt"))
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled voice in %.2fs", latency)
@@ -1187,51 +1190,54 @@ async def handle_message(message: types.Message):
     try:
         _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
 
-        result, latency, messages = detect_intent(groq, text, lang=lang)
-
-        if isinstance(result, str):
-            response_text = result
-            if response_text.startswith("__REPORT__:"):
-                parts = response_text.split(":", 2)
-                fmt = parts[1]
-                path = parts[2]
-                fname = f"report.{fmt}"
-                with open(path, "rb") as f:
-                    await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
-                os.unlink(path)
-            else:
-                if _saved_amount is not None:
-                    response_text = f"💰 {text}"
-                await message.answer(response_text + t(lang, "voice_prompt"))
+        if _saved_amount is not None:
+            response_text = f"💰 {text}"
+            await message.answer(response_text + t(lang, "voice_prompt"))
+            latency = 0
         else:
-            sheet_url = _sheet_cache.get(message.from_user.id)
-            all_responses = []
-            turn_count = 0
-            current = result
-            while turn_count < 10:
-                turn_count += 1
-                for tool_call in current:
-                    resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
-                    if resp.startswith("__REPORT__:"):
-                        parts = resp.split(":", 2)
-                        fmt = parts[1]
-                        path = parts[2]
-                        fname = f"report.{fmt}"
-                        with open(path, "rb") as f:
-                            await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
-                        os.unlink(path)
-                    else:
-                        all_responses.append(resp)
-                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
-                next_result, messages = chat_turn(groq, messages)
-                if isinstance(next_result, str):
-                    if next_result not in all_responses:
-                        all_responses.append(next_result)
-                    break
-                current = next_result
-            response_text = "\n\n".join(all_responses) if all_responses else "Done."
-            if all_responses:
-                await message.answer(response_text + t(lang, "voice_prompt"))
+            result, latency, messages = detect_intent(groq, text, lang=lang)
+
+            if isinstance(result, str):
+                response_text = result
+                if response_text.startswith("__REPORT__:"):
+                    parts = response_text.split(":", 2)
+                    fmt = parts[1]
+                    path = parts[2]
+                    fname = f"report.{fmt}"
+                    with open(path, "rb") as f:
+                        await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                    os.unlink(path)
+                else:
+                    await message.answer(response_text + t(lang, "voice_prompt"))
+            else:
+                sheet_url = _sheet_cache.get(message.from_user.id)
+                all_responses = []
+                turn_count = 0
+                current = result
+                while turn_count < 10:
+                    turn_count += 1
+                    for tool_call in current:
+                        resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
+                        if resp.startswith("__REPORT__:"):
+                            parts = resp.split(":", 2)
+                            fmt = parts[1]
+                            path = parts[2]
+                            fname = f"report.{fmt}"
+                            with open(path, "rb") as f:
+                                await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
+                            os.unlink(path)
+                        else:
+                            all_responses.append(resp)
+                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
+                    next_result, messages = chat_turn(groq, messages)
+                    if isinstance(next_result, str):
+                        if next_result not in all_responses:
+                            all_responses.append(next_result)
+                        break
+                    current = next_result
+                response_text = "\n\n".join(all_responses) if all_responses else "Done."
+                if all_responses:
+                    await message.answer(response_text + t(lang, "voice_prompt"))
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)
