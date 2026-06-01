@@ -251,6 +251,19 @@ async def dashboard():
         return HTMLResponse(content=html.read_text(encoding="utf-8"))
     return {"error": "not found"}
 
+@app.get("/api/dashboard")
+async def api_dashboard(user_id: int):
+    from app.database import get_user_items, get_movements, get_todos
+    from fastapi.responses import JSONResponse
+    try:
+        expenses = await get_user_items(user_id) or []
+        movements = await get_movements(user_id) or []
+        todos = await get_todos(user_id) or []
+        return JSONResponse({"ok": True, "expenses": expenses, "movements": movements, "todos": todos})
+    except Exception as e:
+        logger.error("Dashboard API error: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)})
+
 
 @app.get("/health")
 @app.head("/health")
