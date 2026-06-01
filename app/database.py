@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 from datetime import datetime, timezone, timedelta
 from supabase import create_client, Client
 
@@ -244,7 +245,15 @@ async def get_calendar_events(user_id: int, limit: int = 20) -> list[dict]:
         return []
 
 
+_recent_saves: dict = {}
+
 async def add_expense(user_id: int, description: str, amount: str = "", category: str = ""):
+    key = (user_id, description.strip().lower(), str(amount).strip())
+    now = time.time()
+    if key in _recent_saves and now - _recent_saves[key] < 10:
+        logger.info("Skipped duplicate expense: %s", description)
+        return
+    _recent_saves[key] = now
     try:
         get_db().table("expenses").insert({
             "user_id": user_id,

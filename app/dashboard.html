@@ -225,7 +225,7 @@ function loadSection(name) {
       ? renderRows('expense', window._data.expenses, e => ({
           icon: '💰',
           title: e.description || e.category || '',
-          meta: (e.created_at || '').slice(0, 10),
+          meta: (e.created_at || '').replace('T', ' ').slice(0, 16),
           amount: e.amount || ''
         }))
       : renderEmpty('💰', l.no_expenses, l.no_expenses_sub);
