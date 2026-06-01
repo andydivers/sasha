@@ -7,7 +7,7 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_user_items, add_movement, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz
+from app.database import add_expense, get_user_items, add_movement, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event
 from app.timezone_utils import find_timezone, format_dual_time
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
         return await _handle_manage_sheets(args, lang, sheet_url, user_id=user_id)
 
     if name == "create_event":
-        return _handle_create_event(args, lang, tz)
+        return await _handle_create_event(args, lang, tz, user_id)
 
     if name == "generate_report":
         return _handle_generate_report(args, lang, sheet_url)
@@ -195,7 +195,7 @@ def _parse_time(raw: str) -> str:
         return "10:00"
 
 
-def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
+async def _handle_create_event(args: dict, lang: str, tz: str = "UTC", user_id: int = 0) -> str:
     summary = args.get("summary", "Event")
     date_raw = args.get("date", "")
     time_raw = args.get("time", "10:00")
@@ -204,6 +204,15 @@ def _handle_create_event(args: dict, lang: str, tz: str = "UTC") -> str:
     try:
         link = create_event(summary, date, time, tz=tz)
         cal_link = get_calendar_link()
+
+        await log_event(user_id, "calendar_event", {
+            "summary": summary,
+            "date": date,
+            "time": time,
+            "tz": tz,
+            "link": link,
+        })
+
         time_str = f"{time} {tz}"
         msk_time = ""
         if tz and tz != "UTC":

@@ -29,11 +29,13 @@ td { padding: 8px 4px; border-bottom: 1px solid var(--tg-theme-hint-color, #ddd)
   <button onclick="showTab('movements')">Movements</button>
   <button onclick="showTab('todos')">Todos</button>
   <button onclick="showTab('digest')">Digest</button>
+  <button onclick="showTab('events')">Calendar</button>
 </div>
 <div id="expenses" class="section active"><div class="loading">Loading...</div></div>
 <div id="movements" class="section"><div class="loading">Loading...</div></div>
 <div id="todos" class="section"><div class="loading">Loading...</div></div>
 <div id="digest" class="section"><div class="loading">Loading...</div></div>
+<div id="events" class="section"><div class="loading">Loading...</div></div>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -46,22 +48,25 @@ if (!userId) {
 }
 
 const T = {
-  en: { expenses: "Expenses", movements: "Movements", todos: "Todos", digest: "Digest",
+  en: { expenses: "Expenses", movements: "Movements", todos: "Todos", digest: "Digest", events: "Calendar",
     no_expenses: 'No expenses yet. Say "coffee $5" to Sasha!',
     no_movements: 'No movements yet. Say "at work" to Sasha!',
     no_todos: 'All done! Say "add task" to Sasha.',
+    no_events: 'No events. Say "meeting tomorrow at 2pm" to create one!',
     digest_text: '📋 Say <b>"how did I spend this week?"</b> or <b>"digest now"</b> in chat.',
     loading: "Loading..." },
-  ru: { expenses: "Расходы", movements: "Перемещения", todos: "Задачи", digest: "Дайджест",
+  ru: { expenses: "Расходы", movements: "Перемещения", todos: "Задачи", digest: "Дайджест", events: "Календарь",
     no_expenses: 'Расходов нет. Скажи "кофе 300₽" Саше!',
     no_movements: 'Перемещений нет. Скажи "я на работе" Саше!',
     no_todos: 'Всё выполнено! Скажи "добавь задачу" Саше.',
+    no_events: 'Событий нет. Скажи "встреча завтра в 14:00" чтобы создать!',
     digest_text: '📋 Скажи <b>"сколько потратил на неделе?"</b> или <b>"дайджест"</b> в чате.',
     loading: "Загрузка..." },
-  es: { expenses: "Gastos", movements: "Ubicación", todos: "Tareas", digest: "Resumen",
+  es: { expenses: "Gastos", movements: "Ubicación", todos: "Tareas", digest: "Resumen", events: "Calendario",
     no_expenses: 'Sin gastos. Di "café $5" a Sasha.',
     no_movements: 'Sin movimientos. Di "en el trabajo" a Sasha.',
     no_todos: 'Todo listo. Di "añadir tarea" a Sasha.',
+    no_events: 'Sin eventos. Di "reunión mañana a las 14:00" para crear uno.',
     digest_text: '📋 Di <b>"¿cuánto gasté?"</b> o <b>"resumen"</b> en el chat.' },
 };
 
@@ -83,6 +88,7 @@ async function loadData() {
     document.querySelectorAll('.tab button')[1].textContent = lang.movements;
     document.querySelectorAll('.tab button')[2].textContent = lang.todos;
     document.querySelectorAll('.tab button')[3].textContent = lang.digest;
+    document.querySelectorAll('.tab button')[4].textContent = lang.events;
 
     document.getElementById('expenses').innerHTML = json.expenses?.length
       ? '<table>' + json.expenses.map(e =>
@@ -101,6 +107,13 @@ async function loadData() {
           `<tr><td>☐ ${t.title}</td></tr>`
         ).join('') + '</table>'
       : '<div class="card"><p>' + lang.no_todos + '</p></div>';
+
+    document.getElementById('events').innerHTML = json.events?.length
+      ? '<table>' + json.events.map(e => {
+          const d = e.event_data || {};
+          return `<tr><td>📅 ${d.summary || 'Event'}</td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${d.date || ''} ${d.time || ''}</td></tr>`;
+        }).join('') + '</table>'
+      : '<div class="card"><p>' + lang.no_events + '</p></div>';
 
     document.getElementById('digest').innerHTML = '<div class="card"><p>' + lang.digest_text + '</p></div>';
 

@@ -235,6 +235,15 @@ async def get_movements(user_id: int, limit: int = 20) -> list[dict]:
         return []
 
 
+async def get_calendar_events(user_id: int, limit: int = 20) -> list[dict]:
+    try:
+        resp = get_db().table("events").select("*").eq("user_id", user_id).eq("event_type", "calendar_event").order("created_at", desc=True).limit(limit).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get calendar events: %s", e)
+        return []
+
+
 async def add_expense(user_id: int, description: str, amount: str = "", category: str = ""):
     try:
         get_db().table("expenses").insert({

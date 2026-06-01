@@ -55,6 +55,14 @@ async def lifespan(app: FastAPI):
             logger.info("Calendar initialized")
         except Exception as e:
             logger.warning("Calendar init failed: %s", e)
+    try:
+        dashboard_url = (config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard")
+        from aiogram.types import MenuButtonWebApp, WebAppInfo
+        await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="📊 Sasha", web_app=WebAppInfo(url=dashboard_url)))
+        logger.info("Menu button set globally")
+    except Exception as e:
+        logger.warning("Failed to set global menu button: %s", e)
+
     webhook_url = config.webhook_url
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
@@ -253,14 +261,15 @@ async def dashboard():
 
 @app.get("/api/dashboard")
 async def api_dashboard(user_id: int):
-    from app.database import get_user_items, get_movements, get_todos, get_user_lang
+    from app.database import get_user_items, get_movements, get_todos, get_user_lang, get_calendar_events
     from fastapi.responses import JSONResponse
     try:
         expenses = await get_user_items(user_id) or []
         movements = await get_movements(user_id) or []
         todos = await get_todos(user_id) or []
+        events = await get_calendar_events(user_id) or []
         lang = await get_user_lang(user_id) or "en"
-        return JSONResponse({"ok": True, "lang": lang, "expenses": expenses, "movements": movements, "todos": todos})
+        return JSONResponse({"ok": True, "lang": lang, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
     except Exception as e:
         logger.error("Dashboard API error: %s", e)
         return JSONResponse({"ok": False, "error": str(e)})
