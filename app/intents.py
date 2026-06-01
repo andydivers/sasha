@@ -7,7 +7,7 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_user_items, add_movement, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event
+from app.database import add_expense, get_user_items, add_movement, add_todo, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event
 from app.timezone_utils import find_timezone, format_dual_time
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,12 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
 
     if name == "track_movement":
         return await _handle_track_movement(args, lang, user_id, tz)
+
+    if name == "add_expense":
+        return await _handle_add_expense(args, lang, user_id)
+
+    if name == "add_todo":
+        return await _handle_add_todo(args, lang, user_id)
 
     if name == "set_timezone_by_location":
         return await _handle_set_timezone_by_location(args, lang, user_id)
@@ -244,13 +250,42 @@ async def _handle_create_event(args: dict, lang: str, tz: str = "UTC", user_id: 
         return "Failed to create event. Make sure the service account has calendar access."
 
 
+async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
+    description = args.get("description", "")
+    amount = args.get("amount", "")
+    category = "expense" if amount else "note"
+    try:
+        await add_expense(user_id, description, amount, category)
+    except Exception as e:
+        logger.error("Failed to add expense: %s", e)
+    emoji = "💰" if amount else "📝"
+    if lang == "ru":
+        return f"{emoji} {description}{' — ' + amount if amount else ''}"
+    return f"{emoji} {description}{' — ' + amount if amount else ''}"
+
+
+async def _handle_add_todo(args: dict, lang: str, user_id: int = 0) -> str:
+    title = args.get("title", "")
+    if not title:
+        if lang == "ru":
+            return "Что нужно сделать? Скажи, например: добавить задачу купить молоко"
+        return "What needs to be done? Say: add task buy milk"
+    try:
+        await add_todo(user_id, title)
+    except Exception as e:
+        logger.error("Failed to add todo: %s", e)
+    if lang == "ru":
+        return f"☐ {title}"
+    return f"☐ {title}"
+
+
 async def _handle_track_movement(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
     location = args.get("location", "somewhere")
     description = args.get("description", "")
     try:
         await add_movement(user_id, location, description)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("Failed to add movement: %s", e)
     time_str = format_dual_time(user_tz=tz)
     if lang == "ru":
         return f"📍 {location} ({time_str}){' — ' + description if description else ''}"

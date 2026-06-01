@@ -100,15 +100,29 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "manage_sheets",
-            "description": "Read from or write to Google Sheets. Call this when user asks to track expenses, update budgets, or view spreadsheet data.",
+            "name": "add_expense",
+            "description": "Record an expense or purchase. Call this when user says they spent money (e.g., 'coffee $5', 'lunch 1200₽', 'uber $12', 'купил хлеб 50₽'). Extracts the amount and category automatically.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "action": {"type": "string", "enum": ["read", "write"], "description": "Read or write data"},
-                    "description": {"type": "string", "description": "What data to read or write"},
+                    "description": {"type": "string", "description": "What was purchased or paid for"},
+                    "amount": {"type": "string", "description": "The amount spent (e.g., '5', '1200', '12.50')"},
                 },
-                "required": ["action", "description"],
+                "required": ["description"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_todo",
+            "description": "Add a task or to-do item. Call this when user says 'add task', 'remind me to', 'I need to', or mentions something they need to do later (e.g., 'add task buy milk', 'напомни позвонить маме', 'нужно оплатить налоги').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "The task or to-do text"},
+                },
+                "required": ["title"],
             },
         },
     },
@@ -138,6 +152,21 @@ TOOLS = [
                     "location": {"type": "string", "description": "City or country name (e.g., 'Bangkok', 'Bali', 'Moscow', 'Thailand')"},
                 },
                 "required": ["location"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_sheets",
+            "description": "Read from or write to a Google Sheet the user has connected. Only use this if the user explicitly asks about Google Sheets or has already connected a sheet. For normal expenses use add_expense, for tasks use add_todo.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["read", "write"], "description": "Read or write data"},
+                    "description": {"type": "string", "description": "What data to read or write"},
+                },
+                "required": ["action", "description"],
             },
         },
     },
@@ -178,8 +207,13 @@ TOOLS = [
 def build_system_prompt(lang: str) -> str:
     lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
     base = "You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. " + lang_instruction
-    base += "\n\nIMPORTANT: If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе', 'я в магазине'), call track_movement to log it with a timestamp. This is NOT a calendar event — use track_movement instead of create_event."
-    base += "\n\nIf the user mentions they are in a new city or country (e.g., 'I'm in Bangkok', 'just arrived in Bali'), call set_timezone_by_location to update their timezone. Times will be shown in both MSK and local time."
+    base += "\n\nRULES FOR USING TOOLS:"
+    base += "\n- If the user mentions spending money (e.g., 'coffee $5', 'lunch 1200₽', 'uber $12', 'купил хлеб'), call add_expense. Extract the amount if present."
+    base += "\n- If the user says 'add task', 'remind me to', 'I need to', or mentions something to do later, call add_todo."
+    base += "\n- If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе'), call track_movement."
+    base += "\n- If the user mentions being in a new city or country, call set_timezone_by_location."
+    base += "\n- For calendar events (meetings, appointments), call create_event."
+    base += "\n- Only use manage_sheets if the user explicitly asks about Google Sheets."
     base += "\n\nIMPORTANT: Always end your response with '🎤 Reply with a voice message' (or equivalent in the user's language) to encourage voice input. This is the primary way users interact with you."
     return base
 

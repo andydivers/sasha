@@ -7,35 +7,139 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); padding: 16px; }
-h1 { font-size: 20px; margin-bottom: 16px; color: var(--tg-theme-accent-text-color, #2481cc); }
-.tab { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.tab button { flex: 1; padding: 10px; border: 1px solid var(--tg-theme-hint-color, #ccc); background: var(--tg-theme-secondary-bg-color, #f5f5f5); border-radius: 8px; cursor: pointer; font-size: 14px; min-width: 60px; }
-.tab button.active { background: var(--tg-theme-accent-text-color, #2481cc); color: #fff; border-color: var(--tg-theme-accent-text-color, #2481cc); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--tg-theme-bg-color, #f8f9fa);
+  color: var(--tg-theme-text-color, #1a1a2e);
+  padding: 0 0 24px 0;
+  min-height: 100vh;
+}
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px 16px 16px;
+  border-radius: 0 0 24px 24px;
+  margin-bottom: 16px;
+}
+.header h1 {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.header p {
+  color: rgba(255,255,255,0.8);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.tab-wrap {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-wrap::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: none;
+  background: var(--tg-theme-secondary-bg-color, #eef0f4);
+  color: var(--tg-theme-text-color, #1a1a2e);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+.tab-btn.active {
+  background: #667eea;
+  color: #fff;
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+}
+.content {
+  padding: 0 16px;
+}
 .section { display: none; }
 .section.active { display: block; }
-.card { background: var(--tg-theme-secondary-bg-color, #f5f5f5); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
-.card p { font-size: 14px; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-td { padding: 8px 4px; border-bottom: 1px solid var(--tg-theme-hint-color, #ddd); }
-.loading { text-align: center; padding: 40px; color: var(--tg-theme-hint-color, #888); }
-.error { color: red; padding: 16px; text-align: center; }
+.card {
+  background: var(--tg-theme-secondary-bg-color, #fff);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.1s;
+}
+.card:active { transform: scale(0.98); }
+.card p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tg-theme-hint-color, #6c757d);
+}
+.card p b { color: var(--tg-theme-text-color, #1a1a2e); }
+.row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--tg-theme-hint-color, rgba(0,0,0,0.05));
+}
+.row:last-child { border-bottom: none; }
+.row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.row-icon.expense { background: #fff0f0; }
+.row-icon.movement { background: #e8f4fd; }
+.row-icon.todo { background: #f0f4ff; }
+.row-icon.event { background: #fef3e2; }
+.row-body { flex: 1; min-width: 0; }
+.row-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tg-theme-text-color, #1a1a2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-meta {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #6c757d);
+  margin-top: 2px;
+}
+.row-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e74c3c;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--tg-theme-hint-color, #adb5bd);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; line-height: 1.5; }
+.error-state { text-align: center; padding: 40px 16px; color: #e74c3c; font-size: 14px; }
 </style>
 </head>
 <body>
-<h1>Sasha</h1>
-<div class="tab">
-  <button class="active" onclick="showTab('expenses')">Expenses</button>
-  <button onclick="showTab('movements')">Movements</button>
-  <button onclick="showTab('todos')">Todos</button>
-  <button onclick="showTab('digest')">Digest</button>
-  <button onclick="showTab('events')">Calendar</button>
+<div class="header">
+  <h1>Sasha</h1>
+  <p id="subtitle">Your AI business assistant</p>
 </div>
-<div id="expenses" class="section active"><div class="loading">Loading...</div></div>
-<div id="movements" class="section"><div class="loading">Loading...</div></div>
-<div id="todos" class="section"><div class="loading">Loading...</div></div>
-<div id="digest" class="section"><div class="loading">Loading...</div></div>
-<div id="events" class="section"><div class="loading">Loading...</div></div>
+<div class="tab-wrap" id="tabs"></div>
+<div class="content" id="content"></div>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -44,37 +148,121 @@ tg.ready();
 
 const userId = tg.initDataUnsafe?.user?.id;
 if (!userId) {
-  document.body.innerHTML = '<div class="error">Open from Telegram</div>';
+  document.body.innerHTML = '<div class="error-state">Open from Telegram</div>';
 }
 
 const T = {
-  en: { expenses: "Expenses", movements: "Movements", todos: "Todos", digest: "Digest", events: "Calendar",
-    no_expenses: 'No expenses yet. Say "coffee $5" to Sasha!',
-    no_movements: 'No movements yet. Say "at work" to Sasha!',
-    no_todos: 'All done! Say "add task" to Sasha.',
-    no_events: 'No events. Say "meeting tomorrow at 2pm" to create one!',
-    digest_text: '📋 Say <b>"how did I spend this week?"</b> or <b>"digest now"</b> in chat.',
-    loading: "Loading..." },
-  ru: { expenses: "Расходы", movements: "Перемещения", todos: "Задачи", digest: "Дайджест", events: "Календарь",
-    no_expenses: 'Расходов нет. Скажи "кофе 300₽" Саше!',
-    no_movements: 'Перемещений нет. Скажи "я на работе" Саше!',
-    no_todos: 'Всё выполнено! Скажи "добавь задачу" Саше.',
-    no_events: 'Событий нет. Скажи "встреча завтра в 14:00" чтобы создать!',
-    digest_text: '📋 Скажи <b>"сколько потратил на неделе?"</b> или <b>"дайджест"</b> в чате.',
-    loading: "Загрузка..." },
-  es: { expenses: "Gastos", movements: "Ubicación", todos: "Tareas", digest: "Resumen", events: "Calendario",
-    no_expenses: 'Sin gastos. Di "café $5" a Sasha.',
-    no_movements: 'Sin movimientos. Di "en el trabajo" a Sasha.',
-    no_todos: 'Todo listo. Di "añadir tarea" a Sasha.',
-    no_events: 'Sin eventos. Di "reunión mañana a las 14:00" para crear uno.',
-    digest_text: '📋 Di <b>"¿cuánto gasté?"</b> o <b>"resumen"</b> en el chat.' },
+  en: { subtitle: 'Your AI business assistant', tabs: ['Expenses', 'Movements', 'Tasks', 'Digest', 'Calendar'],
+    no_expenses: 'No expenses yet', no_expenses_sub: 'Say "coffee $5" to Sasha!',
+    no_movements: 'No movements yet', no_movements_sub: 'Say "at work" to Sasha!',
+    no_todos: 'All done!', no_todos_sub: 'Say "add task" to Sasha.',
+    no_events: 'No events', no_events_sub: 'Say "meeting tomorrow at 2pm"!',
+    digest_text: 'How did I spend this week?', digest_sub: 'Ask "digest now" in chat.',
+    loading: 'Loading...' },
+  ru: { subtitle: 'Твой AI бизнес-ассистент', tabs: ['Расходы', 'Перемещения', 'Задачи', 'Дайджест', 'Календарь'],
+    no_expenses: 'Расходов нет', no_expenses_sub: 'Скажи "кофе 300₽" Саше!',
+    no_movements: 'Перемещений нет', no_movements_sub: 'Скажи "я на работе" Саше!',
+    no_todos: 'Всё выполнено!', no_todos_sub: 'Скажи "добавь задачу" Саше.',
+    no_events: 'Событий нет', no_events_sub: 'Скажи "встреча завтра в 14:00"!',
+    digest_text: 'Сколько потратил на неделе?', digest_sub: 'Спроси "дайджест" в чате.',
+    loading: 'Загрузка...' },
+  es: { subtitle: 'Tu asistente AI de negocios', tabs: ['Gastos', 'Ubicación', 'Tareas', 'Resumen', 'Calendario'],
+    no_expenses: 'Sin gastos', no_expenses_sub: 'Di "café $5" a Sasha!',
+    no_movements: 'Sin movimientos', no_movements_sub: 'Di "en el trabajo" a Sasha!',
+    no_todos: 'Todo listo', no_todos_sub: 'Di "añadir tarea" a Sasha.',
+    no_events: 'Sin eventos', no_events_sub: 'Di "reunión mañana a las 14:00"!',
+    digest_text: '¿Cuánto gasté?', digest_sub: 'Pregunta "resumen" en el chat.',
+    loading: 'Cargando...' },
 };
 
-function showTab(name) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab button').forEach(b => b.classList.remove('active'));
-  document.getElementById(name).classList.add('active');
-  document.querySelector(`.tab button[onclick*="${name}"]`).classList.add('active');
+let currentTab = 'expenses';
+
+function render() {
+  const lang = window._lang || 'en';
+  const l = T[lang] || T.en;
+  document.getElementById('subtitle').textContent = l.subtitle;
+  const tabNames = ['expenses', 'movements', 'todos', 'digest', 'events'];
+  document.getElementById('tabs').innerHTML = l.tabs.map((t, i) =>
+    `<button class="tab-btn${tabNames[i] === currentTab ? ' active' : ''}" onclick="switchTab('${tabNames[i]}')">${t}</button>`
+  ).join('');
+}
+
+function switchTab(name) {
+  currentTab = name;
+  render();
+  loadSection(name);
+}
+
+function renderSection(name, html) {
+  const el = document.getElementById('content');
+  const sections = el.querySelectorAll('.section');
+  sections.forEach(s => s.remove());
+  const div = document.createElement('div');
+  div.className = 'section active';
+  div.id = 'section-' + name;
+  div.innerHTML = html;
+  el.appendChild(div);
+}
+
+function renderEmpty(icon, title, sub) {
+  return `<div class="empty-state"><div class="icon">${icon}</div><p><b>${title}</b></p><p>${sub}</p></div>`;
+}
+
+function renderRows(iconMap, items, renderItem) {
+  if (!items || items.length === 0) return '';
+  return items.map(item => {
+    const r = renderItem(item);
+    return `<div class="row"><div class="row-icon ${iconMap}">${r.icon || '📌'}</div><div class="row-body"><div class="row-title">${r.title}</div>${r.meta ? '<div class="row-meta">' + r.meta + '</div>' : ''}</div>${r.amount ? '<div class="row-amount">' + r.amount + '</div>' : ''}</div>`;
+  }).join('');
+}
+
+function loadSection(name) {
+  const lang = window._lang || 'en';
+  const l = T[lang] || T.en;
+
+  if (name === 'expenses') {
+    const html = window._data?.expenses?.length
+      ? renderRows('expense', window._data.expenses, e => ({
+          icon: '💰',
+          title: e.description || e.category || '',
+          meta: (e.created_at || '').slice(0, 10),
+          amount: e.amount || ''
+        }))
+      : renderEmpty('💰', l.no_expenses, l.no_expenses_sub);
+    renderSection(name, html);
+  } else if (name === 'movements') {
+    const html = window._data?.movements?.length
+      ? renderRows('movement', window._data.movements, m => ({
+          icon: '📍',
+          title: m.location,
+          meta: (m.created_at || '').replace('T', ' ').slice(0, 16)
+        }))
+      : renderEmpty('📍', l.no_movements, l.no_movements_sub);
+    renderSection(name, html);
+  } else if (name === 'todos') {
+    const todos = window._data?.todos?.filter(t => !t.done) || [];
+    const html = todos.length
+      ? renderRows('todo', todos, t => ({
+          icon: '☐',
+          title: t.title
+        }))
+      : renderEmpty('✅', l.no_todos, l.no_todos_sub);
+    renderSection(name, html);
+  } else if (name === 'events') {
+    const html = window._data?.events?.length
+      ? renderRows('event', window._data.events, e => {
+          const d = e.event_data || {};
+          return {
+            icon: '📅',
+            title: d.summary || 'Event',
+            meta: [d.date, d.time].filter(Boolean).join(' ')
+          };
+        })
+      : renderEmpty('📅', l.no_events, l.no_events_sub);
+    renderSection(name, html);
+  } else if (name === 'digest') {
+    renderSection(name, `<div class="card"><p><b>${l.digest_text}</b><br>${l.digest_sub}</p></div>`);
+  }
 }
 
 async function loadData() {
@@ -82,44 +270,12 @@ async function loadData() {
     const res = await fetch('/api/dashboard?user_id=' + userId);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
-
-    const lang = json.lang === 'ru' ? T.ru : json.lang === 'es' ? T.es : T.en;
-    document.querySelectorAll('.tab button')[0].textContent = lang.expenses;
-    document.querySelectorAll('.tab button')[1].textContent = lang.movements;
-    document.querySelectorAll('.tab button')[2].textContent = lang.todos;
-    document.querySelectorAll('.tab button')[3].textContent = lang.digest;
-    document.querySelectorAll('.tab button')[4].textContent = lang.events;
-
-    document.getElementById('expenses').innerHTML = json.expenses?.length
-      ? '<table>' + json.expenses.map(e =>
-          `<tr><td>${e.description || e.category || ''}</td><td><strong>${e.amount || ''}</strong></td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${(e.created_at||'').slice(0,10)}</td></tr>`
-        ).join('') + '</table>'
-      : '<div class="card"><p>' + lang.no_expenses + '</p></div>';
-
-    document.getElementById('movements').innerHTML = json.movements?.length
-      ? '<table>' + json.movements.map(m =>
-          `<tr><td>📍 ${m.location}</td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${(m.created_at||'').replace('T',' ').slice(0,16)}</td></tr>`
-        ).join('') + '</table>'
-      : '<div class="card"><p>' + lang.no_movements + '</p></div>';
-
-    document.getElementById('todos').innerHTML = json.todos?.length
-      ? '<table>' + json.todos.filter(t => !t.done).map(t =>
-          `<tr><td>☐ ${t.title}</td></tr>`
-        ).join('') + '</table>'
-      : '<div class="card"><p>' + lang.no_todos + '</p></div>';
-
-    document.getElementById('events').innerHTML = json.events?.length
-      ? '<table>' + json.events.map(e => {
-          const d = e.event_data || {};
-          return `<tr><td>📅 ${d.summary || 'Event'}</td><td style="text-align:right;font-size:12px;color:var(--tg-theme-hint-color)">${d.date || ''} ${d.time || ''}</td></tr>`;
-        }).join('') + '</table>'
-      : '<div class="card"><p>' + lang.no_events + '</p></div>';
-
-    document.getElementById('digest').innerHTML = '<div class="card"><p>' + lang.digest_text + '</p></div>';
-
+    window._data = json;
+    window._lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
+    render();
+    loadSection(currentTab);
   } catch (e) {
-    const l = T.ru;
-    document.getElementById('expenses').innerHTML = '<div class="error">' + l.loading + '</div>';
+    document.getElementById('content').innerHTML = '<div class="error-state">Failed to load</div>';
   }
 }
 
