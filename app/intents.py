@@ -119,11 +119,14 @@ async def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = N
 
     try:
         if action == "write":
-            row = [description]
-            if "amount" in args or "sum" in description.lower():
-                nums = re.findall(r"[\d,.]+", description)
-                if nums:
-                    row = [description, nums[0]]
+            nums = re.findall(r"[\d,.]+", description)
+            amount = nums[0] if nums else ""
+            category = "expense" if amount else "note"
+            try:
+                await add_expense(user_id, description, amount, category)
+            except Exception as e:
+                logger.warning("Failed to save expense locally: %s", e)
+            row = [description, amount] if amount else [description]
             append_row(sheet_url, row)
             return f"Written to sheet: {description}" if lang != "ru" else f"Записано в таблицу: {description}"
 

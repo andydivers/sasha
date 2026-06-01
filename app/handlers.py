@@ -168,6 +168,16 @@ async def on_lang_choice(callback: CallbackQuery):
     menu = START_MENU_RU if lang == "ru" else START_MENU_EN
     await callback.message.answer(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
     await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
+    try:
+        await callback.bot.set_chat_menu_button(
+            chat_id=callback.message.chat.id,
+            menu_button=types.MenuButtonWebApp(
+                text="📊 Sasha" if lang != "ru" else "📊 Саша",
+                web_app=types.WebAppInfo(url=dashboard_url)
+            )
+        )
+    except Exception as e:
+        logger.warning("Failed to update menu button: %s", e)
 
 
 @router.message(Command("help"))
