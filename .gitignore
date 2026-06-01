@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+out.txt
+viktor-bot/
+Day1_Guide.md
+DECK.html
+LINKEDIN_POST.md
+PITCH.md
+YC_APPLICATION.md
+generate_pdf.py
