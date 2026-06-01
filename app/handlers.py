@@ -89,6 +89,16 @@ async def cmd_start(message: types.Message):
     msg = t(lang, "welcome")
     await message.answer(msg, parse_mode="HTML", reply_markup=menu)
     await message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
+    try:
+        await message.bot.set_chat_menu_button(
+            chat_id=message.chat.id,
+            menu_button=types.MenuButtonWebApp(
+                text="📊 Sasha" if lang != "ru" else "📊 Саша",
+                web_app=types.WebAppInfo(url=dashboard_url)
+            )
+        )
+    except Exception as e:
+        logger.warning("Failed to set menu button: %s", e)
 
 
 @router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang", "menu_back", "buy_show"}))

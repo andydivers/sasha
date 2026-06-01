@@ -55,6 +55,14 @@ async def lifespan(app: FastAPI):
             logger.info("Calendar initialized")
         except Exception as e:
             logger.warning("Calendar init failed: %s", e)
+    try:
+        dashboard_url = (config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard")
+        from aiogram.types import MenuButtonWebApp, WebAppInfo
+        await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="📊 Sasha", web_app=WebAppInfo(url=dashboard_url)))
+        logger.info("Menu button set globally")
+    except Exception as e:
+        logger.warning("Failed to set global menu button: %s", e)
+
     webhook_url = config.webhook_url
     if webhook_url:
         await bot.set_webhook(url=webhook_url)
