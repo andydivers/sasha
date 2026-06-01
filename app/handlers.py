@@ -86,26 +86,49 @@ async def get_tz(user_id: int) -> str:
 
 dashboard_url = config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard"
 
+MENU_LABELS = {
+    "en": {"howto": "🎤 How it works", "help": "📋 Commands", "dash": "📊 Dashboard", "buy": "💳 Buy subscription", "lang": "🌐 Language"},
+    "ru": {"howto": "🎤 Как работать", "help": "📋 Команды", "dash": "📊 Дашборд", "buy": "💳 Купить подписку", "lang": "🌐 Язык"},
+    "es": {"howto": "🎤 Cómo funciona", "help": "📋 Comandos", "dash": "📊 Panel", "buy": "💳 Comprar", "lang": "🌐 Idioma"},
+    "fr": {"howto": "🎤 Comment ça marche", "help": "📋 Commandes", "dash": "📊 Tableau", "buy": "💳 Acheter", "lang": "🌐 Langue"},
+    "zh": {"howto": "🎤 使用方法", "help": "📋 命令", "dash": "📊 仪表盘", "buy": "💳 订阅", "lang": "🌐 语言"},
+    "ar": {"howto": "🎤 كيف يعمل", "help": "📋 الأوامر", "dash": "📊 لوحة", "buy": "💳 اشتراك", "lang": "🌐 اللغة"},
+    "pt": {"howto": "🎤 Como funciona", "help": "📋 Comandos", "dash": "📊 Painel", "buy": "💳 Comprar", "lang": "🌐 Idioma"},
+    "de": {"howto": "🎤 So funktioniert's", "help": "📋 Befehle", "dash": "📊 Dashboard", "buy": "💳 Abo", "lang": "🌐 Sprache"},
+    "hi": {"howto": "🎤 यह कैसे काम करता है", "help": "📋 कमांड", "dash": "📊 डैशबोर्ड", "buy": "💳 सब्सक्रिप्शन", "lang": "🌐 भाषा"},
+    "ja": {"howto": "🎤 使い方", "help": "📋 コマンド", "dash": "📊 ダッシュボード", "buy": "💳 購読", "lang": "🌐 言語"},
+}
+
 START_MENU_EN = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="🎤 How it works", callback_data="menu_howto")],
-    [InlineKeyboardButton(text="📋 Commands", callback_data="menu_help")],
-    [InlineKeyboardButton(text="📊 Dashboard", web_app=types.WebAppInfo(url=dashboard_url))],
-    [InlineKeyboardButton(text="💳 Buy subscription", callback_data="buy_show")],
-    [InlineKeyboardButton(text="🌐 Language", callback_data="menu_lang")],
+    [InlineKeyboardButton(text=MENU_LABELS["en"]["howto"], callback_data="menu_howto")],
+    [InlineKeyboardButton(text=MENU_LABELS["en"]["help"], callback_data="menu_help")],
+    [InlineKeyboardButton(text=MENU_LABELS["en"]["dash"], web_app=types.WebAppInfo(url=dashboard_url))],
+    [InlineKeyboardButton(text=MENU_LABELS["en"]["buy"], callback_data="buy_show")],
+    [InlineKeyboardButton(text=MENU_LABELS["en"]["lang"], callback_data="menu_lang")],
 ])
 START_MENU_RU = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="🎤 Как работать", callback_data="menu_howto")],
-    [InlineKeyboardButton(text="📋 Команды", callback_data="menu_help")],
-    [InlineKeyboardButton(text="📊 Дашборд", web_app=types.WebAppInfo(url=dashboard_url))],
-    [InlineKeyboardButton(text="💳 Купить подписку", callback_data="buy_show")],
-    [InlineKeyboardButton(text="🌐 Язык", callback_data="menu_lang")],
+    [InlineKeyboardButton(text=MENU_LABELS["ru"]["howto"], callback_data="menu_howto")],
+    [InlineKeyboardButton(text=MENU_LABELS["ru"]["help"], callback_data="menu_help")],
+    [InlineKeyboardButton(text=MENU_LABELS["ru"]["dash"], web_app=types.WebAppInfo(url=dashboard_url))],
+    [InlineKeyboardButton(text=MENU_LABELS["ru"]["buy"], callback_data="buy_show")],
+    [InlineKeyboardButton(text=MENU_LABELS["ru"]["lang"], callback_data="menu_lang")],
 ])
+
+def _build_menu(lang: str) -> InlineKeyboardMarkup:
+    labels = MENU_LABELS.get(lang, MENU_LABELS["en"])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=labels["howto"], callback_data="menu_howto")],
+        [InlineKeyboardButton(text=labels["help"], callback_data="menu_help")],
+        [InlineKeyboardButton(text=labels["dash"], web_app=types.WebAppInfo(url=dashboard_url))],
+        [InlineKeyboardButton(text=labels["buy"], callback_data="buy_show")],
+        [InlineKeyboardButton(text=labels["lang"], callback_data="menu_lang")],
+    ])
 
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     lang = await get_lang(message.from_user.id)
-    menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    menu = _build_menu(lang)
     msg = t(lang, "welcome")
     await message.answer(msg, parse_mode="HTML", reply_markup=menu)
     await message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
@@ -125,7 +148,7 @@ async def cmd_start(message: types.Message):
 async def on_menu_callback(callback: CallbackQuery):
     lang = await get_lang(callback.from_user.id)
     data = callback.data
-    menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    menu = _build_menu(lang)
     if data == "menu_howto":
         back = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")]
@@ -165,7 +188,7 @@ async def on_lang_choice(callback: CallbackQuery):
     _lang_cache[callback.from_user.id] = lang
     await set_user_lang(callback.from_user.id, lang)
     await callback.message.edit_text(t(lang, "lang_changed"))
-    menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    menu = _build_menu(lang)
     await callback.message.answer(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
     await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
     try:
@@ -1072,6 +1095,9 @@ async def handle_voice(message: types.Message, bot: Bot):
             return
 
         tz = await get_tz(message.from_user.id)
+
+        _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
+
         result, latency, messages = detect_intent(groq, text, lang=lang)
 
         if isinstance(result, str):
@@ -1085,15 +1111,14 @@ async def handle_voice(message: types.Message, bot: Bot):
                     await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                 os.unlink(path)
             else:
-                saved = await _try_save_expense_fallback(text, message.from_user.id)
-                if saved is not None:
-                    response_text = f"💰 {text}" if lang != "ru" else f"💰 {text}"
+                if _saved_amount is not None:
+                    response_text = f"💰 {text}"
                 await message.answer(response_text + t(lang, "voice_prompt"))
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
             all_responses = []
             turn_count = 0
-            current = result  # list of tool_calls
+            current = result
             while turn_count < 10:
                 turn_count += 1
                 for tool_call in current:
@@ -1161,6 +1186,8 @@ async def handle_message(message: types.Message):
     await message.answer(t(lang, "thinking"))
 
     try:
+        _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
+
         result, latency, messages = detect_intent(groq, text, lang=lang)
 
         if isinstance(result, str):
@@ -1174,9 +1201,8 @@ async def handle_message(message: types.Message):
                     await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                 os.unlink(path)
             else:
-                saved = await _try_save_expense_fallback(text, message.from_user.id)
-                if saved is not None:
-                    response_text = f"💰 {text}" if lang != "ru" else f"💰 {text}"
+                if _saved_amount is not None:
+                    response_text = f"💰 {text}"
                 await message.answer(response_text + t(lang, "voice_prompt"))
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
