@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sasha — AI Business Assistant for Telegram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Inter, sans-serif; background: #0a0a0a; color: #fff; }
+  .slide { width: 100vw; height: 100vh; padding: 60px 80px; display: flex; flex-direction: column; justify-content: center; page-break-after: always; position: relative; overflow: hidden; }
+  .slide::before { content: ''; position: absolute; top: -50%; right: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(0,200,255,.08) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+  h1 { font-size: 64px; font-weight: 900; line-height: 1.1; margin-bottom: 20px; letter-spacing: -2px; }
+  h1 span { background: linear-gradient(135deg, #00c8ff, #7b2ffc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 42px; font-weight: 800; margin-bottom: 24px; letter-spacing: -1px; }
+  h2 span { background: linear-gradient(135deg, #00c8ff, #7b2ffc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  h3 { font-size: 22px; font-weight: 600; margin-bottom: 12px; color: #00c8ff; }
+  p { font-size: 18px; line-height: 1.6; color: #aaa; max-width: 700px; margin-bottom: 16px; }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 24px; }
+  .card p { font-size: 15px; margin-bottom: 0; }
+  .card .big { font-size: 32px; font-weight: 800; color: #00c8ff; margin-bottom: 4px; }
+  .tag { display: inline-block; background: rgba(0,200,255,.15); color: #00c8ff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 100px; margin-bottom: 8px; letter-spacing: .5px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+  th { color: #00c8ff; font-weight: 600; }
+  td { color: #ccc; }
+  .subtitle { font-size: 20px; color: #666; margin-bottom: 40px; font-weight: 400; }
+  .badge { display: inline-block; background: rgba(123,47,252,.2); color: #b388ff; font-size: 13px; padding: 6px 14px; border-radius: 100px; margin-right: 8px; margin-bottom: 8px; }
+  .big-number { font-size: 72px; font-weight: 900; background: linear-gradient(135deg, #00c8ff, #7b2ffc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; }
+  .footer { position: absolute; bottom: 30px; left: 80px; right: 80px; display: flex; justify-content: space-between; color: #444; font-size: 13px; }
+  .footer span { color: #666; }
+  .highlight { color: #00c8ff; }
+  .center { text-align: center; align-items: center; }
+  .center p { margin: 0 auto 16px; }
+  .logos { margin-top: 30px; font-size: 14px; color: #555; }
+  .logos span { display: inline-block; margin: 0 16px; background: rgba(255,255,255,.04); padding: 6px 16px; border-radius: 100px; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .slide { padding: 40px 60px; } }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: Title -->
+<div class="slide center">
+  <div class="tag">AI Agent · Telegram · B2B Productivity</div>
+  <h1>Sasha</h1>
+  <p style="font-size:28px;font-weight:600;color:#fff;margin-bottom:8px">An AI Employee for Your Business<br>Inside Telegram</p>
+  <p style="font-size:18px;max-width:500px">Voice-first · Multi-turn agent · 10 languages · Zero config · USDC & Stars</p>
+  <div style="margin-top:40px">
+    <span class="badge">@HeySasha_bot</span>
+    <span class="badge">github.com/andydivers/sasha</span>
+  </div>
+  <p style="margin-top:40px;font-size:14px;color:#555">Andrei · Bangkok, Thailand · Solo Founder</p>
+  <div class="footer"><span>sasha</span><span>Confidential</span></div>
+</div>
+
+<!-- SLIDE 2: Problem -->
+<div class="slide">
+  <h2>The Problem</h2>
+  <p style="font-size:20px;margin-bottom:40px">Small business owners and freelancers waste <strong style="color:#fff">3–5 hours per week</strong> on operations.</p>
+  <div class="grid grid-2">
+    <div class="card"><p>📊 <strong style="color:#fff">Expenses</strong><br>Open app → find category → enter amount → save → repeat</p></div>
+    <div class="card"><p>📅 <strong style="color:#fff">Scheduling</strong><br>Check calendar → note time → set reminder → forget</p></div>
+    <div class="card"><p>📑 <strong style="color:#fff">Reports</strong><br>Open 3 apps → copy → paste → format → send manually</p></div>
+    <div class="card"><p>🧠 <strong style="color:#fff">Memory</strong><br>Todos here, reminders there, deadlines in your head</p></div>
+  </div>
+  <p style="margin-top:30px">No single "brain" connects everything. Users juggle <strong style="color:#fff">5+ separate tools</strong>.</p>
+  <div class="footer"><span>sasha</span><span>2</span></div>
+</div>
+
+<!-- SLIDE 3: Solution -->
+<div class="slide">
+  <h2>The Solution</h2>
+  <p style="font-size:20px;margin-bottom:40px"><span style="color:#fff;font-weight:700">Sasha</span> — one chat for everything. Just talk.</p>
+  <div class="grid grid-3">
+    <div class="card"><p>🗣️ <strong style="color:#fff">Voice-first</strong><br>/start shows 4 buttons. Say anything: "coffee $5", "at work"</p></div>
+    <div class="card"><p>💾 <strong style="color:#fff">Zero-config storage</strong><br>Expenses saved locally. No Google Sheet needed. Ever.</p></div>
+    <div class="card"><p>📍 <strong style="color:#fff">Movement tracking</strong><br>"At work" → logged with time. "In Bangkok" → auto timezone.</p></div>
+    <div class="card"><p>📊 <strong style="color:#fff">Daily Digest</strong><br>Yesterday's expenses + today's events + anomalies + reminders</p></div>
+    <div class="card"><p>🔁 <strong style="color:#fff">Recurring Payments</strong><br>"Pay rent $500 monthly" → tracked and reminded automatically</p></div>
+    <div class="card"><p>🚨 <strong style="color:#fff">Anomaly Detection</strong><br>Spending spikes >50%, large txns, new categories — flagged</p></div>
+    <div class="card"><p>🎤 <strong style="color:#fff">Voice Messages</strong><br>Groq Whisper. Any of 10 languages. Just record.</p></div>
+    <div class="card"><p>👁️ <strong style="color:#fff">Screenshot Analysis</strong><br>Gemini 2.0 Flash. Describe what you see.</p></div>
+    <div class="card"><p>🔗 <strong style="color:#fff">Google Sync</strong><br>Connect Sheets later. /sync pushes everything. Optional.</p></div>
+  </div>
+  <div class="footer"><span>sasha</span><span>3</span></div>
+</div>
+
+<!-- SLIDE 4: How It Works -->
+<div class="slide">
+  <h2>How It Works</h2>
+  <div style="display:flex;gap:40px;align-items:center;flex:1">
+    <div style="flex:1">
+      <div class="card" style="margin-bottom:16px">
+        <p style="color:#00c8ff;font-weight:600">User says:</p>
+        <p style="font-size:20px;color:#fff">"coffee $5, meeting Friday 10am, remind me in 1 hour, at the office"</p>
+      </div>
+      <div style="display:flex;gap:12px;margin:20px 0">
+        <div style="flex:1;text-align:center;background:rgba(0,200,255,.06);border-radius:12px;padding:16px">
+          <div style="font-size:24px;font-weight:800;color:#00c8ff">1</div>
+          <p style="font-size:13px;margin:0">Groq LLM classifies intent</p>
+        </div>
+        <div style="flex:1;text-align:center;background:rgba(123,47,252,.06);border-radius:12px;padding:16px">
+          <div style="font-size:24px;font-weight:800;color:#b388ff">2</div>
+          <p style="font-size:13px;margin:0">Multi-turn loop executes tasks sequentially</p>
+        </div>
+        <div style="flex:1;text-align:center;background:rgba(0,200,255,.06);border-radius:12px;padding:16px">
+          <div style="font-size:24px;font-weight:800;color:#00c8ff">3</div>
+          <p style="font-size:13px;margin:0">Tool results fed back → final response</p>
+        </div>
+      </div>
+      <div class="card">
+        <p style="color:#00c8ff;font-weight:600">Bot responds:</p>
+        <p style="color:#aaa">✓ Coffee $5 saved (local)<br>✓ Event created: Meeting, Fri 10:00 MSK / 14:00 ICT<br>✓ Reminder set for 1 hour<br>✓ Location: Office — tracked</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>sasha</span><span>4</span></div>
+</div>
+
+<!-- SLIDE 5: Market -->
+<div class="slide">
+  <h2>Market Opportunity</h2>
+  <p style="font-size:20px;margin-bottom:24px">Telegram: <span style="color:#fff;font-weight:700">1.05 billion MAU</span> — the world's emerging SuperApp.</p>
+  <div class="grid grid-4" style="margin-bottom:30px">
+    <div class="card center" style="text-align:center"><div class="big-number">180M</div><p style="font-size:14px;color:#888">India</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">85M</div><p style="font-size:14px;color:#888">Russia</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">72M</div><p style="font-size:14px;color:#888">Indonesia</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">65M</div><p style="font-size:14px;color:#888">Brazil</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">55M</div><p style="font-size:14px;color:#888">USA</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">38M</div><p style="font-size:14px;color:#888">Turkey</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">32M</div><p style="font-size:14px;color:#888">Germany</p></div>
+    <div class="card center" style="text-align:center"><div class="big-number">28M</div><p style="font-size:14px;color:#888">Nigeria</p></div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card"><p>🚀 <strong style="color:#fff">Bot API 9.6 just launched</strong> — no-code bots creating massive awareness for all Telegram bots</p></div>
+    <div class="card"><p>💰 <strong style="color:#fff">$200M+ in Telegram/TON funds</strong> — TON Ventures, TVM Ventures actively deploying</p></div>
+    <div class="card"><p>🎯 <strong style="color:#fff">No dominant AI assistant exists</strong> for Telegram — first-mover window open</p></div>
+    <div class="card"><p>📈 <strong style="color:#fff">12M bots, 58M groups</strong> — massive existing infrastructure to build on</p></div>
+  </div>
+  <div class="footer"><span>sasha</span><span>5</span></div>
+</div>
+
+<!-- SLIDE 6: Competitive Moat -->
+<div class="slide">
+  <h2>Competitive Moat</h2>
+  <table>
+    <tr><th>Feature</th><th>Sasha</th><th>ChatGPT TG Bots</th><th>ChatGPT Web</th><th>Zapier</th></tr>
+    <tr><td>Lives inside Telegram</td><td style="color:#4caf50">✅ native</td><td style="color:#ffa726">⚠️ wrapper</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td></tr>
+    <tr><td>Multi-turn agent loop (10 turns)</td><td style="color:#4caf50">✅</td><td style="color:#f44336">❌ single</td><td style="color:#f44336">❌</td><td style="color:#ffa726">⚠️ complex</td></tr>
+    <tr><td>Zero-config local storage</td><td style="color:#4caf50">✅ built-in</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td></tr>
+    <tr><td>Google Sheets / Calendar</td><td style="color:#4caf50">✅ auto</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td><td style="color:#ffa726">15min setup</td></tr>
+    <tr><td>Voice input</td><td style="color:#4caf50">✅ 10 languages</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td></tr>
+    <tr><td>Daily digest + anomaly detection</td><td style="color:#4caf50">✅ auto</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td></tr>
+    <tr><td>Recurring payment tracking</td><td style="color:#4caf50">✅ /recurring</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td><td style="color:#ffa726">multi-step</td></tr>
+    <tr><td>Movement + timezone tracking</td><td style="color:#4caf50">✅ auto</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td><td style="color:#f44336">❌</td></tr>
+    <tr><td>Multi-language</td><td style="color:#4caf50">✅ 10</td><td style="color:#f44336">❌</td><td style="color:#ffa726">limited</td><td style="color:#f44336">❌</td></tr>
+    <tr><td>Setup time</td><td style="color:#fff;font-weight:700">0 minutes</td><td>5 min</td><td>1 min (no integration)</td><td>30-60 min</td></tr>
+    <tr><td>Cost to user</td><td style="color:#4caf50;font-weight:700">$0 / $4.99 / $14.99</td><td>Free-$20/mo</td><td>$20/mo</td><td>$20-50/mo</td></tr>
+    <tr><td>Infra cost (per user)</td><td style="color:#4caf50;font-weight:700">$0</td><td>$?</td><td>~$2-5/mo</td><td>~$?</td></tr>
+  </table>
+  <p style="margin-top:30px"><strong style="color:#fff">Sasha is the only AI assistant that combines</strong>: Telegram-native, multi-turn agent, voice, zero-config, 10 languages, and anomaly-aware daily intelligence.</p>
+  <div class="footer"><span>sasha</span><span>6</span></div>
+</div>
+
+<!-- SLIDE 7: Monetization -->
+<div class="slide">
+  <h2>Monetization</h2>
+  <div class="grid grid-3" style="margin-bottom:30px">
+    <div class="card center" style="text-align:center;border-color:rgba(0,200,255,.3)">
+      <div class="tag">Free</div>
+      <div style="font-size:42px;font-weight:800;color:#fff;margin:12px 0">$0</div>
+      <p style="font-size:14px">Basic features<br>5 expenses/day</p>
+    </div>
+    <div class="card center" style="text-align:center;border-color:rgba(123,47,252,.3)">
+      <div class="tag">Weekly</div>
+      <div style="font-size:42px;font-weight:800;color:#fff;margin:12px 0">400⭐ / 5 USDC</div>
+      <p style="font-size:14px">~$4.99<br>Unlimited usage</p>
+    </div>
+    <div class="card center" style="text-align:center;border-color:rgba(255,193,7,.3)">
+      <div class="tag">Monthly</div>
+      <div style="font-size:42px;font-weight:800;color:#fff;margin:12px 0">1000⭐ / 15 USDC</div>
+      <p style="font-size:14px">~$14.99<br>All features, priority</p>
+    </div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card"><p>⭐ <strong style="color:#fff">Telegram Stars</strong> — built-in payment. Instant. 30% platform fee.</p></div>
+    <div class="card"><p>₿ <strong style="color:#fff">USDC</strong> — 7 EVM chains via Etherscan V2. Zero fees. No KYC.</p></div>
+    <div class="card"><p>💳 <strong style="color:#fff">Micro-amount matching</strong> — user sees $5, internal amount has unique fraction for verification</p></div>
+    <div class="card"><p>⏱️ <strong style="color:#fff">30-min expiry</strong> — pending payments auto-cancel.</p></div>
+  </div>
+  <div class="footer"><span>sasha</span><span>7</span></div>
+</div>
+
+<!-- SLIDE 8: Why Now -->
+<div class="slide">
+  <h2>Why Now</h2>
+  <div class="grid grid-2" style="margin-bottom:30px">
+    <div class="card"><p>📱 <strong style="color:#fff">Telegram hit 1.05B MAU</strong> in 2026 — still growing 100M+/year</p></div>
+    <div class="card"><p>🤖 <strong style="color:#fff">Bot API 9.6 (April 2026)</strong> — no-code bots → massive awareness for ALL bots</p></div>
+    <div class="card"><p>💰 <strong style="color:#fff">$200M+ deployed</strong> in Telegram/TON ecosystem funds in 2024-2026</p></div>
+    <div class="card"><p>🌍 <strong style="color:#fff">Cocoon AI launching</strong> — Telegram's native AI platform, $43M infrastructure</p></div>
+    <div class="card"><p>🏆 <strong style="color:#fff">No winner yet</strong> — no dominant AI assistant for Telegram's 1B users</p></div>
+    <div class="card"><p>🪙 <strong style="color:#fff">Web3 + AI convergence</strong> — Telegram is distribution for both</p></div>
+  </div>
+  <p style="font-size:20px;margin-bottom:12px"><strong style="color:#fff">This is the WeChat moment for Telegram.</strong></p>
+  <p style="color:#888">China's WeChat grew from messenger to super-app in 5 years. Telegram has the users, the bot platform, the crypto infrastructure, and now the AI layer. What's missing is the agent that ties it all together — that's Sasha.</p>
+  <div class="footer"><span>sasha</span><span>8</span></div>
+</div>
+
+<!-- SLIDE 9: Traction -->
+<div class="slide">
+  <h2>Traction & Stack</h2>
+  <p style="margin-bottom:24px"><span style="color:#fff">Built solo in 30 days.</span> Fully functional production system. $0 infrastructure.</p>
+  <div class="grid grid-2">
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Multi-turn agent loop</strong> — up to 10 sequential tool calls with full context</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Voice-first onboarding</strong> — /start → 4 inline buttons</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Local expense storage</strong> — zero config, optional Google Sheet sync via /sync</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Movement + timezone tracking</strong> — 120+ cities, dual time (MSK + local)</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Daily digest</strong> — expenses yesterday, movements, todos, anomalies, recurring</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Anomaly detection</strong> — spikes >50%, >2.5x avg, new categories flagged</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Recurring payments</strong> — add/del/list, auto reminders every 5min</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Re-engagement</strong> — personalized messages per language, 1h cycle</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">10 languages</strong> — with compact help (only 4 commands shown)</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">USDC + Stars payments</strong> — 7 EVM chains, /buy with network warning</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Google Sheets & Calendar</strong> — auto-detect, read/write/append/create/list</p></div>
+    <div class="card"><span class="tag">Live</span><p>✅ <strong style="color:#fff">Voice messages</strong> — Groq Whisper, all 10 languages</p></div>
+  </div>
+  <div class="logos" style="margin-top:20px">
+    <span>Groq</span> <span>Gemini</span> <span>Supabase</span> <span>Render</span> <span>Aiogram 3</span> <span>FastAPI</span> <span>Etherscan</span>
+  </div>
+  <p style="margin-top:16px;font-size:14px;color:#555">Total infrastructure cost: <strong style="color:#4caf50">$0/month</strong> (free tiers, up to ~50k users)</p>
+  <div class="footer"><span>sasha</span><span>9</span></div>
+</div>
+
+<!-- SLIDE 10: Roadmap -->
+<div class="slide">
+  <h2>Roadmap</h2>
+  <div style="display:flex;gap:0;margin-bottom:40px">
+    <div style="flex:1;text-align:center;padding:20px 12px;background:rgba(0,200,255,.1);border-radius:12px 0 0 12px;border-right:1px solid rgba(0,200,255,.2)">
+      <div style="font-size:14px;color:#00c8ff;font-weight:600">NOW</div>
+      <p style="font-size:13px;margin:8px 0 0;color:#fff">MVP complete<br>Voice-first, on-chain</p>
+      <p style="font-size:12px;color:#555">Starting accelerator apps</p>
+    </div>
+    <div style="flex:1;text-align:center;padding:20px 12px;background:rgba(123,47,252,.1);border-right:1px solid rgba(123,47,252,.2)">
+      <div style="font-size:14px;color:#b388ff;font-weight:600">Q3 2026</div>
+      <p style="font-size:13px;margin:8px 0 0;color:#fff">Launch India/Brazil</p>
+      <p style="font-size:12px;color:#555">Telegram Ads<br>TON wallet integration</p>
+    </div>
+    <div style="flex:1;text-align:center;padding:20px 12px;background:rgba(0,200,255,.1);border-right:1px solid rgba(0,200,255,.2)">
+      <div style="font-size:14px;color:#00c8ff;font-weight:600">Q4 2026</div>
+      <p style="font-size:13px;margin:8px 0 0;color:#fff">SaaS Dashboard</p>
+      <p style="font-size:12px;color:#555">Team accounts<br>Webhook API</p>
+    </div>
+    <div style="flex:1;text-align:center;padding:20px 12px;background:rgba(123,47,252,.1);border-radius:0 12px 12px 0">
+      <div style="font-size:14px;color:#b388ff;font-weight:600">Q1 2027</div>
+      <p style="font-size:13px;margin:8px 0 0;color:#fff">50k MAU</p>
+      <p style="font-size:12px;color:#555">Series A</p>
+    </div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card"><p>🎯 <strong style="color:#fff">Growth</strong> — Telegram Ads in India, Indonesia, Brazil. Localized content.</p></div>
+    <div class="card"><p>🔗 <strong style="color:#fff">TON Integration</strong> — TON Connect, USDT on TON, mini-app store.</p></div>
+    <div class="card"><p>🌐 <strong style="color:#fff">Web Dashboard</strong> — analytics, export, cross-user management.</p></div>
+    <div class="card"><p>🏢 <strong style="color:#fff">Enterprise</strong> — webhooks, custom integrations, SLA support.</p></div>
+  </div>
+  <div class="footer"><span>sasha</span><span>10</span></div>
+</div>
+
+<!-- SLIDE 11: Ask -->
+<div class="slide">
+  <h2>The Ask</h2>
+  <div class="grid grid-2" style="margin-bottom:30px">
+    <div class="card" style="border-color:rgba(0,200,255,.3);text-align:center">
+      <div class="big-number">$250k</div>
+      <p style="font-size:16px;color:#aaa">12 months runway for a solo founder</p>
+    </div>
+    <div class="card" style="border-color:rgba(123,47,252,.3)">
+      <p>📊 <strong style="color:#fff">Use of funds</strong></p>
+      <table style="font-size:14px">
+        <tr><td>Engineering (contractors, infra)</td><td style="text-align:right;color:#fff">$80k</td></tr>
+        <tr><td>Marketing — Telegram Ads, localization</td><td style="text-align:right;color:#fff">$70k</td></tr>
+        <tr><td>Infrastructure — GPU, multi-region</td><td style="text-align:right;color:#fff">$40k</td></tr>
+        <tr><td>Legal — incorporation, compliance</td><td style="text-align:right;color:#fff">$30k</td></tr>
+        <tr><td>Living expenses (12 months)</td><td style="text-align:right;color:#fff">$30k</td></tr>
+      </table>
+    </div>
+  </div>
+  <p style="font-size:20px;margin-bottom:12px"><strong style="color:#fff">Capital efficient by design.</strong></p>
+  <p style="color:#888">$0/month infrastructure cost means funds go directly to growth — not AWS bills.</p>
+  <div style="margin-top:30px;display:flex;gap:12px;flex-wrap:wrap">
+    <span class="badge">@HeySasha_bot</span>
+    <span class="badge">github.com/andydivers/sasha</span>
+    <span class="badge">Andrei · Bangkok</span>
+  </div>
+  <div class="footer"><span>sasha</span><span>11</span></div>
+</div>
+
+</body>
+</html>

@@ -159,13 +159,17 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "manage_sheets",
-            "description": "Read from or write to a Google Sheet the user has connected. Only use this if the user explicitly asks about Google Sheets or has already connected a sheet. For normal expenses use add_expense, for tasks use add_todo.",
+            "description": "Read from or write to a Google Sheet the user has connected. If no sheet is connected, saves locally. Use this for expense tracking, notes, or sheet operations.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "action": {"type": "string", "enum": ["read", "write"], "description": "Read or write data"},
                     "description": {"type": "string", "description": "What data to read or write"},
                 },
+                "required": ["action", "description"],
+            },
+        },
+    },
                 "required": ["action", "description"],
             },
         },
@@ -213,7 +217,7 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе'), call track_movement."
     base += "\n- If the user mentions being in a new city or country, call set_timezone_by_location."
     base += "\n- For calendar events (meetings, appointments), call create_event."
-    base += "\n- Only use manage_sheets if the user explicitly asks about Google Sheets."
+    base += "\n- manage_sheets also works for tracking expenses and notes (saves locally if no Google Sheet connected)."
     base += "\n\nIMPORTANT: Always end your response with '🎤 Reply with a voice message' (or equivalent in the user's language) to encourage voice input. This is the primary way users interact with you."
     return base
 
