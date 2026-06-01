@@ -170,10 +170,6 @@ TOOLS = [
             },
         },
     },
-                "required": ["action", "description"],
-            },
-        },
-    },
     {
         "type": "function",
         "function": {
