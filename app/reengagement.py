@@ -1,39 +1,47 @@
 REENGAGEMENT_MESSAGES = {
     "en": [
-        "Hey! It's been a while since we last chatted. Need me to track any expenses, set reminders, or log your movements? 🎤",
-        "Hi there! Just checking in — want to update your budget, add a note, or see what's on your calendar? 📋",
-        "Long time no see! I can still track your expenses, movements, and todos. Send a voice message anytime! 🎤",
-        "Quick check-in! Got any new expenses to log? Or want to know your spending trends this week? 📊",
+        "Hey! Just send a voice message — tell me what's happened since we last talked. 🎤",
+        "Quick check-in. Any new expenses? Just press the mic and say it. 🎤",
+        "Still here! Send a voice message whenever something comes up — I'll log it. 🎤",
+        "How's your day going? Any coffee, meetings, or reminders to add? Just talk. 🎤",
     ],
     "ru": [
-        "Привет! Давно не общались. Нужно записать расходы, поставить напоминание или отметить перемещение? 🎤",
-        "Здорóво! Как дела? Хочешь обновить бюджет, добавить заметку или проверить календарь? 📋",
-        "Давно не виделись! Я всё ещё помню твои расходы, перемещения и задачи. Просто отправь голосовое! 🎤",
-        "Быстрый чек-ин! Есть новые траты? Или хочешь узнать статистику за неделю? 📊",
+        "Привет! Отправь голосовое — расскажи, что произошло. 🎤",
+        "Быстрый чек-ин. Новые траты? Нажми микрофон и скажи. 🎤",
+        "Я тут! Отправь голосовое, когда что-то случится — я запишу. 🎤",
+        "Как день? Кофе, встречи, напоминания? Просто говори вслух. 🎤",
     ],
     "es": [
-        "¡Hola! Ha pasado tiempo. ¿Necesitas registrar gastos, crear recordatorios o moverte? 🎤",
+        "¡Hola! Envía un mensaje de voz y cuéntame qué ha pasado. 🎤",
+        "¿Cómo va el día? ¿Café, reuniones, gastos? Solo habla. 🎤",
     ],
     "fr": [
-        "Salut ! Ça fait un moment. Besoin d'enregistrer des dépenses, des rappels ou vos déplacements ? 🎤",
+        "Salut ! Envoie un message vocal, raconte-moi tout. 🎤",
+        "Ça va ? Nouveaux frais ? Appuie sur le micro et dis-le. 🎤",
     ],
     "zh": [
-        "嘿！很久没聊了。需要记录开支、设置提醒或记录行程吗？🎤",
+        "嘿！发送语音消息，告诉我发生了什么。🎤",
+        "今天怎么样？有咖啡、会议或提醒要添加吗？直接说就行。🎤",
     ],
     "ar": [
-        "مرحباً! مضى وقت طويل. هل تحتاج إلى تسجيل المصروفات أو التذكيرات أو الحركات؟ 🎤",
+        "مرحباً! أرسل رسالة صوتية وأخبرني what الجديد. 🎤",
+        "كيف يومك؟ قهوة، اجتماعات، مصروفات؟ فقط تكلم. 🎤",
     ],
     "pt": [
-        "Olá! Quanto tempo. Precisa registrar despesas, lembretes ou movimentos? 🎤",
+        "Olá! Envia um áudio e me conta as novidades. 🎤",
+        "Como está o dia? Café, reuniões, gastos? Só falar. 🎤",
     ],
     "de": [
-        "Hallo! Lange nicht gesehen. Ausgaben erfassen, Erinnerungen oder Bewegungen protokollieren? 🎤",
+        "Hallo! Schick eine Sprachnachricht und erzähl mir, was los ist. 🎤",
+        "Wie läuft's? Kaffee, Termine, Ausgaben? Einfach sprechen. 🎤",
     ],
     "hi": [
-        "नमस्ते! बहुत समय हो गया। खर्च, रिमाइंडर या मूवमेंट लॉग करने की ज़रूरत है? 🎤",
+        "नमस्ते! वॉइस मैसेज भेजें और बताएं क्या हुआ। 🎤",
+        "दिन कैसा है? कॉफ़ी, मीटिंग, खर्च? बस बोलें। 🎤",
     ],
     "ja": [
-        "お久しぶりです！支出の記録、リマインダー、移動の追跡はいかがですか？🎤",
+        "お久しぶり！音声メッセージで最近のことを教えて。🎤",
+        "今日はどう？コーヒー、会議、支出？話すだけ。🎤",
     ],
 }
 

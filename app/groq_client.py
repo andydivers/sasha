@@ -180,6 +180,7 @@ def build_system_prompt(lang: str) -> str:
     base = "You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. " + lang_instruction
     base += "\n\nIMPORTANT: If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе', 'я в магазине'), call track_movement to log it with a timestamp. This is NOT a calendar event — use track_movement instead of create_event."
     base += "\n\nIf the user mentions they are in a new city or country (e.g., 'I'm in Bangkok', 'just arrived in Bali'), call set_timezone_by_location to update their timezone. Times will be shown in both MSK and local time."
+    base += "\n\nIMPORTANT: Always end your response with '🎤 Reply with a voice message' (or equivalent in the user's language) to encourage voice input. This is the primary way users interact with you."
     return base
 
 

@@ -119,10 +119,13 @@ async def generate_digest(user_id: int, lang: str = "en") -> str:
 
     # time
     now = format_dual_time(user_tz=tz)
+    lines.append(f"\n🕐 {now}")
+
+    # voice prompt
     if lang == "ru":
-        lines.append(f"\n🕐 {now}")
+        lines.append(f"\n\n🎤 <b>Ответь голосовым</b> — я пойму.")
     else:
-        lines.append(f"\n🕐 {now}")
+        lines.append(f"\n\n🎤 <b>Reply with a voice message</b> — I'll understand.")
 
     return "\n".join(lines)
 

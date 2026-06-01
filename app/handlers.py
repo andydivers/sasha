@@ -64,15 +64,19 @@ async def get_tz(user_id: int) -> str:
     return _tz_cache.get(user_id, "UTC")
 
 
+dashboard_url = config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard"
+
 START_MENU_EN = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🎤 How it works", callback_data="menu_howto")],
     [InlineKeyboardButton(text="📋 Commands", callback_data="menu_help")],
+    [InlineKeyboardButton(text="📊 Dashboard", web_app=types.WebAppInfo(url=dashboard_url))],
     [InlineKeyboardButton(text="💳 Buy subscription", callback_data="buy_show")],
     [InlineKeyboardButton(text="🌐 Language", callback_data="menu_lang")],
 ])
 START_MENU_RU = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🎤 Как работать", callback_data="menu_howto")],
     [InlineKeyboardButton(text="📋 Команды", callback_data="menu_help")],
+    [InlineKeyboardButton(text="📊 Дашборд", web_app=types.WebAppInfo(url=dashboard_url))],
     [InlineKeyboardButton(text="💳 Купить подписку", callback_data="buy_show")],
     [InlineKeyboardButton(text="🌐 Язык", callback_data="menu_lang")],
 ])
@@ -82,18 +86,9 @@ START_MENU_RU = InlineKeyboardMarkup(inline_keyboard=[
 async def cmd_start(message: types.Message):
     lang = await get_lang(message.from_user.id)
     menu = START_MENU_RU if lang == "ru" else START_MENU_EN
-    if lang == "ru":
-        await message.answer(
-            "🏠 <b>Sasha</b> — твой AI-ассистент\n\n"
-            "🎤 Просто отправь голосовое или напиши, что нужно. Я сам разберусь: запишу расходы, создам встречи, отмечу где ты, поставлю напоминания.",
-            reply_markup=menu, parse_mode="HTML"
-        )
-    else:
-        await message.answer(
-            "🏠 <b>Sasha</b> — your AI assistant\n\n"
-            "🎤 Just send a voice message or type what you need. I'll figure it out: log expenses, create events, track your location, set reminders.",
-            reply_markup=menu, parse_mode="HTML"
-        )
+    msg = t(lang, "welcome")
+    await message.answer(msg, parse_mode="HTML", reply_markup=menu)
+    await message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
 
 
 @router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang", "menu_back", "buy_show"}))
@@ -114,10 +109,7 @@ async def on_menu_callback(callback: CallbackQuery):
     elif data == "menu_lang":
         await callback.message.edit_text(t(lang, "lang_prompt"), reply_markup=LANG_KEYBOARD)
     elif data == "menu_back":
-        await callback.message.edit_text(
-            "🏠 <b>Sasha</b> — " + ("your AI assistant" if lang != "ru" else "твой AI-ассистент"),
-            reply_markup=menu, parse_mode="HTML"
-        )
+        await callback.message.edit_text(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
     elif data == "buy_show":
         btns = [
             [InlineKeyboardButton(text="📊 Weekly $4.99 / 400⭐" if lang != "ru" else "📊 Неделя $4.99 / 400⭐", callback_data="buy_weekly")],
@@ -138,13 +130,9 @@ async def on_lang_choice(callback: CallbackQuery):
     _lang_cache[callback.from_user.id] = lang
     await set_user_lang(callback.from_user.id, lang)
     await callback.message.edit_text(t(lang, "lang_changed"))
-    await callback.message.answer(t(lang, "welcome"))
     menu = START_MENU_RU if lang == "ru" else START_MENU_EN
+    await callback.message.answer(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
     await callback.message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
-    await callback.message.answer(
-        "🏠 <b>Sasha</b>" if lang != "ru" else "🏠 <b>Sasha</b>",
-        reply_markup=menu, parse_mode="HTML"
-    )
 
 
 @router.message(Command("help"))
@@ -306,7 +294,11 @@ async def cmd_digest(message: types.Message):
     if cmd == "now":
         from app.digest import generate_digest
         digest_text = await generate_digest(user_id, lang)
-        await message.answer(digest_text, parse_mode="HTML")
+        msg = await message.answer(digest_text, parse_mode="HTML")
+        try:
+            await msg.pin()
+        except Exception:
+            pass
         return
 
     if cmd == "on":
@@ -634,6 +626,22 @@ async def cmd_recurring(message: types.Message):
     else:
         if lang == "ru": await message.answer("/recurring add Netflix 9.99 USD monthly 1\n/recurring del 1\n/recurring list")
         else: await message.answer("/recurring add Netflix 9.99 USD monthly 1\n/recurring del 1\n/recurring list")
+
+
+@router.message(Command("dashboard"))
+async def cmd_dashboard(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    url = config.webhook_url.replace("/webhook", "/dashboard")
+    btn = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=("📊 Open Dashboard" if lang != "ru" else "📊 Открыть дашборд"),
+            web_app=types.WebAppInfo(url=url)
+        )]
+    ])
+    if lang == "ru":
+        await message.answer("📊 Открой дашборд в один клик:", reply_markup=btn)
+    else:
+        await message.answer("📊 Open dashboard with one tap:", reply_markup=btn)
 
 
 @router.message(Command("buy"))
@@ -1026,7 +1034,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                     await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                 os.unlink(path)
             else:
-                await message.answer(response_text)
+                await message.answer(response_text + t(lang, "voice_prompt"))
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
             all_responses = []
@@ -1055,7 +1063,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                 current = next_result
             response_text = "\n\n".join(all_responses) if all_responses else "Done."
             if all_responses:
-                await message.answer(response_text)
+                await message.answer(response_text + t(lang, "voice_prompt"))
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled voice in %.2fs", latency)
@@ -1112,7 +1120,7 @@ async def handle_message(message: types.Message):
                     await message.answer_document(types.BufferedInputFile(f.read(), filename=fname))
                 os.unlink(path)
             else:
-                await message.answer(response_text)
+                await message.answer(response_text + t(lang, "voice_prompt"))
         else:
             sheet_url = _sheet_cache.get(message.from_user.id)
             all_responses = []
@@ -1141,7 +1149,7 @@ async def handle_message(message: types.Message):
                 current = next_result
             response_text = "\n\n".join(all_responses) if all_responses else "Done."
             if all_responses:
-                await message.answer(response_text)
+                await message.answer(response_text + t(lang, "voice_prompt"))
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)

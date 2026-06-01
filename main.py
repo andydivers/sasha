@@ -140,7 +140,8 @@ async def lifespan(app: FastAPI):
                         lang = await get_user_lang(uid) or "en"
                         text = await generate_digest(uid, lang)
                         try:
-                            await bot.send_message(chat_id=uid, text=text, parse_mode="HTML")
+                            msg = await bot.send_message(chat_id=uid, text=text, parse_mode="HTML")
+                            await bot.pin_chat_message(chat_id=uid, message_id=msg.message_id)
                             sent_today.add(uid)
                             logger.info("Digest sent to user %s", uid)
                         except Exception as e:
@@ -240,6 +241,15 @@ async def webhook(request: Request):
 @app.get("/")
 async def root():
     return {"status": "ok", "bot": "Sasha"}
+
+@app.get("/dashboard")
+async def dashboard():
+    from pathlib import Path
+    html = Path(__file__).parent / "app" / "dashboard.html"
+    if html.exists():
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=html.read_text(encoding="utf-8"))
+    return {"error": "not found"}
 
 
 @app.get("/health")
