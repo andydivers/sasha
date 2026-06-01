@@ -1070,7 +1070,7 @@ async def on_chat_member(update: types.ChatMemberUpdated):
         name = update.chat.title or update.chat.username or "group"
         await update.bot.send_message(
             update.chat.id,
-            f"Hi! I'm Sasha. Say @{BOT_USERNAME} coffee 4 bucks to log an expense, or add a task, or any other voice command."
+            f"Hi! I'm Sasha. Say @{BOT_USERNAME} coffee 4 bucks to log an expense, or add a task, or any other voice command.\n\nAdd me to your group and I'll help track expenses for everyone."
         )
 
 
