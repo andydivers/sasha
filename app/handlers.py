@@ -80,6 +80,8 @@ async def get_lang(user_id: int) -> str:
 
 _EXPENSE_WORDS = {"купил","потратил","оплатил","заплатил","spent","bought","paid","cost","кофе","обед","ужин","завтрак","lunch","dinner","coffee","uber","такси","билет","проезд","бензин","gas","food","еда","продукты","покупка","delivery","доставка"}
 
+_NON_EXPENSE_WORDS = {"напомни","remind","встреча","meeting","встречу","завтра","tomorrow","через","надо","нужно","необходимо","запланируй","schedule","plan","событие","event","рожден","день рождения","birthday","ужин сегодня","dinner today","обед сегодня"}
+
 
 async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
     lowered = text.lower().strip()
@@ -88,6 +90,10 @@ async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
 
     if not nums:
         return None
+
+    for w in _NON_EXPENSE_WORDS:
+        if w in lowered:
+            return None
 
     try:
         await add_expense(user_id, text.strip(), amount, "expense")

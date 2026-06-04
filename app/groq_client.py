@@ -189,6 +189,21 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "set_reminder",
+            "description": "Set a reminder or alarm. Call this when user says 'remind me', 'напомни', 'напомни мне', 'recuérdame', 'rappelle-moi', '提醒我', or asks to be reminded about something.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string", "description": "The reminder text or what to remind about"},
+                    "when": {"type": "string", "description": "When to remind (e.g., 'in 1 hour', 'tomorrow 9am', '30min', 'через 2 часа', 'завтра в 9', 'в пятницу')"},
+                },
+                "required": ["message", "when"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "generate_report",
             "description": "Generate a PDF, Excel, or HTML report. Call this when user asks for a report, summary, or analytics.",
             "parameters": {

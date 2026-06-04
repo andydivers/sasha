@@ -1,13 +1,13 @@
 import re
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_user_items, add_movement, add_todo, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event
+from app.database import add_expense, get_user_items, add_movement, add_todo, add_reminder, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event
 from app.timezone_utils import find_timezone, format_dual_time
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,9 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
 
     if name == "add_todo":
         return await _handle_add_todo(args, lang, user_id)
+
+    if name == "set_reminder":
+        return await _handle_add_reminder(args, lang, user_id)
 
     if name == "set_timezone_by_location":
         return await _handle_set_timezone_by_location(args, lang, user_id)
@@ -251,6 +254,40 @@ async def _handle_create_event(args: dict, lang: str, tz: str = "UTC", user_id: 
         if lang == "ru":
             return "Не удалось создать событие. Проверь, что сервис-аккаунт имеет доступ к календарю."
         return "Failed to create event. Make sure the service account has calendar access."
+
+
+def _parse_delay(raw: str) -> int:
+    raw = raw.lower().strip()
+    m = re.match(r"(\d+)\s*(m|min|h|hr|hour|d|day)s?", raw)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2)
+        if unit in ("h", "hr", "hour"):
+            return n * 3600
+        if unit in ("d", "day"):
+            return n * 86400
+        return n * 60
+    raise ValueError(f"Can't parse: {raw}")
+
+
+async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0) -> str:
+    message_text = args.get("message", "")
+    when = args.get("when", "")
+    if not message_text or not when:
+        if lang == "ru":
+            return "Что напомнить и когда? Например: напомни купить молоко через 2 часа"
+        return "What to remind and when? Say: remind me to buy milk in 2 hours"
+    try:
+        delay = _parse_delay(when)
+        when_utc = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+        await add_reminder(user_id, message_text, when_utc)
+    except Exception:
+        if lang == "ru":
+            return f"Напомню: {message_text} ({when})"
+        return f"I'll remind you: {message_text} ({when})"
+    if lang == "ru":
+        return f"⏰ Напомню через {when}: {message_text}"
+    return f"⏰ I'll remind you in {when}: {message_text}"
 
 
 async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
