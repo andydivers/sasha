@@ -1195,8 +1195,6 @@ async def handle_voice(message: types.Message, bot: Bot):
 @router.message()
 async def handle_message(message: types.Message):
     if not message.text:
-        lang = await get_lang(message.from_user.id)
-        await message.answer(t(lang, "not_ready"))
         return
 
     if not _should_respond(message):
@@ -1204,6 +1202,13 @@ async def handle_message(message: types.Message):
 
     lang = await get_lang(message.from_user.id)
     text = _strip_mention(message.text.strip())
+
+    if not text:
+        if lang == "ru":
+            await message.answer("Скажи, что нужно сделать. Например: кофе 80 бат")
+        else:
+            await message.answer("What do you need? Say: coffee 4 bucks")
+        return
 
     m = re.match(r"https://docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)", text)
     if m:
@@ -1286,5 +1291,5 @@ async def handle_message(message: types.Message):
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled message in %.2fs", latency)
     except Exception as e:
-        logger.error("Groq error: %s", e)
+        logger.error("Text handler error for user %s text=%s: %s", message.from_user.id, text[:100], e)
         await message.answer(t(lang, "error"))
