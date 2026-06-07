@@ -4,6 +4,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
+from app.config import Config
+
 
 logger = logging.getLogger(__name__)
 
