@@ -39,7 +39,7 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
         return await _handle_add_todo(args, lang, user_id)
 
     if name == "set_reminder":
-        return await _handle_add_reminder(args, lang, user_id)
+        return await _handle_add_reminder(args, lang, user_id, tz)
 
     if name == "set_timezone_by_location":
         return await _handle_set_timezone_by_location(args, lang, user_id)
@@ -270,24 +270,57 @@ def _parse_delay(raw: str) -> int:
     raise ValueError(f"Can't parse: {raw}")
 
 
-async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0) -> str:
+def _parse_when(when: str, tz: str) -> str | None:
+    """Parse 'when' string to UTC ISO time. Returns None if can't parse."""
+    when = when.lower().strip()
+    try:
+        delay = _parse_delay(when)
+        return (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+    except ValueError:
+        pass
+    try:
+        hour_match = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", when)
+        if hour_match:
+            hour = int(hour_match.group(1))
+            minute = int(hour_match.group(2)) if hour_match.group(2) else 0
+            ampm = hour_match.group(3)
+            if ampm:
+                if ampm == "pm" and hour < 12:
+                    hour += 12
+                if ampm == "am" and hour == 12:
+                    hour = 0
+            import zoneinfo
+            try:
+                tz_obj = zoneinfo.ZoneInfo(tz)
+            except Exception:
+                tz_obj = timezone.utc
+            now_local = datetime.now(tz_obj)
+            target_local = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            if target_local <= now_local:
+                target_local += timedelta(days=1)
+            target_utc = target_local.astimezone(timezone.utc)
+            return target_utc.isoformat()
+    except Exception:
+        pass
+    return None
+
+
+async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
     message_text = args.get("message", "")
     when = args.get("when", "")
     if not message_text or not when:
         if lang == "ru":
             return "Что напомнить и когда? Например: напомни купить молоко через 2 часа"
         return "What to remind and when? Say: remind me to buy milk in 2 hours"
-    try:
-        delay = _parse_delay(when)
-        when_utc = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+    when_utc = _parse_when(when, tz)
+    if when_utc:
         await add_reminder(user_id, message_text, when_utc)
-    except Exception:
         if lang == "ru":
-            return f"Напомню: {message_text} ({when})"
-        return f"I'll remind you: {message_text} ({when})"
+            return f"⏰ Напомню: {message_text}"
+        return f"⏰ I'll remind you: {message_text}"
     if lang == "ru":
-        return f"⏰ Напомню через {when}: {message_text}"
-    return f"⏰ I'll remind you in {when}: {message_text}"
+        return f"⏰ Напомню: {message_text} ({when})"
+    return f"⏰ I'll remind you: {message_text} ({when})"
 
 
 async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:

@@ -249,9 +249,9 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
             return reply, 0.0, None
 
     if _needs_reasoning(text):
-        max_tokens = 1000
+        max_tokens = 2000
     else:
-        max_tokens = 500
+        max_tokens = 1000
 
     messages = build_messages(text, lang, chat_history)
 
