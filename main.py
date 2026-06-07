@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Response
 from aiogram.types import Update
 
 from app.config import Config
-from app.bot import create_bot, create_dispatcher, setup_sentry
+from app.bot import create_bot, create_dispatcher
 from app.database import init_db, get_due_reminders, mark_reminder_done, get_pending_payments, confirm_payment, is_payment_confirmed, expire_old_payments
 from app.sheets_client import init_sheets, is_ready as sheets_ready
 from app.calendar_client import init_calendar, is_ready as calendar_ready
@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 config = Config()
 config.validate()
 
-setup_sentry(config)
-
-bot = create_bot(config)
+    bot = create_bot(config)
 dp = create_dispatcher()
 dp.include_router(router)
 

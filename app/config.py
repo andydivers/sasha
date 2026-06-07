@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 @dataclass
 class Config:
     bot_token: str = field(default_factory=lambda: os.getenv("BOT_TOKEN", ""))
-    sentry_dsn: str = field(default_factory=lambda: os.getenv("SENTRY_DSN", ""))
     groq_api_key: str = field(default_factory=lambda: os.getenv("GROQ_API_KEY", ""))
     gemini_api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
     google_sheets_creds: str = field(default_factory=lambda: os.getenv("GOOGLE_SHEETS_CREDENTIALS", ""))
