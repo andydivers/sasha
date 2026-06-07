@@ -110,9 +110,11 @@ CREATE TABLE IF NOT EXISTS movements (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Fix 403 Forbidden on expenses & movements tables
+-- Fix 403 Forbidden on expenses, movements & recurring_payments tables
 ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE movements DISABLE ROW LEVEL SECURITY;
+ALTER TABLE recurring_payments DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON expenses TO anon, service_role;
 GRANT ALL ON movements TO anon, service_role;
+GRANT ALL ON recurring_payments TO anon, service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, service_role;
