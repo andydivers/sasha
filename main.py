@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 config = Config()
 config.validate()
 
-    bot = create_bot(config)
+bot = create_bot(config)
 dp = create_dispatcher()
 dp.include_router(router)
 
