@@ -255,9 +255,32 @@ def build_messages(text: str, lang: str, chat_history: list | None = None) -> li
     return messages
 
 
+_TOOL_NAMES = frozenset({
+    "add_expense", "add_todo", "track_movement", "set_timezone_by_location",
+    "manage_sheets", "create_event", "set_reminder", "generate_report",
+    "analyze_screenshot", "get_spending_summary",
+})
+
+
 def _parse_text_tool_calls(content: str) -> list | None:
     m = re.search(r"<function=(\w+)>(.*?)<function>", content, re.DOTALL)
     if not m:
+        for name in _TOOL_NAMES:
+            p = re.compile(r"\b" + re.escape(name) + r"\s*(\{.*?\})", re.DOTALL)
+            mm = p.search(content)
+            if mm:
+                try:
+                    args = json.loads(mm.group(1))
+                except json.JSONDecodeError:
+                    continue
+                from types import SimpleNamespace
+                tc = SimpleNamespace()
+                tc.id = f"call_{int(time.time())}"
+                tc.type = "function"
+                tc.function = SimpleNamespace()
+                tc.function.name = name
+                tc.function.arguments = json.dumps(args)
+                return [tc]
         return None
     name = m.group(1)
     try:
