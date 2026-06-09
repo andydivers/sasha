@@ -233,6 +233,7 @@ def build_system_prompt(lang: str) -> str:
     base += "\n7. set_reminder — Set a reminder. Args: {\"message\": \"text\", \"when\": \"in 1 hour / tomorrow 9am\"}"
     base += "\n8. generate_report — Generate report. Args: {\"format\": \"pdf/excel/html\", \"topic\": \"what\"}"
     base += "\n9. analyze_screenshot — Analyze an image. Args: {\"query\": \"what to look for\"}"
+    base += "\n10. get_spending_summary — Get total spent for a period. Args: {\"period\": \"today/yesterday/week/month/YYYY-MM\"}"
     base += "\n\nRULES:"
     base += "\n- If user mentions spending money (e.g., 'coffee $5', 'lunch 1200₽', 'купил хлеб'), call add_expense."
     base += "\n- If user says 'add task', 'remind me to', 'I need to', or mentions something to do later, call add_todo."
@@ -241,6 +242,7 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- For events/meetings, call create_event."
     base += "\n- For reminders, call set_reminder."
     base += "\n- For reports/analytics, call generate_report."
+    base += "\n- For spending summary (\"how much did I spend this week/month?\"), call get_spending_summary."
     base += "\n- Output ONLY ONE function call per response. If done, respond conversationally."
     return base
 

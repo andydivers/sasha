@@ -44,6 +44,9 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
     if name == "set_timezone_by_location":
         return await _handle_set_timezone_by_location(args, lang, user_id)
 
+    if name == "get_spending_summary":
+        return await _handle_get_spending_summary(args, lang, user_id)
+
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
     }
@@ -350,6 +353,65 @@ async def _handle_add_todo(args: dict, lang: str, user_id: int = 0) -> str:
     if lang == "ru":
         return f"☐ {title}"
     return f"☐ {title}"
+
+
+async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0) -> str:
+    from app.database import get_expenses_range
+    period = args.get("period", "today")
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+
+    if period == "today":
+        start = end = today_str
+    elif period == "yesterday":
+        d = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        start = end = d
+    elif period == "week":
+        start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        end = today_str
+    elif period == "month":
+        start = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+        end = today_str
+    elif len(period) == 7 and period[4] == "-":
+        start = period + "-01"
+        import calendar
+        last_day = calendar.monthrange(int(period[:4]), int(period[5:7]))[1]
+        end = period + f"-{last_day}"
+    else:
+        start = end = today_str
+
+    expenses = await get_expenses_range(user_id, start, end)
+    if not expenses:
+        if lang == "ru":
+            return f"За этот период расходов нет."
+        return f"No expenses in this period."
+
+    total = 0.0
+    details = []
+    for e in expenses:
+        amt = e.get("amount", "")
+        desc = e.get("description", "")
+        try:
+            val = float(amt.replace("$", "").replace("₽", "").replace("€", "").strip())
+            total += val
+            details.append((desc, val))
+        except (ValueError, AttributeError):
+            if desc:
+                details.append((desc, 0))
+
+    currency = "₽" if lang == "ru" else "$"
+    if lang == "ru":
+        label = {"today": "сегодня", "yesterday": "вчера", "week": "неделю", "month": "месяц"}.get(period, period)
+        lines = [f"💰 За {label} потрачено <b>{total:.0f}{currency}</b>"]
+    else:
+        label = {"today": "today", "yesterday": "yesterday", "week": "week", "month": "month"}.get(period, period)
+        lines = [f"💰 Spent <b>{total:.0f}{currency}</b> in the last {label}"]
+    for desc, val in details[-5:]:
+        if val:
+            lines.append(f"  • {desc} — {val:.0f}{currency}")
+        else:
+            lines.append(f"  • {desc}")
+    return "\n".join(lines)
 
 
 async def _handle_track_movement(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
