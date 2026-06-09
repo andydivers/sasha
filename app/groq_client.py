@@ -263,7 +263,8 @@ _TOOL_NAMES = frozenset({
 
 
 def _parse_text_tool_calls(content: str) -> list | None:
-    m = re.search(r"<function=(\w+)>(.*?)<function>", content, re.DOTALL)
+    content = content.strip()
+    m = re.search(r"<function=(\w+)>\s*(\{.*?\})\s*(?:<function>)?", content, re.DOTALL)
     if not m:
         for name in _TOOL_NAMES:
             p = re.compile(r"\b" + re.escape(name) + r"\s*(\{.*?\})", re.DOTALL)

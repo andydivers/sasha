@@ -1,6 +1,7 @@
 import re
 import logging
 import json
+import time
 from datetime import datetime, timedelta, timezone
 
 from app.i18n import t
@@ -355,6 +356,46 @@ async def _handle_add_todo(args: dict, lang: str, user_id: int = 0) -> str:
     return f"☐ {title}"
 
 
+_CURRENCY_PATTERNS = [
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:бат|bath|baths|฿)", re.I), "THB"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₽|руб|rub|ruble|rubles)", re.I), "RUB"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:\$|usd|dollar|dollars)", re.I), "USD"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:€|eur|euro)", re.I), "EUR"),
+]
+_RATES_CACHE: dict[str, float] = {}
+_RATES_CACHE_TIME = 0.0
+
+
+def _get_rate(from_cur: str, to_cur: str) -> float:
+    if from_cur == to_cur:
+        return 1.0
+    global _RATES_CACHE, _RATES_CACHE_TIME
+    now_ts = time.time()
+    if now_ts - _RATES_CACHE_TIME > 3600:
+        try:
+            import urllib.request
+            import json as _json
+            url = f"https://open.er-api.com/v6/latest/{from_cur}"
+            with urllib.request.urlopen(url, timeout=5) as resp:
+                data = _json.loads(resp.read())
+            _RATES_CACHE = data.get("rates", {})
+            _RATES_CACHE_TIME = now_ts
+        except Exception:
+            pass
+    rate = _RATES_CACHE.get(to_cur)
+    if rate:
+        return rate
+    return 1.0
+
+
+def _detect_currency(desc: str, amt: str) -> tuple[str, float]:
+    for pattern, cur in _CURRENCY_PATTERNS:
+        m = pattern.search(desc)
+        if m:
+            return cur, float(m.group(1).replace(",", "."))
+    return "RUB", float(amt.replace("$", "").replace("₽", "").replace("€", "").replace(",", ".").strip())
+
+
 async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0) -> str:
     from app.database import get_expenses_range
     period = args.get("period", "today")
@@ -386,29 +427,34 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0) 
             return f"За этот период расходов нет."
         return f"No expenses in this period."
 
-    total = 0.0
-    details = []
+    total_rub = 0.0
+    details_rub = []
     for e in expenses:
         amt = e.get("amount", "")
         desc = e.get("description", "")
         try:
-            val = float(amt.replace("$", "").replace("₽", "").replace("€", "").strip())
-            total += val
-            details.append((desc, val))
+            cur, val = _detect_currency(desc, amt)
+            rate = _get_rate(cur, "RUB")
+            val_rub = val * rate
+            total_rub += val_rub
+            details_rub.append((desc, val_rub, cur))
         except (ValueError, AttributeError):
             if desc:
-                details.append((desc, 0))
+                details_rub.append((desc, 0, ""))
 
     currency = "₽" if lang == "ru" else "$"
+    display_total = total_rub / (_get_rate("RUB", "USD") if currency == "$" else 1.0)
     if lang == "ru":
         label = {"today": "сегодня", "yesterday": "вчера", "week": "неделю", "month": "месяц"}.get(period, period)
-        lines = [f"💰 За {label} потрачено <b>{total:.0f}{currency}</b>"]
+        lines = [f"💰 За {label} потрачено <b>{display_total:.0f}{currency}</b>"]
     else:
         label = {"today": "today", "yesterday": "yesterday", "week": "week", "month": "month"}.get(period, period)
-        lines = [f"💰 Spent <b>{total:.0f}{currency}</b> in the last {label}"]
-    for desc, val in details[-5:]:
-        if val:
-            lines.append(f"  • {desc} — {val:.0f}{currency}")
+        lines = [f"💰 Spent <b>{display_total:.0f}{currency}</b> in the last {label}"]
+    for desc, val_rub, cur in details_rub[-5:]:
+        if val_rub:
+            val_display = val_rub / (_get_rate("RUB", "USD") if currency == "$" else 1.0)
+            suffix = f" ~{val_display:.0f}{currency}" if cur and cur != ("RUB" if lang == "ru" else "USD") else ""
+            lines.append(f"  • {desc} — {val_rub:.0f}₽{suffix}" if lang == "ru" else f"  • {desc} — {val_display:.0f}{currency}")
         else:
             lines.append(f"  • {desc}")
     return "\n".join(lines)
