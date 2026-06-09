@@ -56,6 +56,23 @@ async def set_user_tz(user_id: int, tz: str):
         logger.warning("Failed to set user tz: %s", e)
 
 
+async def get_user_currency(user_id: int) -> str:
+    try:
+        resp = get_db().table("users").select("currency").eq("id", user_id).execute()
+        if resp.data and resp.data[0].get("currency"):
+            return resp.data[0]["currency"]
+    except Exception as e:
+        logger.warning("Failed to get user currency: %s", e)
+    return ""
+
+
+async def set_user_currency(user_id: int, currency: str):
+    try:
+        get_db().table("users").upsert({"id": user_id, "currency": currency}, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning("Failed to set user currency: %s", e)
+
+
 async def save_chat(user_id: int, message: str, response: str, latency_ms: int):
     try:
         get_db().table("chats").insert({

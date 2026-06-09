@@ -110,6 +110,8 @@ CREATE TABLE IF NOT EXISTS movements (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT '';
+
 -- Fix 403 Forbidden on expenses, movements & recurring_payments tables
 ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE movements DISABLE ROW LEVEL SECURITY;

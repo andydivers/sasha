@@ -234,6 +234,7 @@ def build_system_prompt(lang: str) -> str:
     base += "\n8. generate_report — Generate report. Args: {\"format\": \"pdf/excel/html\", \"topic\": \"what\"}"
     base += "\n9. analyze_screenshot — Analyze an image. Args: {\"query\": \"what to look for\"}"
     base += "\n10. get_spending_summary — Get total spent for a period. Args: {\"period\": \"today/yesterday/week/month/YYYY-MM\"}"
+    base += "\n\nCommands the user can use: /currency USD — change currency. Currency is auto-detected from country on /tz."
     base += "\n\nRULES:"
     base += "\n- If user mentions spending money (e.g., 'coffee $5', 'lunch 1200₽', 'купил хлеб'), call add_expense."
     base += "\n- If user says 'add task', 'remind me to', 'I need to', or mentions something to do later, call add_todo."

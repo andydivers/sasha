@@ -388,20 +388,39 @@ def _get_rate(from_cur: str, to_cur: str) -> float:
     return 1.0
 
 
-_TZ_TO_CURRENCY = {
-    "bangkok": "THB", "asia/bangkok": "THB", "thailand": "THB",
-    "moscow": "RUB", "europe/moscow": "RUB", "russia": "RUB",
-    "london": "GBP", "europe/london": "GBP",
-    "europe": "EUR", "berlin": "EUR", "paris": "EUR",
+_COUNTRY_TO_CURRENCY = {
+    "thailand": "THB", "тайланд": "THB", "bangkok": "THB", "phuket": "THB", "pattaya": "THB",
+    "russia": "RUB", "россия": "RUB", "moscow": "RUB", "москва": "RUB", "spb": "RUB",
+    "usa": "USD", "united states": "USD", "new york": "USD", "los angeles": "USD",
+    "europe": "EUR", "germany": "EUR", "france": "EUR", "spain": "EUR", "italy": "EUR",
+    "berlin": "EUR", "paris": "EUR", "madrid": "EUR", "rome": "EUR",
+    "uk": "GBP", "united kingdom": "GBP", "london": "GBP", "england": "GBP",
+    "japan": "JPY", "tokyo": "JPY", "osaka": "JPY",
+    "china": "CNY", "beijing": "CNY", "shanghai": "CNY",
+    "india": "INR", "mumbai": "INR", "delhi": "INR",
+    "singapore": "SGD",
+    "vietnam": "VND", "hanoi": "VND", "ho chi minh": "VND",
+    "indonesia": "IDR", "bali": "IDR", "jakarta": "IDR",
+    "malaysia": "MYR", "kuala lumpur": "MYR",
+    "philippines": "PHP", "manila": "PHP",
+    "south korea": "KRW", "seoul": "KRW",
+    "australia": "AUD", "sydney": "AUD", "melbourne": "AUD",
+    "canada": "CAD", "toronto": "CAD", "vancouver": "CAD",
+    "brazil": "BRL", "rio": "BRL",
+    "turkey": "TRY", "istanbul": "TRY",
+    "uae": "AED", "dubai": "AED",
+    "switzerland": "CHF", "zurich": "CHF",
+    "hong kong": "HKD",
+    "israel": "ILS", "tel aviv": "ILS",
 }
 
 
-def _default_currency(tz: str) -> str:
-    tz_lower = tz.lower().strip()
-    for key, cur in _TZ_TO_CURRENCY.items():
-        if key in tz_lower:
+def _country_from_location(location: str) -> str | None:
+    loc = location.lower().strip()
+    for key, cur in sorted(_COUNTRY_TO_CURRENCY.items(), key=lambda x: -len(x[0])):
+        if key in loc:
             return cur
-    return "USD"
+    return None
 
 
 def _detect_currency(desc: str, amt: str, default_cur: str = "RUB") -> tuple[str, float]:
@@ -443,8 +462,11 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, 
             return f"За этот период расходов нет."
         return f"No expenses in this period."
 
-    default_cur = _default_currency(tz)
-    base_cur = default_cur if lang == "ru" else "USD"
+    from app.database import get_user_currency
+    user_cur = await get_user_currency(user_id)
+    if not user_cur:
+        user_cur = _country_from_location(tz) or "USD"
+    base_cur = user_cur
     total_base = 0.0
     details_base = []
     for e in expenses:
@@ -498,6 +520,7 @@ async def _handle_track_movement(args: dict, lang: str, user_id: int = 0, tz: st
 
 
 async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int = 0) -> str:
+    from app.database import set_user_currency, get_user_currency
     location = args.get("location", "")
     if not location:
         if lang == "ru":
@@ -512,6 +535,14 @@ async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int =
         await set_user_tz(user_id, tz_name)
     except Exception:
         pass
+    existing_cur = await get_user_currency(user_id)
+    if not existing_cur:
+        cur = _country_from_location(location)
+        if cur:
+            try:
+                await set_user_currency(user_id, cur)
+            except Exception:
+                pass
     if lang == "ru":
         return f"🕐 Часовой пояс установлен: {tz_name}. Теперь время показываю как MSK + местное."
     return f"🕐 Timezone set to {tz_name}. Now showing times as MSK + local."

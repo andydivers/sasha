@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -463,10 +463,52 @@ async def cmd_tz(message: types.Message):
     _tz_cache[message.from_user.id] = tz
     await set_user_tz(message.from_user.id, tz)
 
+    from app.intents import _country_from_location
+    existing_cur = await get_user_currency(message.from_user.id)
+    if not existing_cur:
+        cur = _country_from_location(raw if 'tz' not in raw[:5] else parts[1])
+        if cur:
+            await set_user_currency(message.from_user.id, cur)
+
     if lang == "ru":
         await message.answer(f"Часовой пояс установлен: {tz}")
     else:
         await message.answer(f"Timezone set: {tz}")
+
+
+_VALID_CURRENCIES = frozenset({
+    "USD", "EUR", "GBP", "RUB", "THB", "JPY", "CNY", "INR", "SGD", "VND",
+    "IDR", "MYR", "PHP", "KRW", "AUD", "CAD", "BRL", "TRY", "AED", "CHF",
+    "HKD", "ILS", "MXN", "NZD", "SEK", "NOK", "DKK", "PLN", "CZK", "HUF",
+})
+
+
+@router.message(Command("currency"))
+async def cmd_currency(message: types.Message):
+    lang = await get_lang(message.from_user.id)
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 2:
+        cur = await get_user_currency(message.from_user.id)
+        if lang == "ru":
+            msg = f"Твоя валюта: {cur or 'не задана'}\nИзменить: /currency USD"
+        else:
+            msg = f"Your currency: {cur or 'not set'}\nChange: /currency USD"
+        await message.answer(msg)
+        return
+
+    cur = parts[1].upper().strip()
+    if cur not in _VALID_CURRENCIES:
+        if lang == "ru":
+            await message.answer(f"Неизвестная валюта: {cur}. Примеры: USD, EUR, THB, RUB")
+        else:
+            await message.answer(f"Unknown currency: {cur}. Examples: USD, EUR, THB, RUB")
+        return
+
+    await set_user_currency(message.from_user.id, cur)
+    if lang == "ru":
+        await message.answer(f"Валюта установлена: {cur}")
+    else:
+        await message.answer(f"Currency set: {cur}")
 
 
 @router.message(Command("events"))
