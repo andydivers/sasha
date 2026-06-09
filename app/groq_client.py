@@ -282,6 +282,23 @@ def _parse_text_tool_calls(content: str) -> list | None:
                 tc.function.name = name
                 tc.function.arguments = json.dumps(args)
                 return [tc]
+        m = re.search(r"\{\{(.*?)\}\}", content, re.DOTALL)
+        if m:
+            try:
+                args = json.loads("{" + m.group(1) + "}")
+            except json.JSONDecodeError:
+                return None
+            period = args.get("period", "")
+            for name in _TOOL_NAMES:
+                if "spending" in name and period:
+                    from types import SimpleNamespace
+                    tc = SimpleNamespace()
+                    tc.id = f"call_{int(time.time())}"
+                    tc.type = "function"
+                    tc.function = SimpleNamespace()
+                    tc.function.name = name
+                    tc.function.arguments = json.dumps(args)
+                    return [tc]
         return None
     name = m.group(1)
     try:

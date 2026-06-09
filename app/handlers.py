@@ -1150,7 +1150,7 @@ async def handle_voice(message: types.Message, bot: Bot):
             result, latency, messages = detect_intent(groq, text, lang=lang)
 
             if isinstance(result, str):
-                response_text = re.sub(r"<function[^>]*>.*?(?:</?function>)?", "", result, flags=re.DOTALL).strip()
+                response_text = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", result, flags=re.DOTALL).strip()
                 if response_text.startswith("__REPORT__:"):
                     parts = response_text.split(":", 2)
                     fmt = parts[1]
@@ -1261,7 +1261,7 @@ async def handle_message(message: types.Message):
             result, latency, messages = detect_intent(groq, text, lang=lang)
 
             if isinstance(result, str):
-                response_text = re.sub(r"<function[^>]*>.*?(?:</?function>)?", "", result, flags=re.DOTALL).strip()
+                response_text = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", result, flags=re.DOTALL).strip()
                 if response_text.startswith("__REPORT__:"):
                     parts = response_text.split(":", 2)
                     fmt = parts[1]

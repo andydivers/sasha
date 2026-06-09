@@ -442,21 +442,27 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0) 
             if desc:
                 details_rub.append((desc, 0, ""))
 
-    currency = "₽" if lang == "ru" else "$"
-    display_total = total_rub / (_get_rate("RUB", "USD") if currency == "$" else 1.0)
+    rub_to_usd = _get_rate("RUB", "USD")
     if lang == "ru":
         label = {"today": "сегодня", "yesterday": "вчера", "week": "неделю", "month": "месяц"}.get(period, period)
-        lines = [f"💰 За {label} потрачено <b>{display_total:.0f}{currency}</b>"]
+        lines = [f"💰 За {label} потрачено <b>{total_rub:.0f}₽</b>"]
+        for desc, val_rub, cur in details_rub[-5:]:
+            if val_rub:
+                cur_mark = f" ({cur})" if cur and cur != "RUB" else ""
+                lines.append(f"  • {desc} — {val_rub:.0f}₽{cur_mark}")
+            else:
+                lines.append(f"  • {desc}")
     else:
+        total_usd = total_rub * rub_to_usd
         label = {"today": "today", "yesterday": "yesterday", "week": "week", "month": "month"}.get(period, period)
-        lines = [f"💰 Spent <b>{display_total:.0f}{currency}</b> in the last {label}"]
-    for desc, val_rub, cur in details_rub[-5:]:
-        if val_rub:
-            val_display = val_rub / (_get_rate("RUB", "USD") if currency == "$" else 1.0)
-            suffix = f" ~{val_display:.0f}{currency}" if cur and cur != ("RUB" if lang == "ru" else "USD") else ""
-            lines.append(f"  • {desc} — {val_rub:.0f}₽{suffix}" if lang == "ru" else f"  • {desc} — {val_display:.0f}{currency}")
-        else:
-            lines.append(f"  • {desc}")
+        lines = [f"💰 Spent <b>${total_usd:.0f}</b> in the last {label}"]
+        for desc, val_rub, cur in details_rub[-5:]:
+            if val_rub:
+                val_usd = val_rub * rub_to_usd
+                cur_mark = f" ({cur})" if cur and cur != "USD" else ""
+                lines.append(f"  • {desc} — ${val_usd:.0f}{cur_mark}")
+            else:
+                lines.append(f"  • {desc}")
     return "\n".join(lines)
 
 
