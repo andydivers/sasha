@@ -1166,9 +1166,15 @@ async def handle_voice(message: types.Message, bot: Bot):
                 all_responses = []
                 turn_count = 0
                 current = result
+                last_func = ""
                 while turn_count < 10:
                     turn_count += 1
                     for tool_call in current:
+                        func_name = tool_call.function.name if hasattr(tool_call, 'function') else "tool"
+                        if func_name == last_func:
+                            current = []
+                            break
+                        last_func = func_name
                         resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
                         if resp.startswith("__REPORT__:"):
                             parts = resp.split(":", 2)
@@ -1180,7 +1186,9 @@ async def handle_voice(message: types.Message, bot: Bot):
                             os.unlink(path)
                         else:
                             all_responses.append(resp)
-                        messages.append({"role": "user", "content": resp})
+                        messages.append({"role": "user", "content": f"[Result of {func_name}]: {resp}"})
+                    if not current:
+                        break
                     next_result, messages = chat_turn(groq, messages)
                     if isinstance(next_result, str):
                         if next_result not in all_responses:
@@ -1269,9 +1277,15 @@ async def handle_message(message: types.Message):
                 all_responses = []
                 turn_count = 0
                 current = result
+                last_func = ""
                 while turn_count < 10:
                     turn_count += 1
                     for tool_call in current:
+                        func_name = tool_call.function.name if hasattr(tool_call, 'function') else "tool"
+                        if func_name == last_func:
+                            current = []
+                            break
+                        last_func = func_name
                         resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
                         if resp.startswith("__REPORT__:"):
                             parts = resp.split(":", 2)
@@ -1283,7 +1297,9 @@ async def handle_message(message: types.Message):
                             os.unlink(path)
                         else:
                             all_responses.append(resp)
-                        messages.append({"role": "user", "content": resp})
+                        messages.append({"role": "user", "content": f"[Result of {func_name}]: {resp}"})
+                    if not current:
+                        break
                     next_result, messages = chat_turn(groq, messages)
                     if isinstance(next_result, str):
                         if next_result not in all_responses:
