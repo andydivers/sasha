@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 import re
@@ -240,6 +241,25 @@ def build_messages(text: str, lang: str, chat_history: list | None = None) -> li
     return messages
 
 
+def _parse_text_tool_calls(content: str) -> list | None:
+    m = re.search(r"<function=(\w+)>(.*?)<function>", content, re.DOTALL)
+    if not m:
+        return None
+    name = m.group(1)
+    try:
+        args = json.loads(m.group(2))
+    except json.JSONDecodeError:
+        return None
+    from types import SimpleNamespace
+    tc = SimpleNamespace()
+    tc.id = f"call_{int(time.time())}"
+    tc.type = "function"
+    tc.function = SimpleNamespace()
+    tc.function.name = name
+    tc.function.arguments = json.dumps(args)
+    return [tc]
+
+
 def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list | None = None):
     # fast path — simple greeting, no API call
     if _is_simple_greeting(text, lang):
@@ -267,10 +287,14 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
     logger.info("Groq latency: %.2fs", elapsed)
 
     choice = response.choices[0]
+    content = choice.message.content or ""
     if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
         messages.append(choice.message)
         return choice.message.tool_calls, elapsed, messages
-    return choice.message.content, elapsed, messages
+    tool_calls = _parse_text_tool_calls(content)
+    if tool_calls:
+        return tool_calls, elapsed, messages
+    return content, elapsed, messages
 
 
 def chat_turn(client: Groq, messages: list):
@@ -288,10 +312,14 @@ def chat_turn(client: Groq, messages: list):
     logger.info("Groq chat_turn latency: %.2fs", elapsed)
 
     choice = response.choices[0]
+    content = choice.message.content or ""
     if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
         messages.append(choice.message)
         return choice.message.tool_calls, messages
-    return choice.message.content, messages
+    tool_calls = _parse_text_tool_calls(content)
+    if tool_calls:
+        return tool_calls, messages
+    return content, messages
 
 
 def transcribe_audio(client: Groq, audio_bytes: bytes, filename: str = "voice.ogg") -> str:
