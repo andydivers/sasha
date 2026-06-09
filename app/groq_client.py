@@ -229,7 +229,6 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- If the user mentions being in a new city or country, call set_timezone_by_location."
     base += "\n- For calendar events (meetings, appointments), call create_event."
     base += "\n- manage_sheets also works for tracking expenses and notes (saves locally if no Google Sheet connected)."
-    base += "\n\nIMPORTANT: Always end your response with '🎤 Reply with a voice message' (or equivalent in the user's language) to encourage voice input. This is the primary way users interact with you."
     return base
 
 
