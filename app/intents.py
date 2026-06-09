@@ -46,7 +46,7 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
         return await _handle_set_timezone_by_location(args, lang, user_id)
 
     if name == "get_spending_summary":
-        return await _handle_get_spending_summary(args, lang, user_id)
+        return await _handle_get_spending_summary(args, lang, user_id, tz)
 
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
@@ -388,15 +388,31 @@ def _get_rate(from_cur: str, to_cur: str) -> float:
     return 1.0
 
 
-def _detect_currency(desc: str, amt: str) -> tuple[str, float]:
+_TZ_TO_CURRENCY = {
+    "bangkok": "THB", "asia/bangkok": "THB", "thailand": "THB",
+    "moscow": "RUB", "europe/moscow": "RUB", "russia": "RUB",
+    "london": "GBP", "europe/london": "GBP",
+    "europe": "EUR", "berlin": "EUR", "paris": "EUR",
+}
+
+
+def _default_currency(tz: str) -> str:
+    tz_lower = tz.lower().strip()
+    for key, cur in _TZ_TO_CURRENCY.items():
+        if key in tz_lower:
+            return cur
+    return "USD"
+
+
+def _detect_currency(desc: str, amt: str, default_cur: str = "RUB") -> tuple[str, float]:
     for pattern, cur in _CURRENCY_PATTERNS:
         m = pattern.search(desc)
         if m:
             return cur, float(m.group(1).replace(",", "."))
-    return "RUB", float(amt.replace("$", "").replace("₽", "").replace("€", "").replace(",", ".").strip())
+    return default_cur, float(amt.replace("$", "").replace("₽", "").replace("€", "").replace(",", ".").strip())
 
 
-async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0) -> str:
+async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
     from app.database import get_expenses_range
     period = args.get("period", "today")
     now = datetime.now(timezone.utc)
@@ -427,40 +443,42 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0) 
             return f"За этот период расходов нет."
         return f"No expenses in this period."
 
-    total_rub = 0.0
-    details_rub = []
+    default_cur = _default_currency(tz)
+    base_cur = default_cur if lang == "ru" else "USD"
+    total_base = 0.0
+    details_base = []
     for e in expenses:
         amt = e.get("amount", "")
         desc = e.get("description", "")
         try:
-            cur, val = _detect_currency(desc, amt)
-            rate = _get_rate(cur, "RUB")
-            val_rub = val * rate
-            total_rub += val_rub
-            details_rub.append((desc, val_rub, cur))
+            cur, val = _detect_currency(desc, amt, default_cur)
+            if cur == base_cur:
+                val_base = val
+            else:
+                rate = _get_rate(cur, base_cur)
+                val_base = val * rate
+            total_base += val_base
+            details_base.append((desc, val_base, cur))
         except (ValueError, AttributeError):
             if desc:
-                details_rub.append((desc, 0, ""))
+                details_base.append((desc, 0, ""))
 
-    rub_to_usd = _get_rate("RUB", "USD")
     if lang == "ru":
         label = {"today": "сегодня", "yesterday": "вчера", "week": "неделю", "month": "месяц"}.get(period, period)
-        lines = [f"💰 За {label} потрачено <b>{total_rub:.0f}₽</b>"]
-        for desc, val_rub, cur in details_rub[-5:]:
-            if val_rub:
-                cur_mark = f" ({cur})" if cur and cur != "RUB" else ""
-                lines.append(f"  • {desc} — {val_rub:.0f}₽{cur_mark}")
+        lines = [f"💰 За {label} потрачено <b>{total_base:.0f}{base_cur}</b>"]
+        for desc, val, cur in details_base[-5:]:
+            if val:
+                cur_mark = f" ({cur})" if cur and cur != base_cur else ""
+                lines.append(f"  • {desc} — {val:.0f}{base_cur}{cur_mark}")
             else:
                 lines.append(f"  • {desc}")
     else:
-        total_usd = total_rub * rub_to_usd
         label = {"today": "today", "yesterday": "yesterday", "week": "week", "month": "month"}.get(period, period)
-        lines = [f"💰 Spent <b>${total_usd:.0f}</b> in the last {label}"]
-        for desc, val_rub, cur in details_rub[-5:]:
-            if val_rub:
-                val_usd = val_rub * rub_to_usd
+        lines = [f"💰 Spent <b>${total_base:.0f}</b> in the last {label}"]
+        for desc, val, cur in details_base[-5:]:
+            if val:
                 cur_mark = f" ({cur})" if cur and cur != "USD" else ""
-                lines.append(f"  • {desc} — ${val_usd:.0f}{cur_mark}")
+                lines.append(f"  • {desc} — ${val:.0f}{cur_mark}")
             else:
                 lines.append(f"  • {desc}")
     return "\n".join(lines)
