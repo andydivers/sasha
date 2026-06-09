@@ -1180,7 +1180,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                             os.unlink(path)
                         else:
                             all_responses.append(resp)
-                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
+                        messages.append({"role": "user", "content": resp})
                     next_result, messages = chat_turn(groq, messages)
                     if isinstance(next_result, str):
                         if next_result not in all_responses:
@@ -1283,7 +1283,7 @@ async def handle_message(message: types.Message):
                             os.unlink(path)
                         else:
                             all_responses.append(resp)
-                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": resp})
+                        messages.append({"role": "user", "content": resp})
                     next_result, messages = chat_turn(groq, messages)
                     if isinstance(next_result, str):
                         if next_result not in all_responses:

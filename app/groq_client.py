@@ -223,13 +223,25 @@ TOOLS = [
 def build_system_prompt(lang: str) -> str:
     lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
     base = "You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. " + lang_instruction
-    base += "\n\nRULES FOR USING TOOLS:"
-    base += "\n- If the user mentions spending money (e.g., 'coffee $5', 'lunch 1200₽', 'uber $12', 'купил хлеб'), call add_expense. Extract the amount if present."
-    base += "\n- If the user says 'add task', 'remind me to', 'I need to', or mentions something to do later, call add_todo."
-    base += "\n- If the user says where they are or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'я на работе'), call track_movement."
-    base += "\n- If the user mentions being in a new city or country, call set_timezone_by_location."
-    base += "\n- For calendar events (meetings, appointments), call create_event."
-    base += "\n- manage_sheets also works for tracking expenses and notes (saves locally if no Google Sheet connected)."
+    base += "\n\nAVAILABLE TOOLS (call by outputting <function=name>{json}<function> on its own line):"
+    base += "\n1. add_expense — Record an expense. Args: {\"description\": \"what\", \"amount\": \"123\"}"
+    base += "\n2. add_todo — Add a task. Args: {\"title\": \"task text\"}"
+    base += "\n3. track_movement — Log location. Args: {\"location\": \"place\", \"description\": \"optional note\"}"
+    base += "\n4. set_timezone_by_location — Set timezone. Args: {\"location\": \"city or country\"}"
+    base += "\n5. manage_sheets — Read/write Google Sheet. Args: {\"action\": \"read/write\", \"description\": \"what\"}"
+    base += "\n6. create_event — Calendar event. Args: {\"summary\": \"title\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:MM\"}"
+    base += "\n7. set_reminder — Set a reminder. Args: {\"message\": \"text\", \"when\": \"in 1 hour / tomorrow 9am\"}"
+    base += "\n8. generate_report — Generate report. Args: {\"format\": \"pdf/excel/html\", \"topic\": \"what\"}"
+    base += "\n9. analyze_screenshot — Analyze an image. Args: {\"query\": \"what to look for\"}"
+    base += "\n\nRULES:"
+    base += "\n- If user mentions spending money (e.g., 'coffee $5', 'lunch 1200₽', 'купил хлеб'), call add_expense."
+    base += "\n- If user says 'add task', 'remind me to', 'I need to', or mentions something to do later, call add_todo."
+    base += "\n- If user says where they are or what they're doing right now, call track_movement."
+    base += "\n- If user mentions a new city or country, call set_timezone_by_location."
+    base += "\n- For events/meetings, call create_event."
+    base += "\n- For reminders, call set_reminder."
+    base += "\n- For reports/analytics, call generate_report."
+    base += "\n- Output ONLY ONE function call per response. If done, respond conversationally."
     return base
 
 
@@ -278,8 +290,6 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=messages,
-        tools=TOOLS,
-        tool_choice="auto",
         temperature=0.1,
         max_tokens=max_tokens,
     )
@@ -288,11 +298,9 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
 
     choice = response.choices[0]
     content = choice.message.content or ""
-    if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-        messages.append(choice.message)
-        return choice.message.tool_calls, elapsed, messages
     tool_calls = _parse_text_tool_calls(content)
     if tool_calls:
+        messages.append({"role": "assistant", "content": content})
         return tool_calls, elapsed, messages
     return content, elapsed, messages
 
@@ -303,8 +311,6 @@ def chat_turn(client: Groq, messages: list):
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=messages,
-        tools=TOOLS,
-        tool_choice="auto",
         temperature=0.1,
         max_tokens=1000,
     )
@@ -313,11 +319,9 @@ def chat_turn(client: Groq, messages: list):
 
     choice = response.choices[0]
     content = choice.message.content or ""
-    if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-        messages.append(choice.message)
-        return choice.message.tool_calls, messages
     tool_calls = _parse_text_tool_calls(content)
     if tool_calls:
+        messages.append({"role": "assistant", "content": content})
         return tool_calls, messages
     return content, messages
 
