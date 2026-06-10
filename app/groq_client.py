@@ -300,6 +300,22 @@ def _parse_text_tool_calls(content: str) -> list | None:
                     tc.function.name = name
                     tc.function.arguments = json.dumps(args)
                     return [tc]
+        for name in _TOOL_NAMES:
+            p = re.compile(r"\b" + re.escape(name) + r"\b.*?(?:Args|args)\s*[:\-]?\s*(\{.*?\})", re.DOTALL)
+            mm = p.search(content)
+            if mm:
+                try:
+                    args = json.loads(mm.group(1))
+                except json.JSONDecodeError:
+                    continue
+                from types import SimpleNamespace
+                tc = SimpleNamespace()
+                tc.id = f"call_{int(time.time())}"
+                tc.type = "function"
+                tc.function = SimpleNamespace()
+                tc.function.name = name
+                tc.function.arguments = json.dumps(args)
+                return [tc]
         return None
     name = m.group(1)
     try:

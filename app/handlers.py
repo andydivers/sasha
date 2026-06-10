@@ -71,6 +71,22 @@ _lang_cache: dict[int, str] = {}
 _tz_cache: dict[int, str] = {}
 _sheet_cache: dict[int, str] = {}
 
+_TOOL_DESC_RE = re.compile(
+    r"(?:" + "|".join(
+        r"\b" + name + r"\b.*?Args\s*[:\-]?\s*\{"
+        for name in [
+            "add_expense", "add_todo", "track_movement", "set_timezone_by_location",
+            "manage_sheets", "create_event", "set_reminder", "generate_report",
+            "analyze_screenshot", "get_spending_summary",
+        ]
+    ) + r")",
+    re.DOTALL,
+)
+
+
+def _strip_tool_descs(text: str) -> str:
+    return _TOOL_DESC_RE.sub("", text).strip()
+
 
 async def get_lang(user_id: int) -> str:
     if user_id not in _lang_cache:
@@ -1233,11 +1249,12 @@ async def handle_voice(message: types.Message, bot: Bot):
                         break
                     next_result, messages = chat_turn(groq, messages)
                     if isinstance(next_result, str):
-                        if next_result not in all_responses:
+                        next_result = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", next_result, flags=re.DOTALL).strip()
+                        if next_result not in all_responses and next_result:
                             all_responses.append(next_result)
                         break
                     current = next_result
-                response_text = "\n\n".join(all_responses) if all_responses else "Done."
+                response_text = all_responses[0] if len(all_responses) == 1 else "\n\n".join(all_responses) if all_responses else "Done."
                 if all_responses:
                     await message.answer(response_text + suffix)
 
@@ -1344,11 +1361,12 @@ async def handle_message(message: types.Message):
                         break
                     next_result, messages = chat_turn(groq, messages)
                     if isinstance(next_result, str):
-                        if next_result not in all_responses:
+                        next_result = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", next_result, flags=re.DOTALL).strip()
+                        if next_result not in all_responses and next_result:
                             all_responses.append(next_result)
                         break
                     current = next_result
-                response_text = "\n\n".join(all_responses) if all_responses else "Done."
+                response_text = all_responses[0] if len(all_responses) == 1 else "\n\n".join(all_responses) if all_responses else "Done."
                 if all_responses:
                     await message.answer(response_text + suffix)
 
