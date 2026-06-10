@@ -112,11 +112,22 @@ CREATE TABLE IF NOT EXISTS movements (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT '';
 
--- Fix 403 Forbidden on expenses, movements & recurring_payments tables
-ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
-ALTER TABLE movements DISABLE ROW LEVEL SECURITY;
-ALTER TABLE recurring_payments DISABLE ROW LEVEL SECURITY;
-GRANT ALL ON expenses TO anon, service_role;
-GRANT ALL ON movements TO anon, service_role;
-GRANT ALL ON recurring_payments TO anon, service_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, service_role;
+-- Fix RLS security warnings + keep service_role access (bypasses RLS)
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recurring_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pending_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scheduled_tasks ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON expenses TO service_role;
+GRANT ALL ON movements TO service_role;
+GRANT ALL ON recurring_payments TO service_role;
+GRANT ALL ON users TO service_role;
+GRANT ALL ON chats TO service_role;
+GRANT ALL ON tasks TO service_role;
+GRANT ALL ON events TO service_role;
+GRANT ALL ON pending_payments TO service_role;
+GRANT ALL ON scheduled_tasks TO service_role;
