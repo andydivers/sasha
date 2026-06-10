@@ -473,7 +473,7 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, 
         amt = e.get("amount", "")
         desc = e.get("description", "")
         try:
-            cur, val = _detect_currency(desc, amt, default_cur)
+            cur, val = _detect_currency(desc, amt, base_cur)
             if cur == base_cur:
                 val_base = val
             else:
