@@ -1520,15 +1520,17 @@ async def handle_voice(message: types.Message, bot: Bot):
                 all_responses = []
                 turn_count = 0
                 current = result
-                last_func = ""
+                seen_calls = set()
                 while turn_count < 10:
                     turn_count += 1
                     for tool_call in current:
                         func_name = tool_call.function.name if hasattr(tool_call, 'function') else "tool"
-                        if func_name == last_func:
-                            current = []
-                            break
-                        last_func = func_name
+                        # Dedup by full call signature (name+args), not just name
+                        # This allows multiple add_expense calls with different items
+                        call_sig = f"{func_name}:{getattr(tool_call.function, 'arguments', '')}"
+                        if call_sig in seen_calls:
+                            continue
+                        seen_calls.add(call_sig)
                         resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
                         if resp.startswith("__REPORT__:"):
                             parts = resp.split(":", 2)
@@ -1632,15 +1634,17 @@ async def handle_message(message: types.Message):
                 all_responses = []
                 turn_count = 0
                 current = result
-                last_func = ""
+                seen_calls = set()
                 while turn_count < 10:
                     turn_count += 1
                     for tool_call in current:
                         func_name = tool_call.function.name if hasattr(tool_call, 'function') else "tool"
-                        if func_name == last_func:
-                            current = []
-                            break
-                        last_func = func_name
+                        # Dedup by full call signature (name+args), not just name
+                        # This allows multiple add_expense calls with different items
+                        call_sig = f"{func_name}:{getattr(tool_call.function, 'arguments', '')}"
+                        if call_sig in seen_calls:
+                            continue
+                        seen_calls.add(call_sig)
                         resp = await handle_tool_call(tool_call, lang=lang, sheet_url=sheet_url, tz=tz, user_id=message.from_user.id)
                         if resp.startswith("__REPORT__:"):
                             parts = resp.split(":", 2)
