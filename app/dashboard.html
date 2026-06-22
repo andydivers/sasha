@@ -265,7 +265,16 @@ function loadSection(name) {
 
 async function loadData() {
   try {
-    const res = await fetch('/api/dashboard?user_id=' + userId);
+    // Generate auth token: SHA256(user_id + secret), take first 16 chars
+    // Secret must match DASHBOARD_SECRET env var on server
+    const secret = 'sasha-dashboard-2026';
+    const encoder = new TextEncoder();
+    const data = encoder.encode(userId + secret);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+    
+    const res = await fetch('/api/dashboard?user_id=' + userId + '&token=' + token);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     window._data = json;
