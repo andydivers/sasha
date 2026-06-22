@@ -2,142 +2,399 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Sasha Dashboard</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --surface2: #222230;
+  --border: rgba(255,255,255,0.06);
+  --text: #f0f0f5;
+  --text2: #8e8ea0;
+  --text3: #5c5c6e;
+  --accent: #6c5ce7;
+  --accent2: #a29bfe;
+  --red: #ff6b6b;
+  --green: #51cf66;
+  --orange: #ffa94d;
+  --blue: #74c0fc;
+  --radius: 14px;
+  --radius-sm: 10px;
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--tg-theme-bg-color, #f8f9fa);
-  color: var(--tg-theme-text-color, #1a1a2e);
-  padding: 0 0 24px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
+
+/* ─── Header ──────────────────────────────────── */
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px 16px 16px;
-  border-radius: 0 0 24px 24px;
-  margin-bottom: 16px;
+  padding: 16px 20px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .header h1 {
-  color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
-.header p {
-  color: rgba(255,255,255,0.8);
-  font-size: 13px;
+.header-date {
+  font-size: 12px;
+  color: var(--text3);
+  font-weight: 500;
+}
+
+/* ─── Summary Cards ───────────────────────────── */
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 20px;
+  margin-bottom: 16px;
+}
+.summary-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
+.summary-card.wide {
+  grid-column: 1 / -1;
+}
+.summary-label {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.summary-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.summary-value.red { color: var(--red); }
+.summary-value.green { color: var(--green); }
+.summary-sub {
+  font-size: 11px;
+  color: var(--text3);
   margin-top: 4px;
 }
-.tab-wrap {
+
+/* ─── Tabs ────────────────────────────────────── */
+.tabs {
   display: flex;
-  gap: 6px;
-  padding: 0 16px;
-  margin-bottom: 12px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 20px 16px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
-.tab-wrap::-webkit-scrollbar { display: none; }
-.tab-btn {
-  flex-shrink: 0;
-  padding: 8px 16px;
+.tab {
+  flex: 1;
+  padding: 10px 4px;
   border: none;
-  background: var(--tg-theme-secondary-bg-color, #eef0f4);
-  color: var(--tg-theme-text-color, #1a1a2e);
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
+  border-radius: var(--radius-sm);
   transition: all 0.2s ease;
-  opacity: 0.6;
+  text-align: center;
+  white-space: nowrap;
 }
-.tab-btn.active {
-  background: #667eea;
+.tab.active {
+  background: var(--accent);
   color: #fff;
-  opacity: 1;
-  box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.35);
 }
+
+/* ─── Content ─────────────────────────────────── */
 .content {
-  padding: 0 16px;
+  padding: 0 20px 100px;
 }
 .section { display: none; }
 .section.active { display: block; }
-.card {
-  background: var(--tg-theme-secondary-bg-color, #fff);
-  border-radius: 14px;
-  padding: 14px 16px;
+
+/* ─── Date Group ──────────────────────────────── */
+.date-group {
+  margin-bottom: 20px;
+}
+.date-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
   margin-bottom: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  transition: transform 0.1s;
+  padding-left: 2px;
 }
-.card:active { transform: scale(0.98); }
-.card p {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--tg-theme-hint-color, #6c757d);
-}
-.card p b { color: var(--tg-theme-text-color, #1a1a2e); }
-.row {
+
+/* ─── Item Row ────────────────────────────────── */
+.item {
   display: flex;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--tg-theme-hint-color, rgba(0,0,0,0.05));
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  transition: transform 0.1s, background 0.15s;
+  position: relative;
+  overflow: hidden;
 }
-.row:last-child { border-bottom: none; }
-.row-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+.item:active { transform: scale(0.98); }
+.item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  margin-right: 12px;
   flex-shrink: 0;
 }
-.row-icon.expense { background: #fff0f0; }
-.row-icon.movement { background: #e8f4fd; }
-.row-icon.todo { background: #f0f4ff; }
-.row-icon.event { background: #fef3e2; }
-.row-body { flex: 1; min-width: 0; }
-.row-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--tg-theme-text-color, #1a1a2e);
-  word-break: break-word;
+.item-icon.expense { background: rgba(255,107,107,0.12); }
+.item-icon.movement { background: rgba(116,192,252,0.12); }
+.item-icon.todo { background: rgba(162,155,254,0.12); }
+.item-icon.event { background: rgba(255,169,77,0.12); }
+.item-body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
-.row-meta {
+.item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-meta {
   font-size: 12px;
-  color: var(--tg-theme-hint-color, #6c757d);
+  color: var(--text3);
   margin-top: 2px;
 }
-.row-amount {
+.item-amount {
   font-size: 15px;
-  font-weight: 700;
-  color: #e74c3c;
+  font-weight: 800;
+  color: var(--red);
   flex-shrink: 0;
-  margin-left: 8px;
+  letter-spacing: -0.3px;
 }
-.empty-state {
+.item-delete {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,107,107,0.1);
+  color: var(--red);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.item:hover .item-delete,
+.item:active .item-delete { opacity: 1; }
+/* Always visible on touch */
+@media (hover: none) {
+  .item-delete { opacity: 0.5; }
+}
+
+/* ─── Todo checkbox ───────────────────────────── */
+.todo-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 2px solid var(--text3);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.todo-check.done {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+  font-size: 12px;
+}
+.todo-title.done {
+  text-decoration: line-through;
+  color: var(--text3);
+}
+
+/* ─── Empty State ─────────────────────────────── */
+.empty {
   text-align: center;
-  padding: 48px 16px;
-  color: var(--tg-theme-hint-color, #adb5bd);
+  padding: 48px 20px;
 }
-.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-.empty-state p { font-size: 14px; line-height: 1.5; }
-.error-state { text-align: center; padding: 40px 16px; color: #e74c3c; font-size: 14px; }
+.empty-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.empty-sub {
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+/* ─── Digest ──────────────────────────────────── */
+.digest-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-bottom: 10px;
+}
+.digest-period {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.digest-total {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.digest-count {
+  font-size: 13px;
+  color: var(--text3);
+  margin-bottom: 16px;
+}
+.digest-bar-wrap {
+  margin-bottom: 10px;
+}
+.digest-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.digest-bar-label span:first-child { color: var(--text2); font-weight: 500; }
+.digest-bar-label span:last-child { color: var(--text3); }
+.digest-bar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.digest-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ─── Event card ──────────────────────────────── */
+.event-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--orange);
+}
+.event-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.event-time {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+/* ─── Error ───────────────────────────────────── */
+.error-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--red);
+  font-size: 14px;
+}
+.error-state p { margin-top: 8px; color: var(--text3); font-size: 13px; }
+
+/* ─── Loading ─────────────────────────────────── */
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--surface2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Pull to refresh hint ───────────────────── */
+.refresh-hint {
+  text-align: center;
+  padding: 12px;
+  font-size: 11px;
+  color: var(--text3);
+}
 </style>
 </head>
 <body>
+
 <div class="header">
-  <h1>Sasha</h1>
-  <p id="subtitle">Your AI business assistant</p>
+  <div class="header-row">
+    <h1>Sasha</h1>
+    <div class="header-date" id="headerDate"></div>
+  </div>
 </div>
-<div class="tab-wrap" id="tabs"></div>
-<div class="content" id="content"></div>
+
+<div class="summary" id="summary"></div>
+<div class="tabs" id="tabs"></div>
+<div class="content" id="content">
+  <div class="loading"><div class="spinner"></div></div>
+</div>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -149,140 +406,458 @@ if (!userId) {
   document.body.innerHTML = '<div class="error-state">Open from Telegram</div>';
 }
 
+// ─── i18n ──────────────────────────────────────────
 const T = {
-  en: { subtitle: 'Your AI business assistant', tabs: ['Expenses', 'Movements', 'Tasks', 'Digest', 'Calendar'],
-    no_expenses: 'No expenses yet', no_expenses_sub: 'Say "coffee $5" to Sasha!',
-    no_movements: 'No movements yet', no_movements_sub: 'Say "at work" to Sasha!',
-    no_todos: 'All done!', no_todos_sub: 'Say "add task" to Sasha.',
-    no_events: 'No events', no_events_sub: 'Say "meeting tomorrow at 2pm"!',
-    digest_text: 'How did I spend this week?', digest_sub: 'Ask "digest now" in chat.',
-    loading: 'Loading...' },
-  ru: { subtitle: 'Твой AI бизнес-ассистент', tabs: ['Расходы', 'Перемещения', 'Задачи', 'Дайджест', 'Календарь'],
-    no_expenses: 'Расходов нет', no_expenses_sub: 'Скажи "кофе 300₽" Саше!',
-    no_movements: 'Перемещений нет', no_movements_sub: 'Скажи "я на работе" Саше!',
-    no_todos: 'Всё выполнено!', no_todos_sub: 'Скажи "добавь задачу" Саше.',
-    no_events: 'Событий нет', no_events_sub: 'Скажи "встреча завтра в 14:00"!',
-    digest_text: 'Сколько потратил на неделе?', digest_sub: 'Спроси "дайджест" в чате.',
-    loading: 'Загрузка...' },
-  es: { subtitle: 'Tu asistente AI de negocios', tabs: ['Gastos', 'Ubicación', 'Tareas', 'Resumen', 'Calendario'],
-    no_expenses: 'Sin gastos', no_expenses_sub: 'Di "café $5" a Sasha!',
-    no_movements: 'Sin movimientos', no_movements_sub: 'Di "en el trabajo" a Sasha!',
-    no_todos: 'Todo listo', no_todos_sub: 'Di "añadir tarea" a Sasha.',
-    no_events: 'Sin eventos', no_events_sub: 'Di "reunión mañana a las 14:00"!',
-    digest_text: '¿Cuánto gasté?', digest_sub: 'Pregunta "resumen" en el chat.',
-    loading: 'Cargando...' },
+  en: {
+    subtitle: 'AI business assistant',
+    tabs: ['Expenses', 'Tasks', 'Places', 'Calendar'],
+    total_spent: 'Spent this month',
+    total_week: 'This week',
+    expenses_count: 'expenses',
+    tasks_count: 'tasks',
+    no_expenses: 'No expenses yet',
+    no_expenses_sub: 'Send a receipt photo or say "coffee $5"',
+    no_todos: 'All clear!',
+    no_todos_sub: 'Say "remind me to..." to add tasks',
+    no_movements: 'No locations yet',
+    no_movements_sub: 'Say "I\'m at the office" to Sasha',
+    no_events: 'No upcoming events',
+    no_events_sub: 'Say "meeting tomorrow at 2pm"',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    this_week: 'This week',
+    earlier: 'Earlier',
+    delete_confirm: 'Delete?',
+    undo: 'Undo',
+  },
+  ru: {
+    subtitle: 'AI бизнес-ассистент',
+    tabs: ['Расходы', 'Задачи', 'Места', 'Календарь'],
+    total_spent: 'Потрачено за месяц',
+    total_week: 'За неделю',
+    expenses_count: 'расходов',
+    tasks_count: 'задач',
+    no_expenses: 'Расходов нет',
+    no_expenses_sub: 'Пришли фото чека или скажи "кофе 300₽"',
+    no_todos: 'Всё выполнено!',
+    no_todos_sub: 'Скажи "напомни мне..." для новых задач',
+    no_movements: 'Мест нет',
+    no_movements_sub: 'Скажи "я на работе" Саше',
+    no_events: 'Событий нет',
+    no_events_sub: 'Скажи "встреча завтра в 14:00"',
+    today: 'Сегодня',
+    yesterday: 'Вчера',
+    this_week: 'На этой неделе',
+    earlier: 'Раньше',
+    delete_confirm: 'Удалить?',
+    undo: 'Отменить',
+  },
+  es: {
+    subtitle: 'Asistente AI de negocios',
+    tabs: ['Gastos', 'Tareas', 'Lugares', 'Calendario'],
+    total_spent: 'Gastado este mes',
+    total_week: 'Esta semana',
+    expenses_count: 'gastos',
+    tasks_count: 'tareas',
+    no_expenses: 'Sin gastos',
+    no_expenses_sub: 'Envía una foto del recibo o di "café $5"',
+    no_todos: 'Todo listo!',
+    no_todos_sub: 'Di "recuérdame..." para añadir tareas',
+    no_movements: 'Sin ubicaciones',
+    no_movements_sub: 'Di "estoy en la oficina" a Sasha',
+    no_events: 'Sin eventos',
+    no_events_sub: 'Di "reunión mañana a las 14:00"',
+    today: 'Hoy',
+    yesterday: 'Ayer',
+    this_week: 'Esta semana',
+    earlier: 'Antes',
+    delete_confirm: 'Eliminar?',
+    undo: 'Deshacer',
+  },
 };
 
 let currentTab = 'expenses';
+let lang = 'en';
+
+function t(key) { return (T[lang] || T.en)[key] || T.en[key]; }
+
+// ─── Date helpers ──────────────────────────────────
+function formatHeaderDate() {
+  const d = new Date();
+  const days = lang === 'ru'
+    ? ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота']
+    : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = lang === 'ru'
+    ? ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
+    : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function getDateGroup(dateStr) {
+  if (!dateStr) return t('earlier');
+  const d = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const itemDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = (today - itemDay) / 86400000;
+  if (diff <= 0) return t('today');
+  if (diff <= 1) return t('yesterday');
+  if (diff <= 7) return t('this_week');
+  return t('earlier');
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatAmount(amount) {
+  if (!amount) return '';
+  const num = parseFloat(String(amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+  if (isNaN(num)) return String(amount);
+  return num.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// ─── Expense categories ────────────────────────────
+const CATEGORY_ICONS = {
+  'coffee': '☕️', 'food': '🍔', 'еда': '🍔', 'кофе': '☕️', 'обед': '🍜', 'ужин': '🍽',
+  'taxi': '🚕', 'uber': '🚕', 'такси': '🚕', 'transport': '🚌', 'проезд': '🚌',
+  'shop': '🛍', 'покупка': '🛍', 'продукты': '🛒', 'grocery': '🛒',
+  'health': '💊', 'аптек': '💊', 'pharmacy': '💊',
+  'gas': '⛽️', 'бензин': '⛽️', 'fuel': '⛽️',
+  'rent': '🏠', 'аренда': '🏠', 'housing': '🏠',
+  'entertainment': '🎬', 'movie': '🎬', 'кино': '🎬',
+  'subscription': '📱', 'подписка': '📱', 'netflix': '📱',
+  'transfer': '💸', 'перевод': '💸',
+  'receipt': '🧾', 'чек': '🧾',
+  'bank': '🏦', 'commission': '🏦', 'комиссия': '🏦',
+};
+
+function getExpenseIcon(desc) {
+  if (!desc) return '💰';
+  const lower = desc.toLowerCase();
+  for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
+    if (lower.includes(key)) return icon;
+  }
+  return '💰';
+}
+
+// ─── Compute stats ─────────────────────────────────
+function computeStats() {
+  const expenses = window._data?.expenses || [];
+  const todos = window._data?.todos || [];
+  const now = new Date();
+  const weekAgo = new Date(now - 7 * 86400000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let weekTotal = 0, monthTotal = 0;
+  const categoryTotals = {};
+
+  expenses.forEach(e => {
+    const num = parseFloat(String(e.amount || '0').replace(/[^\d.,]/g, '').replace(',', '.'));
+    if (isNaN(num)) return;
+    const d = new Date(e.created_at || 0);
+    if (d >= weekAgo) weekTotal += num;
+    if (d >= monthStart) {
+      monthTotal += num;
+      // Simple category extraction
+      const cat = e.category || e.description?.split(' ')[0] || 'other';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + num;
+    }
+  });
+
+  const activeTodos = todos.filter(t => !t.done).length;
+
+  return { weekTotal, monthTotal, categoryTotals, activeTodos, expenseCount: expenses.length };
+}
+
+// ─── Render ────────────────────────────────────────
+function renderSummary() {
+  const stats = computeStats();
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-card">
+      <div class="summary-label">${t('total_spent')}</div>
+      <div class="summary-value red">${formatAmount(stats.monthTotal)}</div>
+      <div class="summary-sub">${stats.expenseCount} ${t('expenses_count')}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">${t('total_week')}</div>
+      <div class="summary-value">${formatAmount(stats.weekTotal)}</div>
+      <div class="summary-sub">${t('tasks_count')}: ${stats.activeTodos}</div>
+    </div>
+  `;
+}
+
+function renderTabs() {
+  const tabIds = ['expenses', 'todos', 'movements', 'events'];
+  document.getElementById('tabs').innerHTML = t('tabs').map((name, i) =>
+    `<button class="tab${tabIds[i] === currentTab ? ' active' : ''}" onclick="switchTab('${tabIds[i]}')">${name}</button>`
+  ).join('');
+}
 
 function render() {
-  const lang = window._lang || 'en';
-  const l = T[lang] || T.en;
-  document.getElementById('subtitle').textContent = l.subtitle;
-  const tabNames = ['expenses', 'movements', 'todos', 'digest', 'events'];
-  document.getElementById('tabs').innerHTML = l.tabs.map((t, i) =>
-    `<button class="tab-btn${tabNames[i] === currentTab ? ' active' : ''}" onclick="switchTab('${tabNames[i]}')">${t}</button>`
-  ).join('');
+  document.getElementById('headerDate').textContent = formatHeaderDate();
+  renderSummary();
+  renderTabs();
+  loadSection(currentTab);
 }
 
 function switchTab(name) {
   currentTab = name;
-  render();
+  renderTabs();
   loadSection(name);
 }
 
-function renderSection(name, html) {
+// ─── Sections ──────────────────────────────────────
+function setSectionContent(name, html) {
   const el = document.getElementById('content');
-  const sections = el.querySelectorAll('.section');
-  sections.forEach(s => s.remove());
+  el.querySelectorAll('.section').forEach(s => s.remove());
   const div = document.createElement('div');
   div.className = 'section active';
-  div.id = 'section-' + name;
   div.innerHTML = html;
   el.appendChild(div);
 }
 
-function renderEmpty(icon, title, sub) {
-  return `<div class="empty-state"><div class="icon">${icon}</div><p><b>${title}</b></p><p>${sub}</p></div>`;
+function emptyState(icon, title, sub) {
+  return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
 }
 
-function renderRows(iconMap, items, renderItem) {
-  if (!items || items.length === 0) return '';
-  return items.map(item => {
-    const r = renderItem(item);
-    return `<div class="row"><div class="row-icon ${iconMap}">${r.icon || '📌'}</div><div class="row-body"><div class="row-title">${r.title}</div>${r.meta ? '<div class="row-meta">' + r.meta + '</div>' : ''}</div>${r.amount ? '<div class="row-amount">' + r.amount + '</div>' : ''}</div>`;
-  }).join('');
+function loadExpenses() {
+  const expenses = window._data?.expenses || [];
+  if (!expenses.length) {
+    setSectionContent('expenses', emptyState('🧾', t('no_expenses'), t('no_expenses_sub')));
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  expenses.forEach(e => {
+    const group = getDateGroup(e.created_at);
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(e);
+  });
+
+  let html = '';
+  const order = [t('today'), t('yesterday'), t('this_week'), t('earlier')];
+  order.forEach(label => {
+    if (!groups[label]) return;
+    html += `<div class="date-group"><div class="date-label">${label}</div>`;
+    groups[label].forEach(e => {
+      const icon = getExpenseIcon(e.description);
+      const title = (e.description || e.category || '').split('(')[0].trim();
+      const meta = formatTime(e.created_at) + (e.category && e.category !== 'expense' ? ' · ' + e.category : '');
+      html += `
+        <div class="item" data-id="${e.id}">
+          <div class="item-icon expense">${icon}</div>
+          <div class="item-body">
+            <div class="item-title">${escHtml(title)}</div>
+            <div class="item-meta">${escHtml(meta)}</div>
+          </div>
+          <div class="item-amount">${formatAmount(e.amount)}</div>
+          <button class="item-delete" onclick="deleteExpense(${e.id})" title="${t('delete_confirm')}">✕</button>
+        </div>`;
+    });
+    html += '</div>';
+  });
+
+  // Category breakdown
+  const stats = computeStats();
+  const cats = Object.entries(stats.categoryTotals).sort((a, b) => b[1] - a[1]);
+  if (cats.length > 1) {
+    const maxCat = cats[0][1];
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'По категориям' : 'By category') + '</div>';
+    html += '<div class="digest-card">';
+    cats.slice(0, 6).forEach(([cat, total]) => {
+      const pct = Math.round((total / maxCat) * 100);
+      const colors = ['#6c5ce7','#ff6b6b','#51cf66','#ffa94d','#74c0fc','#a29bfe'];
+      const color = colors[cats.indexOf(cats.find(c => c[0] === cat)) % colors.length];
+      html += `
+        <div class="digest-bar-wrap">
+          <div class="digest-bar-label"><span>${escHtml(cat)}</span><span>${formatAmount(total)}</span></div>
+          <div class="digest-bar"><div class="digest-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  setSectionContent('expenses', html);
+}
+
+function loadTodos() {
+  const todos = window._data?.todos || [];
+  const active = todos.filter(t => !t.done);
+  const done = todos.filter(t => t.done);
+
+  if (!todos.length) {
+    setSectionContent('todos', emptyState('✅', t('no_todos'), t('no_todos_sub')));
+    return;
+  }
+
+  let html = '';
+  if (active.length) {
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Активные' : 'Active') + '</div>';
+    active.forEach(t => {
+      html += `
+        <div class="item" data-id="${t.id}">
+          <button class="todo-check" onclick="toggleTodo(${t.id})">☐</button>
+          <div class="item-body">
+            <div class="item-title">${escHtml(t.title)}</div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  }
+  if (done.length) {
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Выполненные' : 'Completed') + '</div>';
+    done.slice(0, 10).forEach(t => {
+      html += `
+        <div class="item" data-id="${t.id}" style="opacity:0.5">
+          <div class="todo-check done">✓</div>
+          <div class="item-body">
+            <div class="item-title todo-title done">${escHtml(t.title)}</div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  }
+
+  setSectionContent('todos', html);
+}
+
+function loadMovements() {
+  const movements = window._data?.movements || [];
+  if (!movements.length) {
+    setSectionContent('movements', emptyState('📍', t('no_movements'), t('no_movements_sub')));
+    return;
+  }
+
+  const groups = {};
+  movements.forEach(m => {
+    const group = getDateGroup(m.created_at);
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(m);
+  });
+
+  let html = '';
+  const order = [t('today'), t('yesterday'), t('this_week'), t('earlier')];
+  order.forEach(label => {
+    if (!groups[label]) return;
+    html += `<div class="date-group"><div class="date-label">${label}</div>`;
+    groups[label].forEach(m => {
+      html += `
+        <div class="item">
+          <div class="item-icon movement">📍</div>
+          <div class="item-body">
+            <div class="item-title">${escHtml(m.location || '')}</div>
+            <div class="item-meta">${formatTime(m.created_at)}${m.description ? ' · ' + escHtml(m.description) : ''}</div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  });
+
+  setSectionContent('movements', html);
+}
+
+function loadEvents() {
+  const events = window._data?.events || [];
+  if (!events.length) {
+    setSectionContent('events', emptyState('📅', t('no_events'), t('no_events_sub')));
+    return;
+  }
+
+  let html = '<div class="date-group">';
+  events.forEach(e => {
+    const d = e.event_data || {};
+    html += `
+      <div class="event-card">
+        <div class="event-title">${escHtml(d.summary || 'Event')}</div>
+        <div class="event-time">${[d.date, d.time].filter(Boolean).join(' · ') || ''}</div>
+      </div>`;
+  });
+  html += '</div>';
+
+  setSectionContent('events', html);
 }
 
 function loadSection(name) {
-  const lang = window._lang || 'en';
-  const l = T[lang] || T.en;
-
-  if (name === 'expenses') {
-    const html = window._data?.expenses?.length
-      ? renderRows('expense', window._data.expenses, e => ({
-          icon: '💰',
-          title: e.description || e.category || '',
-          meta: (e.created_at || '').replace('T', ' ').slice(0, 16),
-          amount: e.amount || ''
-        }))
-      : renderEmpty('💰', l.no_expenses, l.no_expenses_sub);
-    renderSection(name, html);
-  } else if (name === 'movements') {
-    const html = window._data?.movements?.length
-      ? renderRows('movement', window._data.movements, m => ({
-          icon: '📍',
-          title: m.location,
-          meta: (m.created_at || '').replace('T', ' ').slice(0, 16)
-        }))
-      : renderEmpty('📍', l.no_movements, l.no_movements_sub);
-    renderSection(name, html);
-  } else if (name === 'todos') {
-    const todos = window._data?.todos?.filter(t => !t.done) || [];
-    const html = todos.length
-      ? renderRows('todo', todos, t => ({
-          icon: '☐',
-          title: t.title
-        }))
-      : renderEmpty('✅', l.no_todos, l.no_todos_sub);
-    renderSection(name, html);
-  } else if (name === 'events') {
-    const html = window._data?.events?.length
-      ? renderRows('event', window._data.events, e => {
-          const d = e.event_data || {};
-          return {
-            icon: '📅',
-            title: d.summary || 'Event',
-            meta: [d.date, d.time].filter(Boolean).join(' ')
-          };
-        })
-      : renderEmpty('📅', l.no_events, l.no_events_sub);
-    renderSection(name, html);
-  } else if (name === 'digest') {
-    renderSection(name, `<div class="card"><p><b>${l.digest_text}</b><br>${l.digest_sub}</p></div>`);
+  switch(name) {
+    case 'expenses': loadExpenses(); break;
+    case 'todos': loadTodos(); break;
+    case 'movements': loadMovements(); break;
+    case 'events': loadEvents(); break;
   }
 }
 
-async function loadData() {
+// ─── Actions ───────────────────────────────────────
+async function deleteExpense(id) {
+  if (!confirm(t('delete_confirm'))) return;
   try {
-    // Generate auth token: SHA256(user_id + secret), take first 16 chars
-    // Secret must match DASHBOARD_SECRET env var on server
     const secret = 'sasha-dashboard-2026';
     const encoder = new TextEncoder();
     const data = encoder.encode(userId + secret);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-    
+
+    const res = await fetch(`/api/dashboard/delete_expense?user_id=${userId}&token=${token}&expense_id=${id}`, { method: 'POST' });
+    if (res.ok) {
+      // Remove from local data and re-render
+      window._data.expenses = window._data.expenses.filter(e => e.id !== id);
+      render();
+    }
+  } catch(e) {
+    console.error('Delete failed:', e);
+  }
+}
+
+async function toggleTodo(id) {
+  try {
+    const secret = 'sasha-dashboard-2026';
+    const encoder = new TextEncoder();
+    const data = encoder.encode(userId + secret);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+
+    const res = await fetch(`/api/dashboard/toggle_todo?user_id=${userId}&token=${token}&todo_id=${id}`, { method: 'POST' });
+    if (res.ok) {
+      const todo = window._data.todos.find(t => t.id === id);
+      if (todo) todo.done = !todo.done;
+      render();
+    }
+  } catch(e) {
+    console.error('Toggle failed:', e);
+  }
+}
+
+// ─── Utility ───────────────────────────────────────
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─── Load data ─────────────────────────────────────
+async function loadData() {
+  try {
+    const secret = 'sasha-dashboard-2026';
+    const encoder = new TextEncoder();
+    const data = encoder.encode(userId + secret);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+
     const res = await fetch('/api/dashboard?user_id=' + userId + '&token=' + token);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     window._data = json;
-    window._lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
+    lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
     render();
-    loadSection(currentTab);
   } catch (e) {
-    document.getElementById('content').innerHTML = '<div class="error-state">Failed to load</div>';
+    document.getElementById('content').innerHTML =
+      `<div class="error-state"><div>⚠️</div><p>${lang === 'ru' ? 'Ошибка загрузки' : 'Failed to load'}</p></div>`;
   }
 }
 

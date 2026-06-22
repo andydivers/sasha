@@ -291,6 +291,55 @@ async def api_dashboard(user_id: int, token: str = ""):
         return JSONResponse({"ok": False, "error": str(e)})
 
 
+def _verify_dashboard_token(user_id: int, token: str) -> bool:
+    """Verify dashboard auth token."""
+    import hashlib, os
+    dashboard_secret = os.getenv("DASHBOARD_SECRET", "sasha-dashboard-2026")
+    expected_token = hashlib.sha256(f"{user_id}{dashboard_secret}".encode()).hexdigest()[:16]
+    return token == expected_token
+
+
+@app.post("/api/dashboard/delete_expense")
+async def api_delete_expense(user_id: int, token: str, expense_id: int):
+    """Delete an expense from the dashboard."""
+    from app.database import delete_expense
+    from fastapi.responses import JSONResponse
+
+    if not _verify_dashboard_token(user_id, token):
+        return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+
+    try:
+        ok = await delete_expense(expense_id)
+        if ok:
+            return JSONResponse({"ok": True})
+        return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
+    except Exception as e:
+        logger.error("Dashboard delete expense error: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
+@app.post("/api/dashboard/toggle_todo")
+async def api_toggle_todo(user_id: int, token: str, todo_id: int):
+    """Toggle a todo's done status from the dashboard."""
+    from app.database import get_todos, mark_todo_done
+    from fastapi.responses import JSONResponse
+
+    if not _verify_dashboard_token(user_id, token):
+        return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+
+    try:
+        todos = await get_todos(user_id)
+        todo = next((t for t in todos if t.get("id") == todo_id), None)
+        if not todo:
+            return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
+        new_done = not todo.get("done", False)
+        await mark_todo_done(todo_id)
+        return JSONResponse({"ok": True, "done": new_done})
+    except Exception as e:
+        logger.error("Dashboard toggle todo error: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
 @app.get("/health")
 @app.head("/health")
 async def health():
