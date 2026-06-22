@@ -131,7 +131,6 @@ _NON_EXPENSE_WORDS = {"напомни","remind","встреча","meeting","вс
 async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
     lowered = text.lower().strip()
     nums = re.findall(r"\d[\d.,]*", text)
-    amount = parse_amount(nums[0]) if nums else ""
 
     if not nums:
         return None
@@ -139,6 +138,13 @@ async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
     for w in _NON_EXPENSE_WORDS:
         if w in lowered:
             return None
+
+    # If multiple numbers found, let LLM handle it — it can split into separate expenses
+    # with correct currencies per item (e.g., "еда 150 бат, хостинг 600 рублей")
+    if len(nums) > 1:
+        return None
+
+    amount = parse_amount(nums[0])
 
     # Extract currency from text
     cur = extract_currency(text)

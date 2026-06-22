@@ -1083,8 +1083,12 @@ async function loadData() {
     if (!json.ok) throw new Error(json.error);
     window._data = json;
     lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
-    // Detect base currency from user's expenses
-    window._baseCurrency = detectBaseCurrency(json.expenses || []);
+    // Use user's currency setting from server, fallback to detecting from expenses
+    if (json.user_currency) {
+      window._baseCurrency = json.user_currency;
+    } else {
+      window._baseCurrency = detectBaseCurrency(json.expenses || []);
+    }
     // Fetch exchange rates in background, then re-render
     fetchRates().then(() => render());
     render();

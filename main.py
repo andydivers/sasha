@@ -282,7 +282,7 @@ async def api_dashboard(user_id: int, token: str = ""):
     Token = bot sends a verification message with a one-time link.
     For now, require a secret token from env DASHBOARD_TOKEN or user's chat_id hashed.
     """
-    from app.database import get_user_items, get_movements, get_todos, get_user_lang, get_calendar_events
+    from app.database import get_user_items, get_movements, get_todos, get_user_lang, get_calendar_events, get_user_currency
     from fastapi.responses import JSONResponse
     import hashlib, os
 
@@ -298,7 +298,8 @@ async def api_dashboard(user_id: int, token: str = ""):
         todos = await get_todos(user_id) or []
         events = await get_calendar_events(user_id) or []
         lang = await get_user_lang(user_id) or "en"
-        return JSONResponse({"ok": True, "lang": lang, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
+        user_currency = await get_user_currency(user_id) or ""
+        return JSONResponse({"ok": True, "lang": lang, "user_currency": user_currency, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
     except Exception as e:
         logger.error("Dashboard API error: %s", e)
         return JSONResponse({"ok": False, "error": str(e)})
