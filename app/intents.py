@@ -347,6 +347,15 @@ async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
             currency = await get_user_currency(user_id) or ""
         except Exception:
             currency = ""
+    # Auto-save as user's default currency if they don't have one yet
+    if currency:
+        try:
+            existing = await get_user_currency(user_id)
+            if not existing:
+                from app.database import set_user_currency
+                await set_user_currency(user_id, currency)
+        except Exception:
+            pass
     try:
         await add_expense(user_id, description, amount, category, currency)
     except Exception as e:
@@ -371,6 +380,15 @@ async def _handle_add_income(args: dict, lang: str, user_id: int = 0) -> str:
             currency = await get_user_currency(user_id) or ""
         except Exception:
             currency = ""
+    # Auto-save as user's default currency if they don't have one yet
+    if currency:
+        try:
+            existing = await get_user_currency(user_id)
+            if not existing:
+                from app.database import set_user_currency
+                await set_user_currency(user_id, currency)
+        except Exception:
+            pass
     try:
         await add_expense(user_id, description, amount, category, currency)
     except Exception as e:
@@ -599,16 +617,32 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, 
 
 
 async def _handle_track_movement(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
+    from app.database import set_user_currency, get_user_currency
     location = args.get("location", "somewhere")
     description = args.get("description", "")
     try:
         await add_movement(user_id, location, description)
     except Exception as e:
         logger.error("Failed to add movement: %s", e)
+    # Auto-switch currency based on location
+    detected_cur = _country_from_location(location)
+    cur_msg = ""
+    if detected_cur:
+        existing_cur = await get_user_currency(user_id)
+        if detected_cur != existing_cur:
+            try:
+                await set_user_currency(user_id, detected_cur)
+                sym = currency_symbol(detected_cur)
+                if lang == "ru":
+                    cur_msg = f"\n💱 Валюта переключена: {detected_cur} {sym}"
+                else:
+                    cur_msg = f"\n💱 Currency switched: {detected_cur} {sym}"
+            except Exception:
+                pass
     time_str = format_dual_time(user_tz=tz)
     if lang == "ru":
-        return f"📍 {location} ({time_str}){' — ' + description if description else ''}"
-    return f"📍 {location} ({time_str}){' — ' + description if description else ''}"
+        return f"📍 {location} ({time_str}){' — ' + description if description else ''}{cur_msg}"
+    return f"📍 {location} ({time_str}){' — ' + description if description else ''}{cur_msg}"
 
 
 async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int = 0) -> str:

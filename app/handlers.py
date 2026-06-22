@@ -663,6 +663,7 @@ async def cmd_export(message: types.Message):
     from app.database import get_user_items
     import io
     import csv
+    from aiogram.types import BufferedInputFile
 
     items = await get_user_items(user_id, limit=500)
     if not items:
@@ -684,13 +685,13 @@ async def cmd_export(message: types.Message):
         cat = item.get("category", "")
         writer.writerow([created, desc, amt, cur, cat])
 
-    buf.seek(0)
-    csv_bytes = io.BytesIO(buf.getvalue().encode("utf-8-sig"))  # BOM for Excel
-    csv_bytes.name = f"sasha_export_{datetime.now().strftime('%Y%m%d')}.csv"
+    csv_bytes = buf.getvalue().encode("utf-8-sig")  # BOM for Excel
+    filename = f"sasha_export_{datetime.now().strftime('%Y%m%d')}.csv"
 
     try:
+        doc = BufferedInputFile(csv_bytes, filename=filename)
         await message.answer_document(
-            csv_bytes,
+            doc,
             caption=f"📊 {len(items)} записей" if lang == "ru" else f"📊 {len(items)} records exported",
         )
     except Exception as e:

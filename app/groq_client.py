@@ -271,15 +271,15 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- If user mentions spending money, call add_expense. ALWAYS include the currency parameter (e.g., 'THB', 'RUB', 'USD', 'EUR') if detectable from the message."
     base += "\n- If user mentions receiving/earning money (salary, freelance, got paid), call add_income. ALWAYS include the currency parameter."
     base += "\n- Detect currency from symbols (₽=$=€=฿=£=¥) or words (руб/bath/dollars/euros/won/yuan) in the message."
+    base += "\n- IMPORTANT: If user mentions MULTIPLE expenses in one message (e.g., 'еда 150 бат, хостинг 600 рублей'), call add_expense SEPARATELY for EACH item. Each expense must have its own currency."
     base += "\n- If user mentions a task or something to do later, call add_todo."
-    base += "\n- If user says where they are, call track_movement."
-    base += "\n- If user mentions a new city/country, call set_timezone_by_location."
+    base += "\n- If user says where they are, call track_movement AND set_timezone_by_location."
     base += "\n- For events/meetings, call create_event."
     base += "\n- For reminders, call set_reminder."
     base += "\n- For spending summary, call get_spending_summary."
     base += "\n- When user sends a receipt photo, call analyze_receipt with extracted data."
     base += "\n- When user sends a bank statement, extract ALL transactions and call add_expense or add_income for each — include currency for every transaction."
-    base += "\n- Call ONLY ONE function per response. If no tool fits, respond conversationally."
+    base += "\n- You may call MULTIPLE functions in one response when the user mentions multiple items to track."
     base += "\n\nUser commands: /currency USD — change currency. /tz — set timezone. /digest — daily summary. /undo — delete last entry."
     return base
 
