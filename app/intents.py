@@ -460,6 +460,8 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, 
         start = end = today_str
 
     expenses = await get_expenses_range(user_id, start, end)
+    # Filter out junk: only keep expenses with a valid amount
+    expenses = [e for e in expenses if e.get("amount") and re.match(r'[\d.,]+', e.get("amount", ""))]
     if not expenses:
         if lang == "ru":
             return f"За этот период расходов нет."

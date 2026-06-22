@@ -1245,6 +1245,11 @@ async def handle_voice(message: types.Message, bot: Bot):
                 await message.answer("Could not transcribe voice. Try again.")
             return
 
+        # Clean up: remove bot name from transcription
+        text = re.sub(r'\b(?:саша|sasha)\s*[,.]?\s*', '', text, flags=re.IGNORECASE).strip()
+        if not text:
+            text = "Привет" if lang == "ru" else "Hello"
+
         tz = await get_tz(message.from_user.id)
 
         suffix = "" if _is_group(message) else t(lang, "voice_prompt")
