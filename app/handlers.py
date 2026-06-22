@@ -169,16 +169,16 @@ async def get_tz(user_id: int) -> str:
 dashboard_url = config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard"
 
 MENU_LABELS = {
-    "en": {"howto": "🎤 How it works", "help": "📋 Commands", "dash": "📊 Dashboard", "buy": "💳 Buy subscription", "lang": "🌐 Language"},
-    "ru": {"howto": "🎤 Как работать", "help": "📋 Команды", "dash": "📊 Дашборд", "buy": "💳 Купить подписку", "lang": "🌐 Язык"},
-    "es": {"howto": "🎤 Cómo funciona", "help": "📋 Comandos", "dash": "📊 Panel", "buy": "💳 Comprar", "lang": "🌐 Idioma"},
-    "fr": {"howto": "🎤 Comment ça marche", "help": "📋 Commandes", "dash": "📊 Tableau", "buy": "💳 Acheter", "lang": "🌐 Langue"},
-    "zh": {"howto": "🎤 使用方法", "help": "📋 命令", "dash": "📊 仪表盘", "buy": "💳 订阅", "lang": "🌐 语言"},
-    "ar": {"howto": "🎤 كيف يعمل", "help": "📋 الأوامر", "dash": "📊 لوحة", "buy": "💳 اشتراك", "lang": "🌐 اللغة"},
-    "pt": {"howto": "🎤 Como funciona", "help": "📋 Comandos", "dash": "📊 Painel", "buy": "💳 Comprar", "lang": "🌐 Idioma"},
-    "de": {"howto": "🎤 So funktioniert's", "help": "📋 Befehle", "dash": "📊 Dashboard", "buy": "💳 Abo", "lang": "🌐 Sprache"},
-    "hi": {"howto": "🎤 यह कैसे काम करता है", "help": "📋 कमांड", "dash": "📊 डैशबोर्ड", "buy": "💳 सब्सक्रिप्शन", "lang": "🌐 भाषा"},
-    "ja": {"howto": "🎤 使い方", "help": "📋 コマンド", "dash": "📊 ダッシュボード", "buy": "💳 購読", "lang": "🌐 言語"},
+    "en": {"howto": "🎤 How it works", "help": "📋 Commands", "dash": "📊 Dashboard", "buy": "💳 Buy subscription", "lang": "🌐 Language", "currency": "💱 Currency"},
+    "ru": {"howto": "🎤 Как работать", "help": "📋 Команды", "dash": "📊 Дашборд", "buy": "💳 Купить подписку", "lang": "🌐 Язык", "currency": "💱 Валюта"},
+    "es": {"howto": "🎤 Cómo funciona", "help": "📋 Comandos", "dash": "📊 Panel", "buy": "💳 Comprar", "lang": "🌐 Idioma", "currency": "💱 Moneda"},
+    "fr": {"howto": "🎤 Comment ça marche", "help": "📋 Commandes", "dash": "📊 Tableau", "buy": "💳 Acheter", "lang": "🌐 Langue", "currency": "💱 Devise"},
+    "zh": {"howto": "🎤 使用方法", "help": "📋 命令", "dash": "📊 仪表盘", "buy": "💳 订阅", "lang": "🌐 语言", "currency": "💱 货币"},
+    "ar": {"howto": "🎤 كيف يعمل", "help": "📋 الأوامر", "dash": "📊 لوحة", "buy": "💳 اشتراك", "lang": "🌐 اللغة", "currency": "💱 العملة"},
+    "pt": {"howto": "🎤 Como funciona", "help": "📋 Comandos", "dash": "📊 Painel", "buy": "💳 Comprar", "lang": "🌐 Idioma", "currency": "💱 Moeda"},
+    "de": {"howto": "🎤 So funktioniert's", "help": "📋 Befehle", "dash": "📊 Dashboard", "buy": "💳 Abo", "lang": "🌐 Sprache", "currency": "💱 Währung"},
+    "hi": {"howto": "🎤 यह कैसे काम करता है", "help": "📋 कमांड", "dash": "📊 डैशबोर्ड", "buy": "💳 सब्सक्रिप्शन", "lang": "🌐 भाषा", "currency": "💱 मुद्रा"},
+    "ja": {"howto": "🎤 使い方", "help": "📋 コマンド", "dash": "📊 ダッシュボード", "buy": "💳 購読", "lang": "🌐 言語", "currency": "💱 通貨"},
 }
 
 START_MENU_EN = InlineKeyboardMarkup(inline_keyboard=[
@@ -200,9 +200,9 @@ def _build_menu(lang: str) -> InlineKeyboardMarkup:
     labels = MENU_LABELS.get(lang, MENU_LABELS["en"])
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=labels["howto"], callback_data="menu_howto")],
-        [InlineKeyboardButton(text=labels["help"], callback_data="menu_help")],
+        [InlineKeyboardButton(text=labels["currency"], callback_data="menu_currency")],
         [InlineKeyboardButton(text=labels["dash"], web_app=types.WebAppInfo(url=dashboard_url))],
-        [InlineKeyboardButton(text=labels["buy"], callback_data="buy_show")],
+        [InlineKeyboardButton(text=labels["help"], callback_data="menu_help")],
         [InlineKeyboardButton(text=labels["lang"], callback_data="menu_lang")],
     ])
 
@@ -234,7 +234,7 @@ async def cmd_start(message: types.Message):
         logger.warning("Failed to set menu button: %s", e)
 
 
-@router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang", "menu_back", "buy_show"}))
+@router.callback_query(F.data.in_({"menu_howto", "menu_help", "menu_lang", "menu_back", "buy_show", "menu_currency"}))
 async def on_menu_callback(callback: CallbackQuery):
     lang = await get_lang(callback.from_user.id)
     data = callback.data
@@ -244,6 +244,23 @@ async def on_menu_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")]
         ])
         await callback.message.edit_text(t(lang, "onboarding_voice"), parse_mode="HTML", reply_markup=back)
+    elif data == "menu_currency":
+        cur = await get_user_currency(callback.from_user.id)
+        sym = currency_symbol(cur) if cur else ""
+        popular = [
+            [InlineKeyboardButton(text=f"฿ THB", callback_data="cur_THB"),
+             InlineKeyboardButton(text=f"₽ RUB", callback_data="cur_RUB"),
+             InlineKeyboardButton(text=f"$ USD", callback_data="cur_USD")],
+            [InlineKeyboardButton(text=f"€ EUR", callback_data="cur_EUR"),
+             InlineKeyboardButton(text=f"£ GBP", callback_data="cur_GBP"),
+             InlineKeyboardButton(text=f"₴ UAH", callback_data="cur_UAH")],
+            [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")],
+        ]
+        if lang == "ru":
+            msg = f"💱 <b>Текущая валюта:</b> {cur or 'не задана'} {sym}\n\nВыбери или напиши /currency КОД\n(THB, RUB, USD, EUR, UAH, KZT...)"
+        else:
+            msg = f"💱 <b>Your currency:</b> {cur or 'not set'} {sym}\n\nChoose one or type /currency CODE\n(THB, RUB, USD, EUR, UAH, KZT...)"
+        await callback.message.edit_text(msg, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(inline_keyboard=popular))
     elif data == "menu_help":
         back = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")]
@@ -291,6 +308,24 @@ async def on_lang_choice(callback: CallbackQuery):
         )
     except Exception as e:
         logger.warning("Failed to update menu button: %s", e)
+
+
+@router.callback_query(F.data.startswith("cur_"))
+async def on_currency_choice(callback: CallbackQuery):
+    """Handle currency selection from menu buttons."""
+    cur = callback.data.split("_", 1)[1].upper()
+    lang = await get_lang(callback.from_user.id)
+    if cur not in _VALID_CURRENCIES:
+        await callback.answer("Invalid currency")
+        return
+    await set_user_currency(callback.from_user.id, cur)
+    sym = currency_symbol(cur)
+    menu = _build_menu(lang)
+    if lang == "ru":
+        await callback.message.edit_text(f"✅ Валюта установлена: {cur} {sym}", reply_markup=menu)
+    else:
+        await callback.message.edit_text(f"✅ Currency set: {cur} {sym}", reply_markup=menu)
+    await callback.answer()
 
 
 @router.message(Command("help"))
