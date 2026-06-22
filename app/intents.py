@@ -8,8 +8,9 @@ from app.i18n import t
 from app.sheets_client import read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import create_event, get_calendar_link, is_ready as calendar_ready
 from app.reports import generate_excel, generate_html
-from app.database import add_expense, get_user_items, add_movement, add_todo, add_reminder, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event
+from app.database import add_expense, get_user_items, add_movement, add_todo, add_reminder, has_seen_sheet_offer, mark_seen_sheet_offer, set_user_tz, log_event, get_user_currency
 from app.timezone_utils import find_timezone, format_dual_time
+from app.currency import detect_currency_from_text, currency_from_location, get_exchange_rate, convert_amount, currency_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -337,27 +338,47 @@ async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
     description = args.get("description", "")
     amount = args.get("amount", "")
     category = "expense" if amount else "note"
+    # Priority: 1) currency from Groq tool arg, 2) detect from text, 3) user default
+    currency = args.get("currency", "").strip().upper()
+    if not currency:
+        currency = detect_currency_from_text(f"{description} {amount}")
+    if not currency:
+        try:
+            currency = await get_user_currency(user_id) or ""
+        except Exception:
+            currency = ""
     try:
-        await add_expense(user_id, description, amount, category)
+        await add_expense(user_id, description, amount, category, currency)
     except Exception as e:
         logger.error("Failed to add expense: %s", e)
     emoji = "💰" if amount else "📝"
+    cur_sym = currency_symbol(currency) if currency else ""
     if lang == "ru":
-        return f"{emoji} {description}{' — ' + amount if amount else ''}"
-    return f"{emoji} {description}{' — ' + amount if amount else ''}"
+        return f"{emoji} {description}{' — ' + amount + ' ' + cur_sym if amount else ''}"
+    return f"{emoji} {description}{' — ' + amount + ' ' + cur_sym if amount else ''}"
 
 
 async def _handle_add_income(args: dict, lang: str, user_id: int = 0) -> str:
     description = args.get("description", "")
     amount = args.get("amount", "")
     category = "income"
+    # Priority: 1) currency from Groq tool arg, 2) detect from text, 3) user default
+    currency = args.get("currency", "").strip().upper()
+    if not currency:
+        currency = detect_currency_from_text(f"{description} {amount}")
+    if not currency:
+        try:
+            currency = await get_user_currency(user_id) or ""
+        except Exception:
+            currency = ""
     try:
-        await add_expense(user_id, description, amount, category)
+        await add_expense(user_id, description, amount, category, currency)
     except Exception as e:
         logger.error("Failed to add income: %s", e)
+    cur_sym = currency_symbol(currency) if currency else ""
     if lang == "ru":
-        return f"💚 {description}{' — +' + amount if amount else ''}"
-    return f"💚 {description}{' — +' + amount if amount else ''}"
+        return f"💚 {description}{' — +' + amount + ' ' + cur_sym if amount else ''}"
+    return f"💚 {description}{' — +' + amount + ' ' + cur_sym if amount else ''}"
 
 
 async def _handle_add_todo(args: dict, lang: str, user_id: int = 0) -> str:
@@ -521,39 +542,57 @@ async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, 
         user_cur = _country_from_location(tz) or "USD"
     base_cur = user_cur
     total_base = 0.0
+    total_income_base = 0.0
     details_base = []
     for e in expenses:
         amt = e.get("amount", "")
         desc = e.get("description", "")
-        try:
+        cat = e.get("category", "")
+        is_income = cat == "income"
+        # Priority: 1) currency column from DB, 2) detect from text, 3) base_cur
+        cur = e.get("currency", "").strip().upper()
+        if not cur:
             cur, val = _detect_currency(desc, amt, base_cur)
-            if cur == base_cur:
+        else:
+            val = _parse_amount_to_float(amt)
+        try:
+            if cur == base_cur or not cur:
                 val_base = val
             else:
                 rate = _get_rate(cur, base_cur)
                 val_base = val * rate
-            total_base += val_base
-            details_base.append((desc, val_base, cur))
+            if is_income:
+                total_income_base += val_base
+            else:
+                total_base += val_base
+            details_base.append((desc, val_base, cur, is_income))
         except (ValueError, AttributeError):
             if desc:
-                details_base.append((desc, 0, ""))
+                details_base.append((desc, 0, "", False))
 
+    base_sym = currency_symbol(base_cur) if base_cur else "$"
     if lang == "ru":
         label = {"today": "сегодня", "yesterday": "вчера", "week": "неделю", "month": "месяц"}.get(period, period)
-        lines = [f"💰 За {label} потрачено <b>{total_base:.0f}{base_cur}</b>"]
-        for desc, val, cur in details_base[-5:]:
+        lines = [f"💰 За {label} потрачено <b>{total_base:.0f} {base_sym}</b>"]
+        if total_income_base > 0:
+            lines.append(f"💚 Заработано <b>{total_income_base:.0f} {base_sym}</b>")
+        for desc, val, cur, is_income in details_base[-5:]:
             if val:
                 cur_mark = f" ({cur})" if cur and cur != base_cur else ""
-                lines.append(f"  • {desc} — {val:.0f}{base_cur}{cur_mark}")
+                sign = "+" if is_income else ""
+                lines.append(f"  • {desc} — {sign}{val:.0f} {base_sym}{cur_mark}")
             else:
                 lines.append(f"  • {desc}")
     else:
         label = {"today": "today", "yesterday": "yesterday", "week": "week", "month": "month"}.get(period, period)
-        lines = [f"💰 Spent <b>${total_base:.0f}</b> in the last {label}"]
-        for desc, val, cur in details_base[-5:]:
+        lines = [f"💰 Spent <b>{total_base:.0f} {base_sym}</b> in the last {label}"]
+        if total_income_base > 0:
+            lines.append(f"💚 Earned <b>{total_income_base:.0f} {base_sym}</b>")
+        for desc, val, cur, is_income in details_base[-5:]:
             if val:
-                cur_mark = f" ({cur})" if cur and cur != "USD" else ""
-                lines.append(f"  • {desc} — ${val:.0f}{cur_mark}")
+                cur_mark = f" ({cur})" if cur and cur != base_cur else ""
+                sign = "+" if is_income else ""
+                lines.append(f"  • {desc} — {sign}{val:.0f} {base_sym}{cur_mark}")
             else:
                 lines.append(f"  • {desc}")
     return "\n".join(lines)
@@ -588,17 +627,27 @@ async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int =
         await set_user_tz(user_id, tz_name)
     except Exception:
         pass
+    # Auto-switch currency based on location
+    detected_cur = _country_from_location(location)
     existing_cur = await get_user_currency(user_id)
-    if not existing_cur:
-        cur = _country_from_location(location)
-        if cur:
-            try:
-                await set_user_currency(user_id, cur)
-            except Exception:
-                pass
+    cur_changed = False
+    cur_msg = ""
+    if detected_cur and detected_cur != existing_cur:
+        try:
+            await set_user_currency(user_id, detected_cur)
+            cur_changed = True
+            sym = currency_symbol(detected_cur)
+            if lang == "ru":
+                cur_msg = f" Валюта переключена: {detected_cur} {sym}"
+            else:
+                cur_msg = f" Currency switched: {detected_cur} {sym}"
+        except Exception:
+            pass
     if lang == "ru":
-        return f"🕐 Часовой пояс установлен: {tz_name}. Теперь время показываю как MSK + местное."
-    return f"🕐 Timezone set to {tz_name}. Now showing times as MSK + local."
+        base = f"🕐 Часовой пояс: {tz_name}. Время — MSK + местное."
+        return base + cur_msg
+    base = f"🕐 Timezone: {tz_name}. Times shown as MSK + local."
+    return base + cur_msg
 
 
 def _handle_generate_report(args: dict, lang: str, sheet_url: str | None = None) -> str:

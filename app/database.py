@@ -264,20 +264,22 @@ async def get_calendar_events(user_id: int, limit: int = 20) -> list[dict]:
 
 _recent_saves: dict = {}
 
-async def add_expense(user_id: int, description: str, amount: str = "", category: str = ""):
-    key = (user_id, description.strip().lower(), str(amount).strip())
+async def add_expense(user_id: int, description: str, amount: str = "", category: str = "", currency: str = ""):
+    key = (user_id, description.strip().lower(), str(amount).strip(), currency.strip().upper())
     now = time.time()
     if key in _recent_saves and now - _recent_saves[key] < 10:
         logger.info("Skipped duplicate expense: %s", description)
         return
     _recent_saves[key] = now
     try:
-        get_db().table("expenses").insert({
+        row = {
             "user_id": user_id,
             "description": description,
             "amount": amount,
             "category": category,
-        }).execute()
+            "currency": currency.strip().upper() if currency else "",
+        }
+        get_db().table("expenses").insert(row).execute()
     except Exception as e:
         logger.warning("Failed to add expense: %s", e)
 
@@ -321,21 +323,27 @@ async def get_user_items(user_id: int, category: str | None = None, limit: int =
 
 async def get_expense_stats(user_id: int) -> dict:
     try:
-        resp = get_db().table("expenses").select("amount,description").eq("user_id", user_id).execute()
+        resp = get_db().table("expenses").select("amount,description,category,currency").eq("user_id", user_id).execute()
         if not resp.data:
-            return {"total": 0, "count": 0, "categories": {}}
+            return {"total": 0, "count": 0, "categories": {}, "income": 0}
         total = 0
+        income = 0
         count = len(resp.data)
         for row in resp.data:
             amt = row.get("amount", "")
+            cat = row.get("category", "")
             try:
-                total += float(amt.replace("$", "").replace("₽", "").replace("€", "").strip())
+                val = float(amt.replace("$", "").replace("₽", "").replace("€", "").replace("£", "").replace("¥", "").replace("฿", "").strip())
             except (ValueError, AttributeError):
-                pass
-        return {"total": round(total, 2), "count": count}
+                continue
+            if cat == "income":
+                income += val
+            else:
+                total += val
+        return {"total": round(total, 2), "count": count, "income": round(income, 2)}
     except Exception as e:
         logger.warning("Failed to get expense stats: %s", e)
-        return {"total": 0, "count": 0}
+        return {"total": 0, "count": 0, "income": 0}
 
 
 async def has_seen_sheet_offer(user_id: int) -> bool:

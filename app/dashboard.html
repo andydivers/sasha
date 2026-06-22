@@ -603,25 +603,48 @@ function formatTime(dateStr) {
   return d.toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatAmount(amount) {
-  if (!amount) return '';
-  let s = String(amount).replace(/[^\d.,]/g, '');
+// ─── Currency helpers ─────────────────────────────
+const CURRENCY_SYMBOLS = {
+  'THB': '฿', 'RUB': '₽', 'USD': '$', 'EUR': '€', 'GBP': '£',
+  'JPY': '¥', 'CNY': '¥', 'TRY': '₺', 'UAH': '₴', 'KRW': '₩',
+  'SGD': 'S$', 'INR': '₹', 'AUD': 'A$', 'CAD': 'C$', 'CHF': 'CHF',
+  'VND': '₫', 'IDR': 'Rp', 'MYR': 'RM', 'PHP': '₱', 'BRL': 'R$',
+  'AED': 'د.إ', 'HKD': 'HK$', 'ILS': '₪',
+};
+
+function currencySym(code) {
+  if (!code) return '';
+  return CURRENCY_SYMBOLS[code.toUpperCase()] || code.toUpperCase();
+}
+
+function parseAmountNum(raw) {
+  if (!raw) return 0;
+  let s = String(raw).replace(/[^\d.,]/g, '');
+  if (!s) return 0;
   // Fix comma handling: "1,800" → 1800 (thousands), "1,8" → 1.8 (decimal)
   if (s.split(',').length > 2) {
-    s = s.replace(/,/g, '');  // "1,000,000" → "1000000"
+    s = s.replace(/,/g, '');
   } else if (s.includes(',')) {
     const [before, after] = s.split(',', 2);
     if (after.length === 3 && /^\d+$/.test(after)) {
-      s = before + after;  // "1,800" → "1800"
+      s = before + after;
     } else {
-      s = before + '.' + after;  // "1,8" → "1.8"
+      s = before + '.' + after;
     }
   } else if (s.split('.').length > 2) {
-    s = s.replace(/\./g, '');  // "1.000.000" → "1000000"
+    s = s.replace(/\./g, '');
   }
   const num = parseFloat(s);
-  if (isNaN(num)) return String(amount);
-  return num.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return isNaN(num) ? 0 : num;
+}
+
+function formatAmount(amount, currency) {
+  if (!amount && amount !== 0) return '';
+  const num = parseAmountNum(amount);
+  if (num === 0 && !String(amount).match(/\d/)) return String(amount);
+  const formatted = num.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const sym = currencySym(currency);
+  return sym ? formatted + ' ' + sym : formatted;
 }
 
 // ─── Expense categories ────────────────────────────
@@ -650,6 +673,47 @@ function getItemIcon(desc, cat) {
   return '💰';
 }
 
+// ─── Exchange rates (client-side cache) ───────────
+let _ratesCache = null;
+let _ratesCacheTime = 0;
+const RATES_TTL = 3600000; // 1 hour in ms
+
+async function fetchRates() {
+  const now = Date.now();
+  if (_ratesCache && now - _ratesCacheTime < RATES_TTL) return _ratesCache;
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    if (data.rates) {
+      _ratesCache = data.rates;
+      _ratesCacheTime = now;
+      return _ratesCache;
+    }
+  } catch(e) { console.warn('Rate fetch failed:', e); }
+  return null;
+}
+
+function convertToBase(amount, fromCur, baseCur, rates) {
+  if (!fromCur || fromCur === baseCur || !rates) return amount;
+  const fromRate = rates[fromCur];
+  const toRate = rates[baseCur];
+  if (!fromRate || !toRate) return amount;
+  return (amount / fromRate) * toRate;
+}
+
+// Determine the user's base currency from their expenses
+function detectBaseCurrency(expenses) {
+  // Count currency occurrences in recent expenses
+  const counts = {};
+  expenses.forEach(e => {
+    const c = (e.currency || '').toUpperCase();
+    if (c) counts[c] = (counts[c] || 0) + 1;
+  });
+  // Return most common currency, fallback to USD
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return sorted.length > 0 ? sorted[0][0] : 'USD';
+}
+
 // ─── Compute stats ─────────────────────────────────
 function computeStats() {
   const expenses = window._data?.expenses || [];
@@ -658,12 +722,19 @@ function computeStats() {
   const weekAgo = new Date(now - 7 * 86400000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const baseCur = window._baseCurrency || 'USD';
+  const rates = _ratesCache;
+
   let weekTotal = 0, monthSpent = 0, monthEarned = 0;
   const categoryTotals = {};
+  let mixedCurrencies = false;
 
   expenses.forEach(e => {
-    const num = parseFloat(String(e.amount || '0').replace(/[^\d.,]/g, '').replace(',', '.'));
-    if (isNaN(num)) return;
+    const rawNum = parseAmountNum(e.amount);
+    if (!rawNum) return;
+    const eCur = (e.currency || '').toUpperCase() || baseCur;
+    if (eCur !== baseCur) mixedCurrencies = true;
+    const num = convertToBase(rawNum, eCur, baseCur, rates);
     const d = new Date(e.created_at || 0);
     if (d >= weekAgo) weekTotal += num;
     if (d >= monthStart) {
@@ -681,27 +752,30 @@ function computeStats() {
   const activeTodos = todos.filter(t => !t.done).length;
   const balance = monthEarned - monthSpent;
 
-  return { weekTotal, monthSpent, monthEarned, balance, categoryTotals, activeTodos, expenseCount: expenses.length };
+  return { weekTotal, monthSpent, monthEarned, balance, categoryTotals, activeTodos, expenseCount: expenses.length, baseCur, mixedCurrencies };
 }
 
 // ─── Render ────────────────────────────────────────
 function renderSummary() {
   const stats = computeStats();
+  const baseSym = currencySym(stats.baseCur);
+  const mixedNote = stats.mixedCurrencies ? ` <span style="font-size:11px;opacity:0.6">(${lang === 'ru' ? 'конвертировано в' : 'converted to'} ${stats.baseCur})</span>` : '';
   const balanceColor = stats.balance >= 0 ? 'green' : 'red';
   const balanceSign = stats.balance >= 0 ? '+' : '';
   document.getElementById('summary').innerHTML = `
     <div class="summary-card">
       <div class="summary-label">${t('total_spent')}</div>
-      <div class="summary-value red">${formatAmount(stats.monthSpent)}</div>
+      <div class="summary-value red">${formatAmount(stats.monthSpent, stats.baseCur)}</div>
+      ${mixedNote}
       <div class="balance-row">
         <div class="balance-dot ${balanceColor}"></div>
-        <div class="balance-text">${t('balance')}: ${balanceSign}${formatAmount(stats.balance)}</div>
+        <div class="balance-text">${t('balance')}: ${balanceSign}${formatAmount(Math.abs(stats.balance), stats.baseCur)}</div>
       </div>
     </div>
     <div class="summary-card">
       <div class="summary-label">${t('total_earned')}</div>
-      <div class="summary-value green">${formatAmount(stats.monthEarned)}</div>
-      <div class="summary-sub">${t('this_week')}: ${formatAmount(stats.weekTotal)} · ${t('tasks_count')}: ${stats.activeTodos}</div>
+      <div class="summary-value green">${formatAmount(stats.monthEarned, stats.baseCur)}</div>
+      <div class="summary-sub">${t('this_week')}: ${formatAmount(stats.weekTotal, stats.baseCur)} · ${t('tasks_count')}: ${stats.activeTodos}</div>
     </div>
   `;
 }
@@ -811,7 +885,7 @@ function loadExpenses() {
             <div class="item-title">${escHtml(title)}</div>
             <div class="item-meta">${escHtml(meta)}</div>
           </div>
-          <div class="item-amount ${amtClass}">${isIncome ? '+' : '-'}${formatAmount(e.amount)}</div>
+          <div class="item-amount ${amtClass}">${isIncome ? '+' : '-'}${formatAmount(e.amount, e.currency)}</div>
           <button class="item-delete" onclick="deleteExpense(${e.id})" title="${t('delete_confirm')}">✕</button>
         </div>`;
     });
@@ -1009,6 +1083,10 @@ async function loadData() {
     if (!json.ok) throw new Error(json.error);
     window._data = json;
     lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
+    // Detect base currency from user's expenses
+    window._baseCurrency = detectBaseCurrency(json.expenses || []);
+    // Fetch exchange rates in background, then re-render
+    fetchRates().then(() => render());
     render();
   } catch (e) {
     setContent(`<div class="error-state"><div>⚠️</div><p>${lang === 'ru' ? 'Ошибка загрузки' : 'Failed to load'}</p></div>`);

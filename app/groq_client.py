@@ -95,12 +95,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "add_expense",
-            "description": "Record an expense or purchase. Call this when user says they spent money (e.g., 'coffee $5', 'lunch 1200₽', 'uber $12', 'купил хлеб 50₽'). Extracts the amount and category automatically.",
+            "description": "Record an expense or purchase. Call this when user says they spent money (e.g., 'coffee $5', 'lunch 1200₽', 'uber $12', 'купил хлеб 50₽'). Extracts the amount, category and currency automatically.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "description": {"type": "string", "description": "What was purchased or paid for"},
                     "amount": {"type": "string", "description": "The amount spent (e.g., '5', '1200', '12.50')"},
+                    "currency": {"type": "string", "description": "Currency code from the message (e.g., 'THB', 'RUB', 'USD', 'EUR'). Extract from symbols like ₽/$/€/฿ or words like 'руб', 'bath', 'dollars'. If no currency mentioned, leave empty."},
                 },
                 "required": ["description"],
             },
@@ -116,6 +117,7 @@ TOOLS = [
                 "properties": {
                     "description": {"type": "string", "description": "Source of income (e.g., 'salary', 'freelance', 'consulting')"},
                     "amount": {"type": "string", "description": "The amount earned (e.g., '5000', '100000')"},
+                    "currency": {"type": "string", "description": "Currency code from the message (e.g., 'THB', 'RUB', 'USD', 'EUR'). Extract from symbols like ₽/$/€/฿ or words like 'руб', 'bath', 'dollars'. If no currency mentioned, leave empty."},
                 },
                 "required": ["description"],
             },
@@ -266,8 +268,9 @@ def build_system_prompt(lang: str) -> str:
         + lang_instruction
     )
     base += "\n\nRULES:"
-    base += "\n- If user mentions spending money, call add_expense."
-    base += "\n- If user mentions receiving/earning money (salary, freelance, got paid), call add_income."
+    base += "\n- If user mentions spending money, call add_expense. ALWAYS include the currency parameter (e.g., 'THB', 'RUB', 'USD', 'EUR') if detectable from the message."
+    base += "\n- If user mentions receiving/earning money (salary, freelance, got paid), call add_income. ALWAYS include the currency parameter."
+    base += "\n- Detect currency from symbols (₽=$=€=฿=£=¥) or words (руб/bath/dollars/euros/won/yuan) in the message."
     base += "\n- If user mentions a task or something to do later, call add_todo."
     base += "\n- If user says where they are, call track_movement."
     base += "\n- If user mentions a new city/country, call set_timezone_by_location."
@@ -275,7 +278,7 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- For reminders, call set_reminder."
     base += "\n- For spending summary, call get_spending_summary."
     base += "\n- When user sends a receipt photo, call analyze_receipt with extracted data."
-    base += "\n- When user sends a bank statement, extract ALL transactions and call add_expense or add_income for each."
+    base += "\n- When user sends a bank statement, extract ALL transactions and call add_expense or add_income for each — include currency for every transaction."
     base += "\n- Call ONLY ONE function per response. If no tool fits, respond conversationally."
     base += "\n\nUser commands: /currency USD — change currency. /tz — set timezone. /digest — daily summary. /undo — delete last entry."
     return base

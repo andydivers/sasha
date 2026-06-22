@@ -12,6 +12,7 @@ from app.config import Config
 from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense, delete_last_expense, delete_expense
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
+from app.currency_utils import extract_currency, currency_symbol, format_amount_with_currency
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
 from app.calendar_client import list_events, delete_event, get_calendar_link, is_ready as calendar_ready
@@ -139,8 +140,13 @@ async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
         if w in lowered:
             return None
 
+    # Extract currency from text
+    cur = extract_currency(text)
+    user_cur = await get_user_currency(user_id)
+    currency = cur or user_cur or ""
+
     try:
-        await add_expense(user_id, text.strip(), amount, "expense")
+        await add_expense(user_id, text.strip(), amount, "expense", currency=currency)
         return amount
     except Exception as e:
         logger.error("Fallback save expense failed for user %s: %s", user_id, e)
@@ -532,6 +538,7 @@ _VALID_CURRENCIES = frozenset({
     "USD", "EUR", "GBP", "RUB", "THB", "JPY", "CNY", "INR", "SGD", "VND",
     "IDR", "MYR", "PHP", "KRW", "AUD", "CAD", "BRL", "TRY", "AED", "CHF",
     "HKD", "ILS", "MXN", "NZD", "SEK", "NOK", "DKK", "PLN", "CZK", "HUF",
+    "UAH", "KZT", "MNT", "GEL", "USDT", "USDC", "BTC",
 })
 
 
@@ -541,26 +548,28 @@ async def cmd_currency(message: types.Message):
     parts = message.text.split(maxsplit=2)
     if len(parts) < 2:
         cur = await get_user_currency(message.from_user.id)
+        sym = currency_symbol(cur) if cur else ""
         if lang == "ru":
-            msg = f"Твоя валюта: {cur or 'не задана'}\nИзменить: /currency USD"
+            msg = f"Твоя валюта: {cur or 'не задана'} {sym}\nИзменить: /currency USD"
         else:
-            msg = f"Your currency: {cur or 'not set'}\nChange: /currency USD"
+            msg = f"Your currency: {cur or 'not set'} {sym}\nChange: /currency USD"
         await message.answer(msg)
         return
 
     cur = parts[1].upper().strip()
     if cur not in _VALID_CURRENCIES:
         if lang == "ru":
-            await message.answer(f"Неизвестная валюта: {cur}. Примеры: USD, EUR, THB, RUB")
+            await message.answer(f"Неизвестная валюта: {cur}. Примеры: USD, EUR, THB, RUB, UAH")
         else:
-            await message.answer(f"Unknown currency: {cur}. Examples: USD, EUR, THB, RUB")
+            await message.answer(f"Unknown currency: {cur}. Examples: USD, EUR, THB, RUB, UAH")
         return
 
     await set_user_currency(message.from_user.id, cur)
+    sym = currency_symbol(cur)
     if lang == "ru":
-        await message.answer(f"Валюта установлена: {cur}")
+        await message.answer(f"✅ Валюта установлена: {cur} {sym}")
     else:
-        await message.answer(f"Currency set: {cur}")
+        await message.answer(f"✅ Currency set: {cur} {sym}")
 
 
 @router.message(Command("events"))
@@ -644,6 +653,52 @@ async def cmd_undo(message: types.Message):
             await message.answer("Нет расходов для удаления.")
         else:
             await message.answer("No expenses to delete.")
+
+
+@router.message(Command("export"))
+async def cmd_export(message: types.Message):
+    """Export expenses as CSV file with currency column."""
+    lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
+    from app.database import get_user_items
+    import io
+    import csv
+
+    items = await get_user_items(user_id, limit=500)
+    if not items:
+        if lang == "ru":
+            await message.answer("Нет расходов для экспорта.")
+        else:
+            await message.answer("No expenses to export.")
+        return
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    # Header
+    writer.writerow(["date", "description", "amount", "currency", "category"])
+    for item in items:
+        created = item.get("created_at", "")[:10] if item.get("created_at") else ""
+        desc = item.get("description", "")
+        amt = item.get("amount", "")
+        cur = item.get("currency", "")
+        cat = item.get("category", "")
+        writer.writerow([created, desc, amt, cur, cat])
+
+    buf.seek(0)
+    csv_bytes = io.BytesIO(buf.getvalue().encode("utf-8-sig"))  # BOM for Excel
+    csv_bytes.name = f"sasha_export_{datetime.now().strftime('%Y%m%d')}.csv"
+
+    try:
+        await message.answer_document(
+            csv_bytes,
+            caption=f"📊 {len(items)} записей" if lang == "ru" else f"📊 {len(items)} records exported",
+        )
+    except Exception as e:
+        logger.error("Export failed: %s", e)
+        if lang == "ru":
+            await message.answer("Ошибка экспорта. Попробуй позже.")
+        else:
+            await message.answer("Export failed. Try again later.")
 
 
 @router.callback_query(F.data == "undo_receipt")
@@ -1268,8 +1323,11 @@ async def handle_photo(message: types.Message, bot: Bot):
                         amount = str(abs(float(str(tx.get("amount", "0")).replace("+", "").replace("-", ""))))
                         is_income = str(tx.get("amount", "")).startswith("+") or float(str(tx.get("amount", "0")).replace("+", "")) > 0
                         cat = "income" if is_income else "expense"
+                        tx_cur = str(tx.get("currency", "")).strip().upper() or ""
+                        if not tx_cur:
+                            tx_cur = await get_user_currency(user_id) or ""
                         try:
-                            await add_expense(user_id, desc, amount, cat)
+                            await add_expense(user_id, desc, amount, cat, currency=tx_cur)
                             saved += 1
                         except Exception:
                             pass
@@ -1299,7 +1357,10 @@ async def handle_photo(message: types.Message, bot: Bot):
                         amount = str(abs(float(str(data.get("amount", "0")))))
                         is_income = str(data.get("amount", "")).startswith("+")
                         cat = "income" if is_income else "expense"
-                        await add_expense(user_id, desc, amount, cat)
+                        tx_cur = str(data.get("currency", "")).strip().upper() or ""
+                        if not tx_cur:
+                            tx_cur = await get_user_currency(user_id) or ""
+                        await add_expense(user_id, desc, amount, cat, currency=tx_cur)
                         if lang == "ru":
                             reply = f"🏦 <b>Транзакция распознана!</b>\n\n💰 {desc}: {data.get('amount', '')}"
                         else:
@@ -1342,9 +1403,14 @@ async def handle_photo(message: types.Message, bot: Bot):
                         nums = re.findall(r"[\d]+[.,]?[\d]*", total)
                         amount = parse_amount(nums[0]) if nums else ""
 
+                        # Extract currency from total string (e.g. "1,800 THB")
+                        receipt_cur = extract_currency(total) or extract_currency(result)
+                        user_cur = await get_user_currency(user_id)
+                        currency = receipt_cur or user_cur or ""
+
                         # Save as expense
                         desc = f"{store} ({', '.join(items[:3])})" if items else store
-                        await add_expense(user_id, desc, amount, "expense")
+                        await add_expense(user_id, desc, amount, "expense", currency=currency)
 
                         if lang == "ru":
                             reply = f"🧾 <b>Чек распознан!</b>\n\n🏪 {store}\n💰 {total}"

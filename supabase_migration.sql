@@ -112,6 +112,9 @@ CREATE TABLE IF NOT EXISTS movements (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT '';
 
+-- Multi-currency: add currency column to expenses table
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT '';
+
 -- Fix RLS security warnings + keep service_role access (bypasses RLS)
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE movements ENABLE ROW LEVEL SECURITY;

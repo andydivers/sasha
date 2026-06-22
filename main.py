@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
         # Set bot commands menu so users discover features
         await bot.set_my_commands([
             BotCommand(command="undo", description="↩️ Delete last entry"),
+            BotCommand(command="export", description="📁 Export CSV"),
             BotCommand(command="digest", description="📊 Spending summary"),
             BotCommand(command="todo", description="📝 Add task"),
             BotCommand(command="tz", description="🕐 Set timezone"),
