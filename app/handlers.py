@@ -203,6 +203,7 @@ def _build_menu(lang: str) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=labels["currency"], callback_data="menu_currency")],
         [InlineKeyboardButton(text=labels["dash"], web_app=types.WebAppInfo(url=dashboard_url))],
         [InlineKeyboardButton(text=labels["help"], callback_data="menu_help")],
+        [InlineKeyboardButton(text=labels["buy"], callback_data="buy_show")],
         [InlineKeyboardButton(text=labels["lang"], callback_data="menu_lang")],
     ])
 
