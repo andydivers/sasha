@@ -45,8 +45,8 @@ def _should_respond(message: types.Message) -> bool:
 def _strip_mention(text: str) -> str:
     return MENTION_RE.sub("", text, count=1).strip()
 
-if config.gemini_api_key:
-    init_gemini(config.gemini_api_key)
+# Always init image analysis — Groq Vision fallback works even without Gemini key
+init_gemini(config.gemini_api_key or "")
 
 STAR_PRICES = {
     "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "stars": 99},
