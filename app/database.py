@@ -282,6 +282,31 @@ async def add_expense(user_id: int, description: str, amount: str = "", category
         logger.warning("Failed to add expense: %s", e)
 
 
+async def delete_expense(expense_id: int) -> bool:
+    """Delete a single expense by its row id. Returns True if deleted."""
+    try:
+        get_db().table("expenses").delete().eq("id", expense_id).execute()
+        return True
+    except Exception as e:
+        logger.warning("Failed to delete expense %s: %s", expense_id, e)
+        return False
+
+
+async def delete_last_expense(user_id: int) -> dict | None:
+    """Delete the user's most recent expense. Returns the deleted record or None."""
+    try:
+        resp = get_db().table("expenses").select("*").eq("user_id", user_id) \
+            .order("created_at", desc=True).limit(1).execute()
+        if not resp.data:
+            return None
+        expense = resp.data[0]
+        await delete_expense(expense["id"])
+        return expense
+    except Exception as e:
+        logger.warning("Failed to delete last expense for %s: %s", user_id, e)
+        return None
+
+
 async def get_user_items(user_id: int, category: str | None = None, limit: int = 20) -> list[dict]:
     try:
         q = get_db().table("expenses").select("*").eq("user_id", user_id)

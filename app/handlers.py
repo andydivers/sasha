@@ -9,7 +9,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense, delete_last_expense, delete_expense
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call
 from app.gemini_client import init_gemini, analyze_image
@@ -579,6 +579,52 @@ async def cmd_delete(message: types.Message):
     except Exception as e:
         logger.error("Delete error: %s", e)
         await message.answer("Error deleting event." if lang != "ru" else "Ошибка удаления.")
+
+
+@router.message(Command("undo"))
+async def cmd_undo(message: types.Message):
+    """Delete the last recorded expense. Useful when receipt scan saved wrong data."""
+    lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
+    deleted = await delete_last_expense(user_id)
+    if deleted:
+        desc = deleted.get("description", "—")
+        amt = deleted.get("amount", "")
+        if lang == "ru":
+            await message.answer(f"❌ <b>Расход удалён:</b> {desc} ({amt})", parse_mode="HTML")
+        else:
+            await message.answer(f"❌ <b>Expense deleted:</b> {desc} ({amt})", parse_mode="HTML")
+    else:
+        if lang == "ru":
+            await message.answer("Нет расходов для удаления.")
+        else:
+            await message.answer("No expenses to delete.")
+
+
+@router.callback_query(F.data == "undo_receipt")
+async def on_undo_receipt(callback: CallbackQuery):
+    """Undo the last receipt-scanned expense."""
+    lang = await get_lang(callback.from_user.id)
+    user_id = callback.from_user.id
+    deleted = await delete_last_expense(user_id)
+    if deleted:
+        desc = deleted.get("description", "—")
+        amt = deleted.get("amount", "")
+        if lang == "ru":
+            await callback.message.edit_text(
+                f"🧾 ~~Чек распознан~~\n\n❌ <b>Расход удалён:</b> {desc} ({amt})",
+                parse_mode="HTML",
+            )
+        else:
+            await callback.message.edit_text(
+                f"🧾 ~~Receipt scanned~~\n\n❌ <b>Expense deleted:</b> {desc} ({amt})",
+                parse_mode="HTML",
+            )
+    else:
+        if lang == "ru":
+            await callback.answer("Нет расходов для удаления", show_alert=True)
+        else:
+            await callback.answer("No expenses to delete", show_alert=True)
 
 
 @router.message(Command("todo"))
@@ -1191,7 +1237,14 @@ async def handle_photo(message: types.Message, bot: Bot):
                                 reply += "\n\n📋 " + "\n📋 ".join(items[:5])
                             reply += "\n\n✅ Expense saved"
 
-                        await message.answer(reply, parse_mode="HTML")
+                        # Add "Undo" button so user can delete if wrong
+                        undo_kb = InlineKeyboardMarkup(inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="❌ Отменить" if lang == "ru" else "❌ Undo",
+                                callback_data="undo_receipt"
+                            ),
+                        ]])
+                        await message.answer(reply, parse_mode="HTML", reply_markup=undo_kb)
                         await log_event(user_id, "receipt_scanned")
                         return
             except Exception as e:
@@ -1210,7 +1263,7 @@ async def handle_photo(message: types.Message, bot: Bot):
 
         await log_event(user_id, "image_analyzed")
     except Exception as e:
-        logger.error("Gemini error: %s", e)
+        logger.error("Image analysis error: %s", e)
         await message.answer(t(lang, "error"))
 
 
