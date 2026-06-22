@@ -7,8 +7,24 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_amount(amt: str) -> float:
+    """Parse amount with correct comma handling: 1,800=1800, 1,8=1.8"""
     try:
-        return float(amt.replace("$", "").replace("₽", "").replace("€", "").replace(",", ".").strip())
+        s = amt.replace("$", "").replace("₽", "").replace("€", "").replace(" ", "").strip()
+        if s.count(",") > 1:
+            s = s.replace(",", "")
+        elif "," in s:
+            before, after = s.split(",", 1)
+            if len(after) == 3 and after.isdigit():
+                s = before + after
+            else:
+                s = before + "." + after
+        elif s.count(".") > 1:
+            s = s.replace(".", "")
+        elif "." in s:
+            before, after = s.split(".", 1)
+            if len(after) == 3 and after.isdigit() and len(before) > 0:
+                s = before + after
+        return float(s)
     except (ValueError, AttributeError):
         return 0.0
 

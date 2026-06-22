@@ -21,6 +21,51 @@ from app.i18n import t, TRANSLATIONS
 logger = logging.getLogger(__name__)
 router = Router()
 
+
+def parse_amount(raw: str) -> str:
+    """Parse amount string, correctly handling comma as thousands vs decimal separator.
+
+    Rules:
+      - "1,800" or "1.800" with exactly 3 digits after separator → thousands → "1800"
+      - "1,8" or "1.8" with 1-2 digits after separator → decimal → "1.8"
+      - "1,000,000" → remove all thousands separators → "1000000"
+    """
+    if not raw:
+        return ""
+    # Normalize: treat both , and . as separators
+    s = raw.strip().replace(" ", "")
+    # If multiple separators, they're all thousands: "1,000,000" or "1.000.000"
+    parts_comma = s.split(",")
+    parts_dot = s.split(".")
+    if len(parts_comma) > 2:
+        # Multiple commas → thousands separators: "1,000,000"
+        return "".join(parts_comma)
+    if len(parts_dot) > 2:
+        # Multiple dots → thousands separators: "1.000.000"
+        return "".join(parts_dot)
+    # Single separator: check digit count after it
+    # Try comma first
+    if "," in s:
+        before, after = s.split(",", 1)
+        if len(after) == 3 and after.isdigit():
+            # "1,800" → 1800 (thousands)
+            return before + after
+        else:
+            # "1,8" or "1,80" → 1.8 (decimal)
+            return before + "." + after
+    if "." in s:
+        before, after = s.split(".", 1)
+        if len(after) == 3 and after.isdigit() and len(before) > 0:
+            # Ambiguous: "1.800" could be 1.8 or 1800
+            # Heuristic: if it looks like a price with 3 decimal places, keep as decimal
+            # But "1.800" in Thai context is usually 1800
+            # If before part has digits, treat as thousands for amounts > 100
+            if int(before) > 0:
+                return before + after  # "1.800" → "1800"
+        # Normal decimal: "1.8"
+        return s
+    return s
+
 config = Config()
 groq = create_groq_client(config.groq_api_key) if config.groq_api_key else None
 
@@ -85,7 +130,7 @@ _NON_EXPENSE_WORDS = {"напомни","remind","встреча","meeting","вс
 async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
     lowered = text.lower().strip()
     nums = re.findall(r"\d[\d.,]*", text)
-    amount = nums[0].replace(",", ".") if nums else ""
+    amount = parse_amount(nums[0]) if nums else ""
 
     if not nums:
         return None
@@ -1295,7 +1340,7 @@ async def handle_photo(message: types.Message, bot: Bot):
 
                         # Extract amount for saving
                         nums = re.findall(r"[\d]+[.,]?[\d]*", total)
-                        amount = nums[0].replace(",", ".") if nums else ""
+                        amount = parse_amount(nums[0]) if nums else ""
 
                         # Save as expense
                         desc = f"{store} ({', '.join(items[:3])})" if items else store

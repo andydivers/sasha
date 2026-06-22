@@ -605,7 +605,21 @@ function formatTime(dateStr) {
 
 function formatAmount(amount) {
   if (!amount) return '';
-  const num = parseFloat(String(amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+  let s = String(amount).replace(/[^\d.,]/g, '');
+  // Fix comma handling: "1,800" → 1800 (thousands), "1,8" → 1.8 (decimal)
+  if (s.split(',').length > 2) {
+    s = s.replace(/,/g, '');  // "1,000,000" → "1000000"
+  } else if (s.includes(',')) {
+    const [before, after] = s.split(',', 2);
+    if (after.length === 3 && /^\d+$/.test(after)) {
+      s = before + after;  // "1,800" → "1800"
+    } else {
+      s = before + '.' + after;  // "1,8" → "1.8"
+    }
+  } else if (s.split('.').length > 2) {
+    s = s.replace(/\./g, '');  // "1.000.000" → "1000000"
+  }
+  const num = parseFloat(s);
   if (isNaN(num)) return String(amount);
   return num.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }

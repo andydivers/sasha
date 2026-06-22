@@ -442,12 +442,44 @@ def _country_from_location(location: str) -> str | None:
     return None
 
 
+def _parse_amount_to_float(raw: str) -> float:
+    """Parse amount string to float, correctly handling comma as thousands vs decimal.
+
+    "1,800" → 1800.0  (thousands separator)
+    "1,8" → 1.8       (decimal separator)
+    "1,000,000" → 1000000.0
+    """
+    if not raw:
+        return 0.0
+    s = raw.strip().replace("$", "").replace("₽", "").replace("€", "").replace(" ", "")
+    # Multiple commas → thousands
+    if s.count(",") > 1:
+        s = s.replace(",", "")
+    elif "," in s:
+        before, after = s.split(",", 1)
+        if len(after) == 3 and after.isdigit():
+            s = before + after  # "1,800" → "1800"
+        else:
+            s = before + "." + after  # "1,8" → "1.8"
+    # Multiple dots → thousands
+    elif s.count(".") > 1:
+        s = s.replace(".", "")
+    elif "." in s:
+        before, after = s.split(".", 1)
+        if len(after) == 3 and after.isdigit() and len(before) > 0:
+            s = before + after  # "1.800" → "1800" (likely thousands)
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 def _detect_currency(desc: str, amt: str, default_cur: str = "RUB") -> tuple[str, float]:
     for pattern, cur in _CURRENCY_PATTERNS:
         m = pattern.search(desc)
         if m:
-            return cur, float(m.group(1).replace(",", "."))
-    return default_cur, float(amt.replace("$", "").replace("₽", "").replace("€", "").replace(",", ".").strip())
+            return cur, _parse_amount_to_float(m.group(1))
+    return default_cur, _parse_amount_to_float(amt)
 
 
 async def _handle_get_spending_summary(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
