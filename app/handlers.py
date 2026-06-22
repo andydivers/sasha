@@ -1192,11 +1192,87 @@ async def handle_photo(message: types.Message, bot: Bot):
         file = await bot.get_file(photo.file_id)
         image_bytes = await bot.download_file(file.file_path)
 
-        # Smart receipt detection: if no caption or receipt-related keywords
-        is_receipt = not caption or any(w in caption.lower() for w in
+        # Detect image type from caption keywords
+        caption_lower = caption.lower()
+        is_bank_statement = any(w in caption_lower for w in
+            ["bank", "statement", "выписка", "отчет", "отчёт", "statement", "history", "история"])
+        is_receipt = not caption or any(w in caption_lower for w in
             ["receipt", "чек", "счёт", "bill", "invoice", "сумма", "итого", "total"])
 
-        if is_receipt:
+        if is_bank_statement:
+            # Bank statement: extract multiple transactions
+            statement_prompt = (
+                "This is a bank statement or transaction history. Extract ALL transactions as a JSON array:\n"
+                '[{"date": "YYYY-MM-DD", "description": "merchant or description", '
+                '"amount": "number with sign (- for expense, + for income)", "currency": "THB/USD/RUB/etc"}]\n'
+                "Return ONLY the JSON array. If you can't identify transactions, return: {\"error\": \"not a statement\"}"
+            )
+            result = analyze_image(image_bytes.read(), "image/jpeg", statement_prompt)
+
+            try:
+                import json as _json
+                # Try to parse as array
+                arr_match = re.search(r'\[.*\]', result, re.DOTALL)
+                obj_match = re.search(r'\{[^{}]+\}', result, re.DOTALL)
+
+                if arr_match:
+                    transactions = _json.loads(arr_match.group())
+                    saved = 0
+                    for tx in transactions[:20]:
+                        desc = tx.get("description", "")
+                        amount = str(abs(float(str(tx.get("amount", "0")).replace("+", "").replace("-", ""))))
+                        is_income = str(tx.get("amount", "")).startswith("+") or float(str(tx.get("amount", "0")).replace("+", "")) > 0
+                        cat = "income" if is_income else "expense"
+                        try:
+                            await add_expense(user_id, desc, amount, cat)
+                            saved += 1
+                        except Exception:
+                            pass
+                    if saved > 0:
+                        if lang == "ru":
+                            reply = f"🏦 <b>Выписка обработана!</b>\n\n📋 {saved} транзакций распознано и записано"
+                        else:
+                            reply = f"🏦 <b>Statement processed!</b>\n\n📋 {saved} transactions recognized and saved"
+                        undo_kb = InlineKeyboardMarkup(inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="❌ Отменить все" if lang == "ru" else "❌ Undo all",
+                                callback_data="undo_receipt"
+                            ),
+                        ]])
+                        await message.answer(reply, parse_mode="HTML", reply_markup=undo_kb)
+                        await log_event(user_id, "bank_statement_scanned")
+                        return
+                elif obj_match:
+                    # Single transaction or error
+                    data = _json.loads(obj_match.group())
+                    if "error" in data:
+                        # Not a statement, try as receipt
+                        is_receipt = True
+                    else:
+                        # Single transaction
+                        desc = data.get("description", "")
+                        amount = str(abs(float(str(data.get("amount", "0")))))
+                        is_income = str(data.get("amount", "")).startswith("+")
+                        cat = "income" if is_income else "expense"
+                        await add_expense(user_id, desc, amount, cat)
+                        if lang == "ru":
+                            reply = f"🏦 <b>Транзакция распознана!</b>\n\n💰 {desc}: {data.get('amount', '')}"
+                        else:
+                            reply = f"🏦 <b>Transaction recognized!</b>\n\n💰 {desc}: {data.get('amount', '')}"
+                        undo_kb = InlineKeyboardMarkup(inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="❌ Отменить" if lang == "ru" else "❌ Undo",
+                                callback_data="undo_receipt"
+                            ),
+                        ]])
+                        await message.answer(reply, parse_mode="HTML", reply_markup=undo_kb)
+                        await log_event(user_id, "bank_statement_scanned")
+                        return
+            except Exception as e:
+                logger.warning("Bank statement parsing failed: %s", e)
+                # Fall through to receipt mode
+
+        if is_receipt and not is_bank_statement:
             # Receipt mode: extract structured data
             receipt_prompt = (
                 "Extract from this receipt/bill image. Return JSON ONLY, no other text:\n"
@@ -1208,7 +1284,6 @@ async def handle_photo(message: types.Message, bot: Bot):
 
             # Try to parse as JSON receipt
             try:
-                # Extract JSON from response
                 import json as _json
                 json_match = re.search(r'\{[^{}]+\}', result, re.DOTALL)
                 if json_match:
@@ -1250,16 +1325,16 @@ async def handle_photo(message: types.Message, bot: Bot):
             except Exception as e:
                 logger.warning("Receipt parsing failed: %s", e)
 
-            # Fallback: show raw result
-            if len(result) > 4000:
-                result = result[:4000] + "..."
-            await message.answer(result)
-        else:
-            # General image analysis with custom prompt
+        # General image analysis (or failed receipt/bank parse)
+        if not is_receipt and not is_bank_statement:
             result = analyze_image(image_bytes.read(), "image/jpeg", caption)
-            if len(result) > 4000:
-                result = result[:4000] + "..."
-            await message.answer(result)
+        elif not result:
+            result = analyze_image(image_bytes.read(), "image/jpeg",
+                "Describe what you see. If this is a financial document, extract any amounts.")
+
+        if len(result) > 4000:
+            result = result[:4000] + "..."
+        await message.answer(result)
 
         await log_event(user_id, "image_analyzed")
     except Exception as e:

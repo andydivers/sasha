@@ -36,6 +36,9 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
     if name == "add_expense":
         return await _handle_add_expense(args, lang, user_id)
 
+    if name == "add_income":
+        return await _handle_add_income(args, lang, user_id)
+
     if name == "add_todo":
         return await _handle_add_todo(args, lang, user_id)
 
@@ -342,6 +345,19 @@ async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
     if lang == "ru":
         return f"{emoji} {description}{' — ' + amount if amount else ''}"
     return f"{emoji} {description}{' — ' + amount if amount else ''}"
+
+
+async def _handle_add_income(args: dict, lang: str, user_id: int = 0) -> str:
+    description = args.get("description", "")
+    amount = args.get("amount", "")
+    category = "income"
+    try:
+        await add_expense(user_id, description, amount, category)
+    except Exception as e:
+        logger.error("Failed to add income: %s", e)
+    if lang == "ru":
+        return f"💚 {description}{' — +' + amount if amount else ''}"
+    return f"💚 {description}{' — +' + amount if amount else ''}"
 
 
 async def _handle_add_todo(args: dict, lang: str, user_id: int = 0) -> str:

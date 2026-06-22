@@ -55,9 +55,21 @@ async def lifespan(app: FastAPI):
             logger.warning("Calendar init failed: %s", e)
     try:
         dashboard_url = (config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard")
-        from aiogram.types import MenuButtonWebApp, WebAppInfo
+        from aiogram.types import MenuButtonWebApp, WebAppInfo, BotCommand
         await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="📊 Sasha", web_app=WebAppInfo(url=dashboard_url)))
         logger.info("Menu button set globally")
+
+        # Set bot commands menu so users discover features
+        await bot.set_my_commands([
+            BotCommand(command="undo", description="↩️ Delete last entry"),
+            BotCommand(command="digest", description="📊 Spending summary"),
+            BotCommand(command="todo", description="📝 Add task"),
+            BotCommand(command="tz", description="🕐 Set timezone"),
+            BotCommand(command="currency", description="💱 Set currency"),
+            BotCommand(command="events", description="📅 Calendar events"),
+            BotCommand(command="buy", description="⭐ Subscribe"),
+        ])
+        logger.info("Bot commands menu set")
     except Exception as e:
         logger.warning("Failed to set global menu button: %s", e)
 

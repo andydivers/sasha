@@ -109,6 +109,21 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "add_income",
+            "description": "Record income or earnings. Call this when user says they received or earned money (e.g., 'earned $5000', 'salary 100000₽', 'получил 5000₽', 'фриланс 200$', 'got paid $3000'). Use for any money received, not spent.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string", "description": "Source of income (e.g., 'salary', 'freelance', 'consulting')"},
+                    "amount": {"type": "string", "description": "The amount earned (e.g., '5000', '100000')"},
+                },
+                "required": ["description"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "add_todo",
             "description": "Add a task or to-do item. Call this when user says 'add task', 'remind me to', 'I need to', or mentions something they need to do later.",
             "parameters": {
@@ -252,6 +267,7 @@ def build_system_prompt(lang: str) -> str:
     )
     base += "\n\nRULES:"
     base += "\n- If user mentions spending money, call add_expense."
+    base += "\n- If user mentions receiving/earning money (salary, freelance, got paid), call add_income."
     base += "\n- If user mentions a task or something to do later, call add_todo."
     base += "\n- If user says where they are, call track_movement."
     base += "\n- If user mentions a new city/country, call set_timezone_by_location."
@@ -259,8 +275,9 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- For reminders, call set_reminder."
     base += "\n- For spending summary, call get_spending_summary."
     base += "\n- When user sends a receipt photo, call analyze_receipt with extracted data."
+    base += "\n- When user sends a bank statement, extract ALL transactions and call add_expense or add_income for each."
     base += "\n- Call ONLY ONE function per response. If no tool fits, respond conversationally."
-    base += "\n\nUser commands: /currency USD — change currency. /tz — set timezone. /digest — daily summary."
+    base += "\n\nUser commands: /currency USD — change currency. /tz — set timezone. /digest — daily summary. /undo — delete last entry."
     return base
 
 

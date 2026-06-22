@@ -77,9 +77,7 @@ body {
   padding: 14px 16px;
   border: 1px solid var(--border);
 }
-.summary-card.wide {
-  grid-column: 1 / -1;
-}
+.summary-card.wide { grid-column: 1 / -1; }
 .summary-label {
   font-size: 11px;
   color: var(--text3);
@@ -132,6 +130,29 @@ body {
   box-shadow: 0 4px 12px rgba(108, 92, 231, 0.35);
 }
 
+/* ─── Tip banner ──────────────────────────────── */
+.tip-banner {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 0 20px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+.tip-banner b { color: var(--accent2); }
+.tip-banner .tip-close {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 16px;
+  cursor: pointer;
+  margin: -4px -4px 0 0;
+}
+
 /* ─── Content ─────────────────────────────────── */
 .content {
   padding: 0 20px 100px;
@@ -140,17 +161,22 @@ body {
 .section.active { display: block; }
 
 /* ─── Date Group ──────────────────────────────── */
-.date-group {
-  margin-bottom: 20px;
-}
+.date-group { margin-bottom: 20px; }
 .date-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+  color: var(--text2);
   margin-bottom: 8px;
   padding-left: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.date-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* ─── Item Row ────────────────────────────────── */
@@ -179,6 +205,7 @@ body {
   flex-shrink: 0;
 }
 .item-icon.expense { background: rgba(255,107,107,0.12); }
+.item-icon.income { background: rgba(81,207,102,0.12); }
 .item-icon.movement { background: rgba(116,192,252,0.12); }
 .item-icon.todo { background: rgba(162,155,254,0.12); }
 .item-icon.event { background: rgba(255,169,77,0.12); }
@@ -203,10 +230,11 @@ body {
 .item-amount {
   font-size: 15px;
   font-weight: 800;
-  color: var(--red);
   flex-shrink: 0;
   letter-spacing: -0.3px;
 }
+.item-amount.red { color: var(--red); }
+.item-amount.green { color: var(--green); }
 .item-delete {
   width: 28px;
   height: 28px;
@@ -225,7 +253,6 @@ body {
 }
 .item:hover .item-delete,
 .item:active .item-delete { opacity: 1; }
-/* Always visible on touch */
 @media (hover: none) {
   .item-delete { opacity: 0.5; }
 }
@@ -258,11 +285,11 @@ body {
 /* ─── Empty State ─────────────────────────────── */
 .empty {
   text-align: center;
-  padding: 48px 20px;
+  padding: 40px 20px;
 }
 .empty-icon {
-  font-size: 56px;
-  margin-bottom: 16px;
+  font-size: 48px;
+  margin-bottom: 12px;
   opacity: 0.4;
 }
 .empty-title {
@@ -274,58 +301,31 @@ body {
 .empty-sub {
   font-size: 13px;
   color: var(--text3);
-  line-height: 1.5;
+  line-height: 1.6;
 }
-
-/* ─── Digest ──────────────────────────────────── */
-.digest-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 20px;
-  margin-bottom: 10px;
+.empty-commands {
+  margin-top: 16px;
+  text-align: left;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
 }
-.digest-period {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent2);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
-}
-.digest-total {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -1px;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-.digest-count {
-  font-size: 13px;
-  color: var(--text3);
-  margin-bottom: 16px;
-}
-.digest-bar-wrap {
-  margin-bottom: 10px;
-}
-.digest-bar-label {
+.cmd-row {
   display: flex;
-  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+  align-items: baseline;
+}
+.cmd-row .cmd {
+  color: var(--accent2);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 12px;
-  margin-bottom: 4px;
+  flex-shrink: 0;
 }
-.digest-bar-label span:first-child { color: var(--text2); font-weight: 500; }
-.digest-bar-label span:last-child { color: var(--text3); }
-.digest-bar {
-  height: 6px;
-  background: var(--surface2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.digest-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
+.cmd-row .cmd-desc {
+  color: var(--text3);
 }
 
 /* ─── Event card ──────────────────────────────── */
@@ -348,7 +348,44 @@ body {
   color: var(--text3);
 }
 
-/* ─── Error ───────────────────────────────────── */
+/* ─── Category bars ───────────────────────────── */
+.cat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.cat-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.cat-bar-wrap { margin-bottom: 10px; }
+.cat-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.cat-bar-label span:first-child { color: var(--text2); font-weight: 500; }
+.cat-bar-label span:last-child { color: var(--text3); }
+.cat-bar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ─── Error / Loading ─────────────────────────── */
 .error-state {
   text-align: center;
   padding: 48px 20px;
@@ -356,9 +393,7 @@ body {
   font-size: 14px;
 }
 .error-state p { margin-top: 8px; color: var(--text3); font-size: 13px; }
-
-/* ─── Loading ─────────────────────────────────── */
-.loading {
+.loading-wrap {
   display: flex;
   justify-content: center;
   padding: 48px;
@@ -372,11 +407,22 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── Pull to refresh hint ───────────────────── */
-.refresh-hint {
-  text-align: center;
-  padding: 12px;
-  font-size: 11px;
+/* ─── Balance line ────────────────────────────── */
+.balance-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.balance-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.balance-dot.red { background: var(--red); }
+.balance-dot.green { background: var(--green); }
+.balance-text {
+  font-size: 12px;
   color: var(--text3);
 }
 </style>
@@ -392,8 +438,9 @@ body {
 
 <div class="summary" id="summary"></div>
 <div class="tabs" id="tabs"></div>
+<div id="tipArea"></div>
 <div class="content" id="content">
-  <div class="loading"><div class="spinner"></div></div>
+  <div class="loading-wrap"><div class="spinner"></div></div>
 </div>
 
 <script>
@@ -409,101 +456,145 @@ if (!userId) {
 // ─── i18n ──────────────────────────────────────────
 const T = {
   en: {
-    subtitle: 'AI business assistant',
     tabs: ['Expenses', 'Tasks', 'Places', 'Calendar'],
     total_spent: 'Spent this month',
-    total_week: 'This week',
+    total_earned: 'Earned this month',
+    balance: 'Balance',
+    this_week: 'This week',
     expenses_count: 'expenses',
+    income_count: 'income',
     tasks_count: 'tasks',
-    no_expenses: 'No expenses yet',
-    no_expenses_sub: 'Send a receipt photo or say "coffee $5"',
+    no_expenses: 'No transactions yet',
+    no_expenses_sub: 'Start tracking your money with Sasha',
     no_todos: 'All clear!',
-    no_todos_sub: 'Say "remind me to..." to add tasks',
-    no_movements: 'No locations yet',
-    no_movements_sub: 'Say "I\'m at the office" to Sasha',
+    no_todos_sub: 'Add tasks and reminders',
+    no_movements: 'No places logged',
+    no_movements_sub: 'Track where you go',
     no_events: 'No upcoming events',
-    no_events_sub: 'Say "meeting tomorrow at 2pm"',
+    no_events_sub: 'Schedule meetings and events',
+    by_category: 'By category',
+    delete_confirm: 'Delete this expense?',
     today: 'Today',
     yesterday: 'Yesterday',
-    this_week: 'This week',
-    earlier: 'Earlier',
-    delete_confirm: 'Delete?',
-    undo: 'Undo',
+    tip_expenses: '📷 Send receipt photo or say <b>"coffee $5"</b> · <b>/undo</b> to delete last',
+    tip_todos: 'Say <b>"remind me to call client"</b> or <b>/todo text</b>',
+    tip_places: 'Say <b>"I\'m at the office"</b> to log your location',
+    tip_calendar: 'Say <b>"meeting tomorrow at 2pm"</b> to add events',
+    cmd_photo: '📷 receipt photo',
+    cmd_text: '💬 "lunch 500"',
+    cmd_undo: '/undo',
+    cmd_todo: '📝 "remind me to..."',
+    cmd_place: '📍 "I\'m at..."',
+    cmd_event: '📅 "meeting at 2pm"',
+    cmd_income: '💚 "earned 5000"',
   },
   ru: {
-    subtitle: 'AI бизнес-ассистент',
     tabs: ['Расходы', 'Задачи', 'Места', 'Календарь'],
     total_spent: 'Потрачено за месяц',
-    total_week: 'За неделю',
+    total_earned: 'Заработано за месяц',
+    balance: 'Баланс',
+    this_week: 'За неделю',
     expenses_count: 'расходов',
+    income_count: 'доходов',
     tasks_count: 'задач',
-    no_expenses: 'Расходов нет',
-    no_expenses_sub: 'Пришли фото чека или скажи "кофе 300₽"',
+    no_expenses: 'Транзакций нет',
+    no_expenses_sub: 'Начни отслеживать деньги с Сашей',
     no_todos: 'Всё выполнено!',
-    no_todos_sub: 'Скажи "напомни мне..." для новых задач',
+    no_todos_sub: 'Добавляй задачи и напоминания',
     no_movements: 'Мест нет',
-    no_movements_sub: 'Скажи "я на работе" Саше',
+    no_movements_sub: 'Отслеживай где бываешь',
     no_events: 'Событий нет',
-    no_events_sub: 'Скажи "встреча завтра в 14:00"',
+    no_events_sub: 'Планируй встречи и события',
+    by_category: 'По категориям',
+    delete_confirm: 'Удалить этот расход?',
     today: 'Сегодня',
     yesterday: 'Вчера',
-    this_week: 'На этой неделе',
-    earlier: 'Раньше',
-    delete_confirm: 'Удалить?',
-    undo: 'Отменить',
+    tip_expenses: '📷 Пришли фото чека или скажи <b>"кофе 300₽"</b> · <b>/undo</b> удалить последний',
+    tip_todos: 'Скажи <b>"напомни позвонить клиенту"</b> или <b>/todo текст</b>',
+    tip_places: 'Скажи <b>"я на работе"</b> чтобы записать местоположение',
+    tip_calendar: 'Скажи <b>"встреча завтра в 14:00"</b> чтобы добавить событие',
+    cmd_photo: '📷 фото чека',
+    cmd_text: '💬 "обед 500₽"',
+    cmd_undo: '/undo отмена',
+    cmd_todo: '📝 "напомни мне..."',
+    cmd_place: '📍 "я на работе"',
+    cmd_event: '📅 "встреча в 14:00"',
+    cmd_income: '💚 "получил 5000₽"',
   },
   es: {
-    subtitle: 'Asistente AI de negocios',
     tabs: ['Gastos', 'Tareas', 'Lugares', 'Calendario'],
     total_spent: 'Gastado este mes',
-    total_week: 'Esta semana',
+    total_earned: 'Ganado este mes',
+    balance: 'Balance',
+    this_week: 'Esta semana',
     expenses_count: 'gastos',
+    income_count: 'ingresos',
     tasks_count: 'tareas',
-    no_expenses: 'Sin gastos',
-    no_expenses_sub: 'Envía una foto del recibo o di "café $5"',
+    no_expenses: 'Sin transacciones',
+    no_expenses_sub: 'Empieza a rastrear tu dinero con Sasha',
     no_todos: 'Todo listo!',
-    no_todos_sub: 'Di "recuérdame..." para añadir tareas',
+    no_todos_sub: 'Añade tareas y recordatorios',
     no_movements: 'Sin ubicaciones',
-    no_movements_sub: 'Di "estoy en la oficina" a Sasha',
+    no_movements_sub: 'Rastrea dónde vas',
     no_events: 'Sin eventos',
-    no_events_sub: 'Di "reunión mañana a las 14:00"',
+    no_events_sub: 'Programa reuniones y eventos',
+    by_category: 'Por categoría',
+    delete_confirm: 'Eliminar este gasto?',
     today: 'Hoy',
     yesterday: 'Ayer',
-    this_week: 'Esta semana',
-    earlier: 'Antes',
-    delete_confirm: 'Eliminar?',
-    undo: 'Deshacer',
+    tip_expenses: '📷 Envía foto del recibo o di <b>"café $5"</b> · <b>/undo</b> para eliminar',
+    tip_todos: 'Di <b>"recuérdame llamar al cliente"</b> o <b>/todo texto</b>',
+    tip_places: 'Di <b>"estoy en la oficina"</b> para registrar ubicación',
+    tip_calendar: 'Di <b>"reunión mañana a las 14:00"</b> para añadir eventos',
+    cmd_photo: '📷 foto del recibo',
+    cmd_text: '💬 "almuerzo $5"',
+    cmd_undo: '/undo deshacer',
+    cmd_todo: '📝 "recuérdame..."',
+    cmd_place: '📍 "estoy en..."',
+    cmd_event: '📅 "reunión a las 2pm"',
+    cmd_income: '💚 "gané $5000"',
   },
 };
 
 let currentTab = 'expenses';
 let lang = 'en';
+const hiddenTips = new Set();
 
 function t(key) { return (T[lang] || T.en)[key] || T.en[key]; }
 
 // ─── Date helpers ──────────────────────────────────
+const RU_MONTHS_GEN = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const RU_WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+const EN_WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
 function formatHeaderDate() {
   const d = new Date();
-  const days = lang === 'ru'
-    ? ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота']
-    : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const months = lang === 'ru'
-    ? ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
-    : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+  if (lang === 'ru') return `${RU_WEEKDAYS[d.getDay()]}, ${d.getDate()} ${RU_MONTHS_GEN[d.getMonth()]}`;
+  return `${EN_WEEKDAYS[d.getDay()]}, ${EN_MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
-function getDateGroup(dateStr) {
-  if (!dateStr) return t('earlier');
+function formatDayDate(dateStr) {
+  if (!dateStr) return t('earlier') || 'Earlier';
   const d = new Date(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const itemDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diff = (today - itemDay) / 86400000;
-  if (diff <= 0) return t('today');
-  if (diff <= 1) return t('yesterday');
-  if (diff <= 7) return t('this_week');
-  return t('earlier');
+  const diff = Math.floor((today - itemDay) / 86400000);
+
+  // Show actual date with day label
+  const dayNum = d.getDate();
+  const month = lang === 'ru' ? RU_MONTHS_GEN[d.getMonth()] : EN_MONTHS[d.getMonth()];
+
+  if (diff === 0) return `${t('today')}, ${dayNum} ${month}`;
+  if (diff === 1) return `${t('yesterday')}, ${dayNum} ${month}`;
+  return `${dayNum} ${month}`;
+}
+
+function getDateKey(dateStr) {
+  if (!dateStr) return '9999';
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function formatTime(dateStr) {
@@ -532,11 +623,13 @@ const CATEGORY_ICONS = {
   'transfer': '💸', 'перевод': '💸',
   'receipt': '🧾', 'чек': '🧾',
   'bank': '🏦', 'commission': '🏦', 'комиссия': '🏦',
+  'salary': '💰', 'зарплата': '💰', 'income': '💵', 'доход': '💵', 'фриланс': '💻',
 };
 
-function getExpenseIcon(desc) {
-  if (!desc) return '💰';
-  const lower = desc.toLowerCase();
+function getItemIcon(desc, cat) {
+  if (!desc && !cat) return '💰';
+  const combined = (desc || '') + ' ' + (cat || '');
+  const lower = combined.toLowerCase();
   for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
     if (lower.includes(key)) return icon;
   }
@@ -551,7 +644,7 @@ function computeStats() {
   const weekAgo = new Date(now - 7 * 86400000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  let weekTotal = 0, monthTotal = 0;
+  let weekTotal = 0, monthSpent = 0, monthEarned = 0;
   const categoryTotals = {};
 
   expenses.forEach(e => {
@@ -560,31 +653,41 @@ function computeStats() {
     const d = new Date(e.created_at || 0);
     if (d >= weekAgo) weekTotal += num;
     if (d >= monthStart) {
-      monthTotal += num;
-      // Simple category extraction
-      const cat = e.category || e.description?.split(' ')[0] || 'other';
-      categoryTotals[cat] = (categoryTotals[cat] || 0) + num;
+      const isIncome = (e.category || '') === 'income';
+      if (isIncome) {
+        monthEarned += num;
+      } else {
+        monthSpent += num;
+        const cat = e.description?.split(' ')[0] || 'other';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + num;
+      }
     }
   });
 
   const activeTodos = todos.filter(t => !t.done).length;
+  const balance = monthEarned - monthSpent;
 
-  return { weekTotal, monthTotal, categoryTotals, activeTodos, expenseCount: expenses.length };
+  return { weekTotal, monthSpent, monthEarned, balance, categoryTotals, activeTodos, expenseCount: expenses.length };
 }
 
 // ─── Render ────────────────────────────────────────
 function renderSummary() {
   const stats = computeStats();
+  const balanceColor = stats.balance >= 0 ? 'green' : 'red';
+  const balanceSign = stats.balance >= 0 ? '+' : '';
   document.getElementById('summary').innerHTML = `
     <div class="summary-card">
       <div class="summary-label">${t('total_spent')}</div>
-      <div class="summary-value red">${formatAmount(stats.monthTotal)}</div>
-      <div class="summary-sub">${stats.expenseCount} ${t('expenses_count')}</div>
+      <div class="summary-value red">${formatAmount(stats.monthSpent)}</div>
+      <div class="balance-row">
+        <div class="balance-dot ${balanceColor}"></div>
+        <div class="balance-text">${t('balance')}: ${balanceSign}${formatAmount(stats.balance)}</div>
+      </div>
     </div>
     <div class="summary-card">
-      <div class="summary-label">${t('total_week')}</div>
-      <div class="summary-value">${formatAmount(stats.weekTotal)}</div>
-      <div class="summary-sub">${t('tasks_count')}: ${stats.activeTodos}</div>
+      <div class="summary-label">${t('total_earned')}</div>
+      <div class="summary-value green">${formatAmount(stats.monthEarned)}</div>
+      <div class="summary-sub">${t('this_week')}: ${formatAmount(stats.weekTotal)} · ${t('tasks_count')}: ${stats.activeTodos}</div>
     </div>
   `;
 }
@@ -596,92 +699,130 @@ function renderTabs() {
   ).join('');
 }
 
+function renderTip() {
+  if (hiddenTips.has(currentTab)) { document.getElementById('tipArea').innerHTML = ''; return; }
+  const tips = {
+    expenses: t('tip_expenses'),
+    todos: t('tip_todos'),
+    movements: t('tip_places'),
+    events: t('tip_calendar'),
+  };
+  const text = tips[currentTab];
+  if (!text) return;
+  document.getElementById('tipArea').innerHTML = `
+    <div class="tip-banner">
+      <button class="tip-close" onclick="hideTip()">×</button>
+      ${text}
+    </div>`;
+}
+
+function hideTip() {
+  hiddenTips.add(currentTab);
+  document.getElementById('tipArea').innerHTML = '';
+}
+
 function render() {
   document.getElementById('headerDate').textContent = formatHeaderDate();
   renderSummary();
   renderTabs();
+  renderTip();
   loadSection(currentTab);
 }
 
 function switchTab(name) {
   currentTab = name;
   renderTabs();
+  renderTip();
   loadSection(name);
 }
 
 // ─── Sections ──────────────────────────────────────
-function setSectionContent(name, html) {
+function setContent(html) {
   const el = document.getElementById('content');
-  el.querySelectorAll('.section').forEach(s => s.remove());
-  const div = document.createElement('div');
-  div.className = 'section active';
-  div.innerHTML = html;
-  el.appendChild(div);
+  el.innerHTML = html;
 }
 
-function emptyState(icon, title, sub) {
-  return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
+function emptyState(icon, title, sub, commands) {
+  let html = `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div>`;
+  if (commands) {
+    html += '<div class="empty-commands">';
+    commands.forEach(c => {
+      html += `<div class="cmd-row"><span class="cmd">${c[0]}</span><span class="cmd-desc">${c[1]}</span></div>`;
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
 }
 
 function loadExpenses() {
   const expenses = window._data?.expenses || [];
   if (!expenses.length) {
-    setSectionContent('expenses', emptyState('🧾', t('no_expenses'), t('no_expenses_sub')));
+    setContent(emptyState('🧾', t('no_expenses'), t('no_expenses_sub'), [
+      [t('cmd_photo'), ''],
+      [t('cmd_text'), ''],
+      [t('cmd_income'), ''],
+      [t('cmd_undo'), ''],
+    ]));
     return;
   }
 
-  // Group by date
+  // Group by actual date
   const groups = {};
   expenses.forEach(e => {
-    const group = getDateGroup(e.created_at);
-    if (!groups[group]) groups[group] = [];
-    groups[group].push(e);
+    const key = getDateKey(e.created_at);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
   });
 
+  // Sort date keys descending
+  const sortedKeys = Object.keys(groups).sort().reverse();
+
   let html = '';
-  const order = [t('today'), t('yesterday'), t('this_week'), t('earlier')];
-  order.forEach(label => {
-    if (!groups[label]) return;
-    html += `<div class="date-group"><div class="date-label">${label}</div>`;
-    groups[label].forEach(e => {
-      const icon = getExpenseIcon(e.description);
+  sortedKeys.forEach(key => {
+    const items = groups[key];
+    const label = formatDayDate(items[0].created_at);
+    html += `<div class="date-group"><div class="date-label">${escHtml(label)}</div>`;
+    items.forEach(e => {
+      const isIncome = (e.category || '') === 'income';
+      const icon = getItemIcon(e.description, e.category);
       const title = (e.description || e.category || '').split('(')[0].trim();
-      const meta = formatTime(e.created_at) + (e.category && e.category !== 'expense' ? ' · ' + e.category : '');
+      const amtClass = isIncome ? 'green' : 'red';
+      const iconClass = isIncome ? 'income' : 'expense';
+      const meta = formatTime(e.created_at);
       html += `
         <div class="item" data-id="${e.id}">
-          <div class="item-icon expense">${icon}</div>
+          <div class="item-icon ${iconClass}">${icon}</div>
           <div class="item-body">
             <div class="item-title">${escHtml(title)}</div>
             <div class="item-meta">${escHtml(meta)}</div>
           </div>
-          <div class="item-amount">${formatAmount(e.amount)}</div>
+          <div class="item-amount ${amtClass}">${isIncome ? '+' : '-'}${formatAmount(e.amount)}</div>
           <button class="item-delete" onclick="deleteExpense(${e.id})" title="${t('delete_confirm')}">✕</button>
         </div>`;
     });
     html += '</div>';
   });
 
-  // Category breakdown
+  // Category breakdown (expenses only)
   const stats = computeStats();
   const cats = Object.entries(stats.categoryTotals).sort((a, b) => b[1] - a[1]);
   if (cats.length > 1) {
     const maxCat = cats[0][1];
-    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'По категориям' : 'By category') + '</div>';
-    html += '<div class="digest-card">';
-    cats.slice(0, 6).forEach(([cat, total]) => {
+    const colors = ['#6c5ce7','#ff6b6b','#51cf66','#ffa94d','#74c0fc','#a29bfe','#fd79a8','#fdcb6e'];
+    html += `<div class="date-group"><div class="date-label">${t('by_category')}</div><div class="cat-card">`;
+    cats.slice(0, 6).forEach(([cat, total], i) => {
       const pct = Math.round((total / maxCat) * 100);
-      const colors = ['#6c5ce7','#ff6b6b','#51cf66','#ffa94d','#74c0fc','#a29bfe'];
-      const color = colors[cats.indexOf(cats.find(c => c[0] === cat)) % colors.length];
       html += `
-        <div class="digest-bar-wrap">
-          <div class="digest-bar-label"><span>${escHtml(cat)}</span><span>${formatAmount(total)}</span></div>
-          <div class="digest-bar"><div class="digest-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="cat-bar-wrap">
+          <div class="cat-bar-label"><span>${escHtml(cat)}</span><span>${formatAmount(total)}</span></div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${colors[i % colors.length]}"></div></div>
         </div>`;
     });
     html += '</div></div>';
   }
 
-  setSectionContent('expenses', html);
+  setContent(html);
 }
 
 function loadTodos() {
@@ -690,13 +831,15 @@ function loadTodos() {
   const done = todos.filter(t => t.done);
 
   if (!todos.length) {
-    setSectionContent('todos', emptyState('✅', t('no_todos'), t('no_todos_sub')));
+    setContent(emptyState('✅', t('no_todos'), t('no_todos_sub'), [
+      [t('cmd_todo'), ''],
+    ]));
     return;
   }
 
   let html = '';
   if (active.length) {
-    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Активные' : 'Active') + '</div>';
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Активные' : 'Active') + ` <span style="color:var(--accent2)">${active.length}</span></div>`;
     active.forEach(t => {
       html += `
         <div class="item" data-id="${t.id}">
@@ -722,29 +865,33 @@ function loadTodos() {
     html += '</div>';
   }
 
-  setSectionContent('todos', html);
+  setContent(html);
 }
 
 function loadMovements() {
   const movements = window._data?.movements || [];
   if (!movements.length) {
-    setSectionContent('movements', emptyState('📍', t('no_movements'), t('no_movements_sub')));
+    setContent(emptyState('📍', t('no_movements'), t('no_movements_sub'), [
+      [t('cmd_place'), ''],
+    ]));
     return;
   }
 
   const groups = {};
   movements.forEach(m => {
-    const group = getDateGroup(m.created_at);
-    if (!groups[group]) groups[group] = [];
-    groups[group].push(m);
+    const key = getDateKey(m.created_at);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(m);
   });
 
+  const sortedKeys = Object.keys(groups).sort().reverse();
+
   let html = '';
-  const order = [t('today'), t('yesterday'), t('this_week'), t('earlier')];
-  order.forEach(label => {
-    if (!groups[label]) return;
-    html += `<div class="date-group"><div class="date-label">${label}</div>`;
-    groups[label].forEach(m => {
+  sortedKeys.forEach(key => {
+    const items = groups[key];
+    const label = formatDayDate(items[0].created_at);
+    html += `<div class="date-group"><div class="date-label">${escHtml(label)}</div>`;
+    items.forEach(m => {
       html += `
         <div class="item">
           <div class="item-icon movement">📍</div>
@@ -757,13 +904,15 @@ function loadMovements() {
     html += '</div>';
   });
 
-  setSectionContent('movements', html);
+  setContent(html);
 }
 
 function loadEvents() {
   const events = window._data?.events || [];
   if (!events.length) {
-    setSectionContent('events', emptyState('📅', t('no_events'), t('no_events_sub')));
+    setContent(emptyState('📅', t('no_events'), t('no_events_sub'), [
+      [t('cmd_event'), ''],
+    ]));
     return;
   }
 
@@ -778,7 +927,7 @@ function loadEvents() {
   });
   html += '</div>';
 
-  setSectionContent('events', html);
+  setContent(html);
 }
 
 function loadSection(name) {
@@ -791,19 +940,23 @@ function loadSection(name) {
 }
 
 // ─── Actions ───────────────────────────────────────
+let _tokenCache = null;
+async function getToken() {
+  if (_tokenCache) return _tokenCache;
+  const secret = 'sasha-dashboard-2026';
+  const data = new TextEncoder().encode(userId + secret);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  _tokenCache = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  return _tokenCache;
+}
+
 async function deleteExpense(id) {
   if (!confirm(t('delete_confirm'))) return;
   try {
-    const secret = 'sasha-dashboard-2026';
-    const encoder = new TextEncoder();
-    const data = encoder.encode(userId + secret);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-
+    const token = await getToken();
     const res = await fetch(`/api/dashboard/delete_expense?user_id=${userId}&token=${token}&expense_id=${id}`, { method: 'POST' });
     if (res.ok) {
-      // Remove from local data and re-render
       window._data.expenses = window._data.expenses.filter(e => e.id !== id);
       render();
     }
@@ -814,13 +967,7 @@ async function deleteExpense(id) {
 
 async function toggleTodo(id) {
   try {
-    const secret = 'sasha-dashboard-2026';
-    const encoder = new TextEncoder();
-    const data = encoder.encode(userId + secret);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-
+    const token = await getToken();
     const res = await fetch(`/api/dashboard/toggle_todo?user_id=${userId}&token=${token}&todo_id=${id}`, { method: 'POST' });
     if (res.ok) {
       const todo = window._data.todos.find(t => t.id === id);
@@ -842,13 +989,7 @@ function escHtml(str) {
 // ─── Load data ─────────────────────────────────────
 async function loadData() {
   try {
-    const secret = 'sasha-dashboard-2026';
-    const encoder = new TextEncoder();
-    const data = encoder.encode(userId + secret);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-
+    const token = await getToken();
     const res = await fetch('/api/dashboard?user_id=' + userId + '&token=' + token);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
@@ -856,8 +997,7 @@ async function loadData() {
     lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
     render();
   } catch (e) {
-    document.getElementById('content').innerHTML =
-      `<div class="error-state"><div>⚠️</div><p>${lang === 'ru' ? 'Ошибка загрузки' : 'Failed to load'}</p></div>`;
+    setContent(`<div class="error-state"><div>⚠️</div><p>${lang === 'ru' ? 'Ошибка загрузки' : 'Failed to load'}</p></div>`);
   }
 }
 
