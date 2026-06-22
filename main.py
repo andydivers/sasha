@@ -131,8 +131,14 @@ async def lifespan(app: FastAPI):
 
     async def check_digests():
         sent_today: set[int] = set()
+        last_reset_day = 0
         while True:
             await asyncio.sleep(180)
+            # Reset sent_today once per day (at midnight UTC)
+            today_day = datetime.now(timezone.utc).day
+            if today_day != last_reset_day:
+                sent_today.clear()
+                last_reset_day = today_day
             try:
                 users = await get_digest_users()
                 for u in users:
@@ -258,9 +264,21 @@ async def dashboard():
     return {"error": "not found"}
 
 @app.get("/api/dashboard")
-async def api_dashboard(user_id: int):
+async def api_dashboard(user_id: int, token: str = ""):
+    """Dashboard API with token-based auth.
+    Token = bot sends a verification message with a one-time link.
+    For now, require a secret token from env DASHBOARD_TOKEN or user's chat_id hashed.
+    """
     from app.database import get_user_items, get_movements, get_todos, get_user_lang, get_calendar_events
     from fastapi.responses import JSONResponse
+    import hashlib, os
+
+    # Simple auth: token must match SHA256(user_id + secret)
+    dashboard_secret = os.getenv("DASHBOARD_SECRET", "sasha-dashboard-2026")
+    expected_token = hashlib.sha256(f"{user_id}{dashboard_secret}".encode()).hexdigest()[:16]
+    if token != expected_token:
+        return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+
     try:
         expenses = await get_user_items(user_id) or []
         movements = await get_movements(user_id) or []

@@ -43,6 +43,12 @@ REASONING_KEYWORDS = frozenset({
     "резюме", "суммировать", "оценить", "оценка", "сложный",
 })
 
+# ─── Model config ───────────────────────────────────────────────────────────
+# Primary: llama-3.3-70b (free on Groq, best tool calling support)
+# Fallback: llama-3.1-8b (fast, always available)
+PRIMARY_MODEL = "llama-3.3-70b-versatile"
+FALLBACK_MODEL = "llama-3.1-8b-instant"
+
 
 def create_groq_client(api_key: str) -> Groq:
     return Groq(api_key=api_key, timeout=30.0)
@@ -83,21 +89,8 @@ def _needs_reasoning(text: str) -> bool:
     return bool(words & REASONING_KEYWORDS)
 
 
+# ─── Tool definitions (native Groq format) ──────────────────────────────────
 TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "analyze_screenshot",
-            "description": "Analyze a screenshot or image. Call this when user sends an image or asks to analyze something visual.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "What to analyze or look for in the image"}
-                },
-                "required": ["query"],
-            },
-        },
-    },
     {
         "type": "function",
         "function": {
@@ -117,7 +110,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "add_todo",
-            "description": "Add a task or to-do item. Call this when user says 'add task', 'remind me to', 'I need to', or mentions something they need to do later (e.g., 'add task buy milk', 'напомни позвонить маме', 'нужно оплатить налоги').",
+            "description": "Add a task or to-do item. Call this when user says 'add task', 'remind me to', 'I need to', or mentions something they need to do later.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -131,7 +124,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "track_movement",
-            "description": "Log the user's current location or movement. Call this when user says where they are, where they're going, or what they're doing right now (e.g., 'at work', 'at the gym', 'leaving office', 'at the store'). Saves with the current timestamp.",
+            "description": "Log the user's current location or movement. Call this when user says where they are or what they're doing right now.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -146,11 +139,11 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "set_timezone_by_location",
-            "description": "Set the user's timezone based on their current city or country (e.g., 'I'm in Bangkok', 'just arrived in Bali', 'I'm in Thailand'). Call this when user mentions being in a new city or country. Changes how times are displayed.",
+            "description": "Set the user's timezone based on their current city or country. Call this when user mentions being in a new city or country.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "location": {"type": "string", "description": "City or country name (e.g., 'Bangkok', 'Bali', 'Moscow', 'Thailand')"},
+                    "location": {"type": "string", "description": "City or country name"},
                 },
                 "required": ["location"],
             },
@@ -160,7 +153,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "manage_sheets",
-            "description": "Read from or write to a Google Sheet the user has connected. If no sheet is connected, saves locally. Use this for expense tracking, notes, or sheet operations.",
+            "description": "Read from or write to a Google Sheet the user has connected. If no sheet is connected, saves locally.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -175,7 +168,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "create_event",
-            "description": "Create a calendar event. Call this when user asks to schedule a meeting, set a reminder, or create an event.",
+            "description": "Create a calendar event. Call this when user asks to schedule a meeting or create an event.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -191,12 +184,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "set_reminder",
-            "description": "Set a reminder or alarm. Call this when user says 'remind me', 'напомни', 'напомни мне', 'recuérdame', 'rappelle-moi', '提醒我', or asks to be reminded about something.",
+            "description": "Set a reminder or alarm. Call this when user asks to be reminded about something.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "message": {"type": "string", "description": "The reminder text or what to remind about"},
-                    "when": {"type": "string", "description": "When to remind (e.g., 'in 1 hour', 'tomorrow 9am', '30min', 'через 2 часа', 'завтра в 9', 'в пятницу')"},
+                    "message": {"type": "string", "description": "The reminder text"},
+                    "when": {"type": "string", "description": "When to remind (e.g., 'in 1 hour', 'tomorrow 9am', 'через 2 часа')"},
                 },
                 "required": ["message", "when"],
             },
@@ -205,15 +198,43 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "generate_report",
-            "description": "Generate a PDF, Excel, or HTML report. Call this when user asks for a report, summary, or analytics.",
+            "name": "get_spending_summary",
+            "description": "Get total spent for a period. Call this when user asks how much they spent.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "format": {"type": "string", "enum": ["pdf", "excel", "html"], "description": "Report format"},
+                    "period": {"type": "string", "description": "Time period: today/yesterday/week/month/YYYY-MM"},
+                },
+                "required": ["period"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_report",
+            "description": "Generate a report. Call this when user asks for a report or analytics.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "format": {"type": "string", "enum": ["excel", "html"], "description": "Report format"},
                     "topic": {"type": "string", "description": "What the report should cover"},
                 },
                 "required": ["format", "topic"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_receipt",
+            "description": "Analyze a receipt or bill image. Call this when user sends a photo of a receipt. Extracts store name, total amount, date, and items.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "image_description": {"type": "string", "description": "Description of what was extracted from the image"},
+                },
+                "required": ["image_description"],
             },
         },
     },
@@ -222,29 +243,24 @@ TOOLS = [
 
 def build_system_prompt(lang: str) -> str:
     lang_instruction = LANG_INSTRUCTIONS.get(lang, "Respond in English.")
-    base = "You are Sasha, an AI business assistant. Help users with their requests. Use tools when appropriate. Be concise and friendly. If the request doesn't match any tool, just respond conversationally. " + lang_instruction
-    base += "\n\nAVAILABLE TOOLS (call by outputting <function=name>{json}<function> on its own line):"
-    base += "\n1. add_expense — Record an expense. Args: {\"description\": \"what\", \"amount\": \"123\"}"
-    base += "\n2. add_todo — Add a task. Args: {\"title\": \"task text\"}"
-    base += "\n3. track_movement — Log location. Args: {\"location\": \"place\", \"description\": \"optional note\"}"
-    base += "\n4. set_timezone_by_location — Set timezone. Args: {\"location\": \"city or country\"}"
-    base += "\n5. manage_sheets — Read/write Google Sheet. Args: {\"action\": \"read/write\", \"description\": \"what\"}"
-    base += "\n6. create_event — Calendar event. Args: {\"summary\": \"title\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:MM\"}"
-    base += "\n7. set_reminder — Set a reminder. Args: {\"message\": \"text\", \"when\": \"in 1 hour / tomorrow 9am\"}"
-    base += "\n8. generate_report — Generate report. Args: {\"format\": \"pdf/excel/html\", \"topic\": \"what\"}"
-    base += "\n9. analyze_screenshot — Analyze an image. Args: {\"query\": \"what to look for\"}"
-    base += "\n10. get_spending_summary — Get total spent for a period. Args: {\"period\": \"today/yesterday/week/month/YYYY-MM\"}"
-    base += "\n\nCommands the user can use: /currency USD — change currency. Currency is auto-detected from country on /tz."
+    base = (
+        "You are Sasha, an AI business assistant for entrepreneurs and freelancers. "
+        "Help users track expenses, manage tasks, and stay organized. "
+        "Use tools when appropriate. Be concise and friendly. "
+        "If the request doesn't match any tool, just respond conversationally. "
+        + lang_instruction
+    )
     base += "\n\nRULES:"
-    base += "\n- If user mentions spending money (e.g., 'coffee $5', 'lunch 1200₽', 'купил хлеб'), call add_expense."
-    base += "\n- If user says 'add task', 'remind me to', 'I need to', or mentions something to do later, call add_todo."
-    base += "\n- If user says where they are or what they're doing right now, call track_movement."
-    base += "\n- If user mentions a new city or country, call set_timezone_by_location."
+    base += "\n- If user mentions spending money, call add_expense."
+    base += "\n- If user mentions a task or something to do later, call add_todo."
+    base += "\n- If user says where they are, call track_movement."
+    base += "\n- If user mentions a new city/country, call set_timezone_by_location."
     base += "\n- For events/meetings, call create_event."
     base += "\n- For reminders, call set_reminder."
-    base += "\n- For reports/analytics, call generate_report."
-    base += "\n- For spending summary (\"how much did I spend this week/month?\"), call get_spending_summary."
-    base += "\n- Output ONLY ONE function call per response. If done, respond conversationally."
+    base += "\n- For spending summary, call get_spending_summary."
+    base += "\n- When user sends a receipt photo, call analyze_receipt with extracted data."
+    base += "\n- Call ONLY ONE function per response. If no tool fits, respond conversationally."
+    base += "\n\nUser commands: /currency USD — change currency. /tz — set timezone. /digest — daily summary."
     return base
 
 
@@ -256,134 +272,101 @@ def build_messages(text: str, lang: str, chat_history: list | None = None) -> li
     return messages
 
 
-_TOOL_NAMES = frozenset({
-    "add_expense", "add_todo", "track_movement", "set_timezone_by_location",
-    "manage_sheets", "create_event", "set_reminder", "generate_report",
-    "analyze_screenshot", "get_spending_summary",
-})
-
-
-def _parse_text_tool_calls(content: str) -> list | None:
-    content = content.strip()
-    m = re.search(r"<function=(\w+)>\s*(\{.*?\})\s*(?:<function>)?", content, re.DOTALL)
-    if not m:
-        for name in _TOOL_NAMES:
-            p = re.compile(r"\b" + re.escape(name) + r"\s*(\{.*?\})", re.DOTALL)
-            mm = p.search(content)
-            if mm:
-                try:
-                    args = json.loads(mm.group(1))
-                except json.JSONDecodeError:
-                    continue
-                from types import SimpleNamespace
-                tc = SimpleNamespace()
-                tc.id = f"call_{int(time.time())}"
-                tc.type = "function"
-                tc.function = SimpleNamespace()
-                tc.function.name = name
-                tc.function.arguments = json.dumps(args)
-                return [tc]
-        m = re.search(r"\{\{(.*?)\}\}", content, re.DOTALL)
-        if m:
-            try:
-                args = json.loads("{" + m.group(1) + "}")
-            except json.JSONDecodeError:
-                return None
-            period = args.get("period", "")
-            for name in _TOOL_NAMES:
-                if "spending" in name and period:
-                    from types import SimpleNamespace
-                    tc = SimpleNamespace()
-                    tc.id = f"call_{int(time.time())}"
-                    tc.type = "function"
-                    tc.function = SimpleNamespace()
-                    tc.function.name = name
-                    tc.function.arguments = json.dumps(args)
-                    return [tc]
-        for name in _TOOL_NAMES:
-            p = re.compile(r"\b" + re.escape(name) + r"\b.*?(?:Args|args)\s*[:\-]?\s*(\{.*?\})", re.DOTALL)
-            mm = p.search(content)
-            if mm:
-                try:
-                    args = json.loads(mm.group(1))
-                except json.JSONDecodeError:
-                    continue
-                from types import SimpleNamespace
-                tc = SimpleNamespace()
-                tc.id = f"call_{int(time.time())}"
-                tc.type = "function"
-                tc.function = SimpleNamespace()
-                tc.function.name = name
-                tc.function.arguments = json.dumps(args)
-                return [tc]
-        return None
-    name = m.group(1)
-    try:
-        args = json.loads(m.group(2))
-    except json.JSONDecodeError:
-        return None
-    from types import SimpleNamespace
-    tc = SimpleNamespace()
-    tc.id = f"call_{int(time.time())}"
-    tc.type = "function"
-    tc.function = SimpleNamespace()
-    tc.function.name = name
-    tc.function.arguments = json.dumps(args)
-    return [tc]
-
-
 def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list | None = None):
-    # fast path — simple greeting, no API call
+    """Detect user intent using native Groq tool calling.
+    Returns: (text, latency, messages) or (tool_calls_list, latency, messages)
+    """
+    # Fast path — simple greeting, no API call
     if _is_simple_greeting(text, lang):
         reply = _get_simple_reply(text, lang)
         if reply:
             return reply, 0.0, None
 
-    if _needs_reasoning(text):
-        max_tokens = 2000
-    else:
-        max_tokens = 1000
-
+    max_tokens = 2000 if _needs_reasoning(text) else 1000
     messages = build_messages(text, lang, chat_history)
 
-    start = time.perf_counter()
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=messages,
-        temperature=0.1,
-        max_tokens=max_tokens,
-    )
-    elapsed = time.perf_counter() - start
-    logger.info("Groq latency: %.2fs", elapsed)
+    # Try primary model (70B), fallback to 8B
+    for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
+        try:
+            start = time.perf_counter()
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=TOOLS,
+                tool_choice="auto",
+                temperature=0.1,
+                max_tokens=max_tokens,
+            )
+            elapsed = time.perf_counter() - start
+            logger.info("Groq latency (%s): %.2fs", model, elapsed)
 
-    choice = response.choices[0]
-    content = choice.message.content or ""
-    tool_calls = _parse_text_tool_calls(content)
-    if tool_calls:
-        messages.append({"role": "assistant", "content": content})
-        return tool_calls, elapsed, messages
-    return content, elapsed, messages
+            choice = response.choices[0]
+            msg = choice.message
+
+            # Native tool calls
+            if msg.tool_calls:
+                messages.append(msg)
+                return msg.tool_calls, elapsed, messages
+
+            # Plain text response
+            content = msg.content or ""
+            return content, elapsed, messages
+
+        except Exception as e:
+            logger.warning("Groq error with %s: %s", model, e)
+            continue
+
+    # Last resort: no tools, simple response
+    try:
+        start = time.perf_counter()
+        response = client.chat.completions.create(
+            model=FALLBACK_MODEL,
+            messages=messages,
+            temperature=0.1,
+            max_tokens=max_tokens,
+        )
+        elapsed = time.perf_counter() - start
+        content = response.choices[0].message.content or ""
+        return content, elapsed, messages
+    except Exception as e:
+        logger.error("All Groq models failed: %s", e)
+        return "Sorry, I'm having trouble connecting. Please try again.", 0.0, None
 
 
 def chat_turn(client: Groq, messages: list):
-    """Continue a multi-turn conversation. Returns (text, messages) or (tool_calls, messages)."""
-    start = time.perf_counter()
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=messages,
-        temperature=0.1,
-        max_tokens=1000,
-    )
-    elapsed = time.perf_counter() - start
-    logger.info("Groq chat_turn latency: %.2fs", elapsed)
+    """Continue a multi-turn conversation with native tool calling."""
+    max_tokens = 1000
 
-    choice = response.choices[0]
-    content = choice.message.content or ""
-    tool_calls = _parse_text_tool_calls(content)
-    if tool_calls:
-        messages.append({"role": "assistant", "content": content})
-        return tool_calls, messages
-    return content, messages
+    for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
+        try:
+            start = time.perf_counter()
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=TOOLS,
+                tool_choice="auto",
+                temperature=0.1,
+                max_tokens=max_tokens,
+            )
+            elapsed = time.perf_counter() - start
+            logger.info("Groq chat_turn (%s): %.2fs", model, elapsed)
+
+            choice = response.choices[0]
+            msg = choice.message
+
+            if msg.tool_calls:
+                messages.append(msg)
+                return msg.tool_calls, messages
+
+            content = msg.content or ""
+            messages.append({"role": "assistant", "content": content})
+            return content, messages
+
+        except Exception as e:
+            logger.warning("Groq chat_turn error with %s: %s", model, e)
+            continue
+
+    return "I'm having trouble. Please try again.", messages
 
 
 def transcribe_audio(client: Groq, audio_bytes: bytes, filename: str = "voice.ogg") -> str:

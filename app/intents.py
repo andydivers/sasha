@@ -48,6 +48,9 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
     if name == "get_spending_summary":
         return await _handle_get_spending_summary(args, lang, user_id, tz)
 
+    if name == "analyze_receipt":
+        return _handle_analyze_receipt(args, lang, user_id)
+
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
     }
@@ -585,3 +588,15 @@ def _handle_generate_report(args: dict, lang: str, sheet_url: str | None = None)
         if lang == "ru":
             return "Ошибка при формировании отчёта."
         return "Error generating report."
+
+
+def _handle_analyze_receipt(args: dict, lang: str, user_id: int = 0) -> str:
+    """Handle analyze_receipt tool call from LLM when user mentions a receipt."""
+    description = args.get("image_description", "")
+    if not description:
+        if lang == "ru":
+            return "Отправь фото чека, и я его распознаю!"
+        return "Send me a receipt photo and I'll scan it!"
+    if lang == "ru":
+        return f"🧾 Понял, обрабатываю чек: {description}"
+    return f"🧾 Got it, processing receipt: {description}"

@@ -49,13 +49,13 @@ if config.gemini_api_key:
     init_gemini(config.gemini_api_key)
 
 STAR_PRICES = {
-    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "stars": 400},
-    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "stars": 1000},
+    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "stars": 99},
+    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "stars": 299},
 }
 
 CRYPTO_PRICES = {
-    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "usdc": 5.0},
-    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "usdc": 15.0},
+    "weekly": {"label_en": "Weekly subscription", "label_ru": "Подписка на неделю", "usdc": 1.5},
+    "monthly": {"label_en": "Monthly subscription", "label_ru": "Подписка на месяц", "usdc": 3.89},
 }
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
@@ -70,23 +70,6 @@ LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
 _lang_cache: dict[int, str] = {}
 _tz_cache: dict[int, str] = {}
 _sheet_cache: dict[int, str] = {}
-
-_TOOL_DESC_RE = re.compile(
-    r"(?:" + "|".join(
-        r"\b" + name + r"\b.*?Args\s*[:\-]?\s*\{"
-        for name in [
-            "add_expense", "add_todo", "track_movement", "set_timezone_by_location",
-            "manage_sheets", "create_event", "set_reminder", "generate_report",
-            "analyze_screenshot", "get_spending_summary",
-        ]
-    ) + r")",
-    re.DOTALL,
-)
-
-
-def _strip_tool_descs(text: str) -> str:
-    return _TOOL_DESC_RE.sub("", text).strip()
-
 
 async def get_lang(user_id: int) -> str:
     if user_id not in _lang_cache:
@@ -169,11 +152,19 @@ def _build_menu(lang: str) -> InlineKeyboardMarkup:
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
+    lang = await get_lang(user_id)
     menu = _build_menu(lang)
     msg = t(lang, "welcome")
     await message.answer(msg, parse_mode="HTML", reply_markup=menu)
     await message.answer(t(lang, "onboarding_voice"), parse_mode="HTML")
+    # Enable digest by default at 08:00
+    try:
+        cfg = await get_digest_config(user_id)
+        if not cfg.get("digest_enabled"):
+            await set_digest_config(user_id, True, "08:00")
+    except Exception:
+        pass
     try:
         await message.bot.set_chat_menu_button(
             chat_id=message.chat.id,
@@ -212,8 +203,8 @@ async def on_menu_callback(callback: CallbackQuery):
         await callback.message.edit_text(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
     elif data == "buy_show":
         btns = [
-            [InlineKeyboardButton(text="📊 Weekly $4.99 / 400⭐" if lang != "ru" else "📊 Неделя $4.99 / 400⭐", callback_data="buy_weekly")],
-            [InlineKeyboardButton(text="📊 Monthly $14.99 / 1000⭐" if lang != "ru" else "📊 Месяц $14.99 / 1000⭐", callback_data="buy_monthly")],
+            [InlineKeyboardButton(text="📊 Weekly $1.49 / 99⭐" if lang != "ru" else "📊 Неделя $1.49 / 99⭐", callback_data="buy_weekly")],
+            [InlineKeyboardButton(text="📊 Monthly $3.89 / 299⭐" if lang != "ru" else "📊 Месяц $3.89 / 299⭐", callback_data="buy_monthly")],
             [InlineKeyboardButton(text="💎 USDC Crypto" if lang != "ru" else "💎 USDC Крипта", callback_data="buy_crypto")],
             [InlineKeyboardButton(text="🏠 Menu" if lang != "ru" else "🏠 Меню", callback_data="menu_back")],
         ]
@@ -1145,8 +1136,8 @@ async def handle_photo(message: types.Message, bot: Bot):
         if not message.reply_to_message and not MENTION_RE.match(caption):
             return
     lang = await get_lang(message.from_user.id)
+    user_id = message.from_user.id
     caption = message.caption or ""
-    prompt = caption if caption else ("What do you see in this image?" if lang != "ru" else "Что ты видишь на этом изображении?")
 
     await message.answer(t(lang, "thinking"))
 
@@ -1154,11 +1145,70 @@ async def handle_photo(message: types.Message, bot: Bot):
         photo = message.photo[-1]
         file = await bot.get_file(photo.file_id)
         image_bytes = await bot.download_file(file.file_path)
-        result = analyze_image(image_bytes.read(), "image/jpeg", prompt)
-        if len(result) > 4000:
-            result = result[:4000] + "..."
-        await message.answer(result)
-        await log_event(message.from_user.id, "image_analyzed")
+
+        # Smart receipt detection: if no caption or receipt-related keywords
+        is_receipt = not caption or any(w in caption.lower() for w in
+            ["receipt", "чек", "счёт", "bill", "invoice", "сумма", "итого", "total"])
+
+        if is_receipt:
+            # Receipt mode: extract structured data
+            receipt_prompt = (
+                "Extract from this receipt/bill image. Return JSON ONLY, no other text:\n"
+                '{"store": "store name", "total": "amount with currency", '
+                '"date": "date if visible", "items": ["item1 - price1", "item2 - price2"]}\n'
+                "If you can't identify a receipt, return: {\"error\": \"not a receipt\"}"
+            )
+            result = analyze_image(image_bytes.read(), "image/jpeg", receipt_prompt)
+
+            # Try to parse as JSON receipt
+            try:
+                # Extract JSON from response
+                import json as _json
+                json_match = re.search(r'\{[^{}]+\}', result, re.DOTALL)
+                if json_match:
+                    receipt_data = _json.loads(json_match.group())
+                    if "error" not in receipt_data and receipt_data.get("total"):
+                        store = receipt_data.get("store", "")
+                        total = receipt_data.get("total", "")
+                        items = receipt_data.get("items", [])
+
+                        # Extract amount for saving
+                        nums = re.findall(r"[\d]+[.,]?[\d]*", total)
+                        amount = nums[0].replace(",", ".") if nums else ""
+
+                        # Save as expense
+                        desc = f"{store} ({', '.join(items[:3])})" if items else store
+                        await add_expense(user_id, desc, amount, "expense")
+
+                        if lang == "ru":
+                            reply = f"🧾 <b>Чек распознан!</b>\n\n🏪 {store}\n💰 {total}"
+                            if items:
+                                reply += "\n\n📋 " + "\n📋 ".join(items[:5])
+                            reply += "\n\n✅ Расход записан"
+                        else:
+                            reply = f"🧾 <b>Receipt scanned!</b>\n\n🏪 {store}\n💰 {total}"
+                            if items:
+                                reply += "\n\n📋 " + "\n📋 ".join(items[:5])
+                            reply += "\n\n✅ Expense saved"
+
+                        await message.answer(reply, parse_mode="HTML")
+                        await log_event(user_id, "receipt_scanned")
+                        return
+            except Exception as e:
+                logger.warning("Receipt parsing failed: %s", e)
+
+            # Fallback: show raw result
+            if len(result) > 4000:
+                result = result[:4000] + "..."
+            await message.answer(result)
+        else:
+            # General image analysis with custom prompt
+            result = analyze_image(image_bytes.read(), "image/jpeg", caption)
+            if len(result) > 4000:
+                result = result[:4000] + "..."
+            await message.answer(result)
+
+        await log_event(user_id, "image_analyzed")
     except Exception as e:
         logger.error("Gemini error: %s", e)
         await message.answer(t(lang, "error"))
