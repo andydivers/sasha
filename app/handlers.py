@@ -128,7 +128,7 @@ _EXPENSE_WORDS = {"купил","потратил","оплатил","заплат
 _NON_EXPENSE_WORDS = {"напомни","remind","встреча","meeting","встречу","завтра","tomorrow","через","надо","нужно","необходимо","запланируй","schedule","plan","событие","event","рожден","день рождения","birthday","ужин сегодня","dinner today","обед сегодня"}
 
 
-async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
+async def _try_save_expense_fallback(text: str, user_id: int) -> tuple | None:
     lowered = text.lower().strip()
     nums = re.findall(r"\d[\d.,]*", text)
 
@@ -139,21 +139,22 @@ async def _try_save_expense_fallback(text: str, user_id: int) -> str | None:
         if w in lowered:
             return None
 
-    # If multiple numbers found, let LLM handle it — it can split into separate expenses
-    # with correct currencies per item (e.g., "еда 150 бат, хостинг 600 рублей")
     if len(nums) > 1:
         return None
 
     amount = parse_amount(nums[0])
-
-    # Extract currency from text
     cur = extract_currency(text)
     user_cur = await get_user_currency(user_id)
     currency = cur or user_cur or ""
 
+    desc = text.strip()
+    for pat in [re.compile(r"\d[\d.,]*\s*", re.I), re.compile(r"\s*(?:бат|bath|baths|฿|₽|руб|rub|rubles|\$|usd|dollar|dollars|€|eur|euro)", re.I)]:
+        desc = pat.sub("", desc).strip()
+    desc = re.sub(r"\s+", " ", desc).strip()
+
     try:
-        await add_expense(user_id, text.strip(), amount, "expense", currency=currency)
-        return amount
+        await add_expense(user_id, desc or text.strip(), amount, "expense", currency=currency)
+        return (desc or text.strip(), amount, currency)
     except Exception as e:
         logger.error("Fallback save expense failed for user %s: %s", user_id, e)
         return None
@@ -1533,7 +1534,9 @@ async def handle_voice(message: types.Message, bot: Bot):
         _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
 
         if _saved_amount is not None:
-            response_text = f"💰 {text}"
+            desc, amt, cur = _saved_amount
+            sym = currency_symbol(cur) if cur else ""
+            response_text = f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}"
             await message.answer(response_text + suffix)
             latency = 0
         else:
@@ -1647,7 +1650,9 @@ async def handle_message(message: types.Message):
         _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
 
         if _saved_amount is not None:
-            response_text = f"💰 {text}"
+            desc, amt, cur = _saved_amount
+            sym = currency_symbol(cur) if cur else ""
+            response_text = f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}"
             await message.answer(response_text + suffix)
             latency = 0
         else:
