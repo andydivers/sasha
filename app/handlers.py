@@ -143,9 +143,10 @@ async def _try_save_expense_fallback(text: str, user_id: int) -> tuple | None:
         return None
 
     amount = parse_amount(nums[0])
-    cur = extract_currency(text)
     user_cur = await get_user_currency(user_id)
-    currency = cur or user_cur or ""
+    cur = extract_currency(text) or user_cur or ""
+    sym = currency_symbol(cur) if cur else ""
+    currency = cur
 
     desc = text.strip()
     for pat in [re.compile(r"\d[\d.,]*\s*", re.I), re.compile(r"\s*(?:бат|bath|baths|฿|₽|руб|rub|rubles|\$|usd|dollar|dollars|€|eur|euro)", re.I)]:
