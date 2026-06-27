@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # ─── Symbol → ISO code mapping ──────────────────────────────
 CURRENCY_SYMBOLS = {
     # Symbols that appear in text
-    "₽": "RUB", "rub": "RUB", "руб": "RUB", "рублей": "RUB", "р": "RUB",
+    "₽": "RUB", "rub": "RUB", "руб": "RUB", "рублей": "RUB",
     "$": "USD", "usd": "USD", "dollar": "USD", "dollars": "USD",
     "€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR",
     "฿": "THB", "thb": "THB", "бат": "THB", "baht": "THB", "bath": "THB",
