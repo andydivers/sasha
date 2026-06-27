@@ -336,7 +336,20 @@ async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0, tz: str 
 
 async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
     description = args.get("description", "")
-    amount = args.get("amount", "")
+    amount_raw = args.get("amount", "")
+    nums = re.findall(r"\d[\d.,]*", amount_raw)
+    amount = nums[0].replace(",", ".").strip() if nums else ""
+    if not amount:
+        for pat, cur in _CURRENCY_PATTERNS:
+            m = pat.search(description)
+            if m:
+                amount = m.group(1).replace(",", ".")
+                description = pat.sub("", description).strip()
+                break
+        else:
+            nums2 = re.findall(r"\d[\d.,]*", description)
+            if nums2:
+                amount = nums2[-1].replace(",", ".").strip()
     category = "expense" if amount else "note"
     # Priority: 1) currency from Groq tool arg, 2) detect from text, 3) user default
     currency = args.get("currency", "").strip().upper()
