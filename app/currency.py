@@ -33,7 +33,7 @@ CURRENCY_SYMBOLS = {
 }
 
 COUNTRY_TO_CURRENCY = {
-    "thailand": "THB", "тайланд": "THB", "тайланд": "THB", "bangkok": "THB", "phuket": "THB", "pattaya": "THB",
+    "thailand": "THB", "таиланд": "THB", "тайланд": "THB", "bangkok": "THB", "phuket": "THB", "pattaya": "THB",
     "russia": "RUB", "россия": "RUB", "moscow": "RUB", "москва": "RUB", "spb": "RUB",
     "usa": "USD", "united states": "USD", "new york": "USD", "los angeles": "USD",
     "europe": "EUR", "germany": "EUR", "france": "EUR", "spain": "EUR", "italy": "EUR",
