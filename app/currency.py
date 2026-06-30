@@ -22,6 +22,7 @@ CURRENCY_PATTERNS = [
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₴|uah|гривн)", re.I), "UAH"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₩|krw|won)", re.I), "KRW"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₫|vnd|донг|донгов|dong)", re.I), "VND"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:R\$|brl|real|reais)", re.I), "BRL"),
 ]
 
 # Currency symbols for display

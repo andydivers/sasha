@@ -37,6 +37,7 @@ CURRENCY_SYMBOLS = {
     "PHP": "PHP", "песо": "PHP",
     "TRY": "TRY", "лир": "TRY", "lira": "TRY",
     "CHF": "CHF", "франк": "CHF",
+    "BRL": "BRL", "real": "BRL", "reais": "BRL",
     "BTC": "BTC", "биткоин": "BTC",
     "USDT": "USDT", "USDC": "USDC",
 }
@@ -44,9 +45,10 @@ CURRENCY_SYMBOLS = {
 # ISO code → display symbol
 CURRENCY_DISPLAY = {
     "RUB": "₽", "USD": "$", "EUR": "€", "THB": "฿", "GBP": "£",
-    "JPY": "¥", "UAH": "₴", "KZT": "₸", "KRW": "₩", "AED": "AED",
+    "JPY": "¥", "UAH": "₴", "KZT": "₸", "KRW": "₩", "AED": "د.إ",
     "CNY": "¥", "INR": "₹", "VND": "₫", "SGD": "S$", "MYR": "RM",
-    "PHP": "₱", "TRY": "₺", "CHF": "CHF", "BTC": "₿", "USDT": "₮", "USDC": "USD",
+    "PHP": "₱", "TRY": "₺", "CHF": "CHF", "BRL": "R$",
+    "BTC": "₿", "USDT": "₮", "USDC": "USD",
 }
 
 # Patterns for extracting currency from text
