@@ -463,10 +463,7 @@ body {
     <div class="header-date" id="headerDate"></div>
   </div>
   <div class="header-bottom">
-    <div class="currency-toggle" id="currencyToggle">
-      <button data-cur="USD" class="active" onclick="setBaseCur('USD')">USD</button>
-      <button data-cur="RUB" onclick="setBaseCur('RUB')">RUB</button>
-    </div>
+    <div class="currency-toggle" id="currencyToggle"></div>
   </div>
 </div>
 
@@ -1102,6 +1099,16 @@ async function toggleTodo(id) {
 }
 
 // ─── Currency toggle ──────────────────────────────────
+function buildCurrencyToggle(cur) {
+  const base = cur || 'USD';
+  const second = base === 'USD' ? 'EUR' : base;
+  const active = window._baseCurrency === second ? second : 'USD';
+  window._baseCurrency = active;
+  document.getElementById('currencyToggle').innerHTML =
+    `<button data-cur="USD" class="${active === 'USD' ? 'active' : ''}" onclick="setBaseCur('USD')">USD</button>` +
+    `<button data-cur="${second}" class="${active === second ? 'active' : ''}" onclick="setBaseCur('${second}')">${second}</button>`;
+}
+
 function setBaseCur(cur) {
   window._baseCurrency = cur;
   try { localStorage.setItem('sasha_base_currency', cur); } catch(e) {}
@@ -1132,13 +1139,11 @@ async function loadData() {
     // Allow manual override via localStorage
     try {
       const saved = localStorage.getItem('sasha_base_currency');
-      if (saved === 'USD' || saved === 'RUB') base = saved;
+      if (saved === 'USD' || saved === base) base = saved;
     } catch(e) {}
     window._baseCurrency = base;
-    // Sync toggle buttons
-    document.querySelectorAll('#currencyToggle button').forEach(b => {
-      b.classList.toggle('active', b.dataset.cur === base);
-    });
+    // Build toggle: USD + user's currency
+    buildCurrencyToggle(base);
     // Fetch exchange rates in background, then re-render
     fetchRates().then(() => render());
     render();
