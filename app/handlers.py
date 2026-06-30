@@ -128,28 +128,48 @@ _EXPENSE_WORDS = {"купил","потратил","оплатил","заплат
 _NON_EXPENSE_WORDS = {"напомни","remind","встреча","meeting","встречу","завтра","tomorrow","через","надо","нужно","необходимо","запланируй","schedule","plan","событие","event","рожден","день рождения","birthday","ужин сегодня","dinner today","обед сегодня"}
 
 
+_MULTIPLIERS = [
+    (r"(?:^|\s)\d[\d.,]*\s*(тысяч|тысячи|тыща|тыщи)\b", 1000),
+    (r"(?:^|\s)\d[\d.,]*\s*(миллион|миллиона|млн)\b", 1000000),
+    (r"(?:^|\s)\d[\d.,]*\s*(миллиард|миллиарда|млрд)\b", 1000000000),
+    (r"(?:^|\s)\d[\d.,]*\s*k\b", 1000),
+]
+
+
 async def _try_save_expense_fallback(text: str, user_id: int) -> tuple | None:
     lowered = text.lower().strip()
-    nums = re.findall(r"\d[\d.,]*", text)
+    amount_match = re.search(r"\d[\d.,]*", text)
 
-    if not nums:
+    if not amount_match:
         return None
 
     for w in _NON_EXPENSE_WORDS:
         if w in lowered:
             return None
 
-    if len(nums) > 1:
+    # Check for subsequent numbers — multi-number phrases go to AI
+    remaining = text[amount_match.end():]
+    if re.search(r"\d[\d.,]*", remaining):
         return None
 
-    amount = parse_amount(nums[0])
+    raw_amount = amount_match.group()
+    after_num = text[amount_match.end():].strip().lower()
+
+    mult = 1
+    for pattern, m in _MULTIPLIERS:
+        if re.search(pattern, text.lower()):
+            mult = m
+            break
+
+    amount = str(int(float(parse_amount(raw_amount)) * mult))
     user_cur = await get_user_currency(user_id)
     cur = extract_currency(text) or user_cur or ""
     sym = currency_symbol(cur) if cur else ""
     currency = cur
 
     desc = text.strip()
-    for pat in [re.compile(r"\d[\d.,]*\s*", re.I), re.compile(r"\s*(?:бат|bath|baths|฿|₽|руб|rub|rubles|\$|usd|dollar|dollars|€|eur|euro)", re.I)]:
+    cleanup_pat = re.compile(r"\s*(?:бат|bath|baths|฿|₽|rubles|рублей|руб|rub|\$|usd|долларов|доллар|dollars|dollar|€|eur|евро|euro|£|gbp|фунтов|фунт|pound|тысяч|тысячи|тыща|тыщи|миллион|миллиона|млн|миллиард|миллиарда|млрд)", re.I)
+    for pat in [re.compile(r"\d[\d.,]*\s*", re.I), cleanup_pat]:
         desc = pat.sub("", desc).strip()
     desc = re.sub(r"\s+", " ", desc).strip()
 

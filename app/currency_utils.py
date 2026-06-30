@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 CURRENCY_SYMBOLS = {
     # Symbols that appear in text
     "₽": "RUB", "rub": "RUB", "руб": "RUB", "рублей": "RUB",
-    "$": "USD", "usd": "USD", "dollar": "USD", "dollars": "USD",
-    "€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR",
+    "$": "USD", "usd": "USD", "dollar": "USD", "dollars": "USD", "доллар": "USD", "долларов": "USD",
+    "€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR", "евро": "EUR",
     "฿": "THB", "thb": "THB", "бат": "THB", "baht": "THB", "bath": "THB",
-    "£": "GBP", "gbp": "GBP", "pound": "GBP",
+    "£": "GBP", "gbp": "GBP", "pound": "GBP", "фунт": "GBP", "фунтов": "GBP",
     "¥": "JPY", "jpy": "JPY", "yen": "JPY", "иена": "JPY",
     "₴": "UAH", "uah": "UAH", "гривн": "UAH",
     "₸": "KZT", "kzt": "KZT", "тенге": "KZT",

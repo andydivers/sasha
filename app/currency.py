@@ -11,16 +11,17 @@ logger = logging.getLogger(__name__)
 # ─── Currency detection from text ─────────────────────
 
 CURRENCY_PATTERNS = [
-    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:бат|bath|baths|฿)", re.I), "THB"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:бат|bath|baths|฿|thb)", re.I), "THB"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₽|руб|rub|ruble|rubles)", re.I), "RUB"),
-    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:\$|usd|dollar|dollars)", re.I), "USD"),
-    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:€|eur|euro)", re.I), "EUR"),
-    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:£|gbp|pound)", re.I), "GBP"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:\$|usd|dollar|dollars|доллар|долларов)", re.I), "USD"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:€|eur|euro|евро)", re.I), "EUR"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:£|gbp|pound|фунт|фунтов)", re.I), "GBP"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:¥|jpy|yen|иен)", re.I), "JPY"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:元|cny|rmb|юан)", re.I), "CNY"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₺|try|lira|лир)", re.I), "TRY"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₴|uah|гривн)", re.I), "UAH"),
     (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₩|krw|won)", re.I), "KRW"),
+    (re.compile(r"(?:^|\s)(\d+[\.,]?\d*)\s*(?:₫|vnd|донг|донгов|dong)", re.I), "VND"),
 ]
 
 # Currency symbols for display
