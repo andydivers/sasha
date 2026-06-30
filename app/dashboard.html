@@ -1099,14 +1099,13 @@ async function toggleTodo(id) {
 }
 
 // ─── Currency toggle ──────────────────────────────────
-function buildCurrencyToggle(cur) {
-  const base = cur || 'USD';
-  const second = base === 'USD' ? 'EUR' : base;
-  const active = window._baseCurrency === second ? second : 'USD';
+function buildCurrencyToggle(userCur) {
+  const c2 = userCur || 'EUR';
+  const active = window._baseCurrency === c2 ? c2 : 'USD';
   window._baseCurrency = active;
   document.getElementById('currencyToggle').innerHTML =
     `<button data-cur="USD" class="${active === 'USD' ? 'active' : ''}" onclick="setBaseCur('USD')">USD</button>` +
-    `<button data-cur="${second}" class="${active === second ? 'active' : ''}" onclick="setBaseCur('${second}')">${second}</button>`;
+    `<button data-cur="${c2}" class="${active === c2 ? 'active' : ''}" onclick="setBaseCur('${c2}')">${c2}</button>`;
 }
 
 function setBaseCur(cur) {
@@ -1135,15 +1134,16 @@ async function loadData() {
     window._data = json;
     lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
     // Use user's currency setting from server, fallback to detecting from expenses
-    let base = json.user_currency || detectBaseCurrency(json.expenses || []);
+    const userCur = json.user_currency || detectBaseCurrency(json.expenses || []);
+    let base = userCur;
     // Allow manual override via localStorage
     try {
       const saved = localStorage.getItem('sasha_base_currency');
-      if (saved === 'USD' || saved === base) base = saved;
+      if (saved === 'USD' || saved === userCur) base = saved;
     } catch(e) {}
     window._baseCurrency = base;
-    // Build toggle: USD + user's currency
-    buildCurrencyToggle(base);
+    // Build toggle: USD + user's language-based currency
+    buildCurrencyToggle(userCur);
     // Fetch exchange rates in background, then re-render
     fetchRates().then(() => render());
     render();
