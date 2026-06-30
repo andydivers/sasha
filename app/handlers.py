@@ -106,9 +106,15 @@ CRYPTO_PRICES = {
 
 LANG_LIST = ["en", "ru", "es", "fr", "zh", "ar", "pt", "de", "hi", "ja"]
 
+LANG_TO_CURRENCY = {
+    "en": "USD", "ru": "RUB", "es": "EUR", "fr": "EUR",
+    "zh": "CNY", "ar": "AED", "pt": "BRL", "de": "EUR",
+    "hi": "INR", "ja": "JPY",
+}
+
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(
-        text=f"{TRANSLATIONS[code]['flag']} {TRANSLATIONS[code]['name']}",
+        text=f"{TRANSLATIONS[code]['flag']} {TRANSLATIONS[code]['name']} ({currency_symbol(LANG_TO_CURRENCY.get(code, 'USD'))})",
         callback_data=f"lang_{code}"
     )] for code in LANG_LIST
 ])
@@ -317,6 +323,10 @@ async def on_lang_choice(callback: CallbackQuery):
     lang = callback.data.split("_")[1]
     _lang_cache[callback.from_user.id] = lang
     await set_user_lang(callback.from_user.id, lang)
+    # Auto-set default currency from language
+    cur_from_lang = LANG_TO_CURRENCY.get(lang, "")
+    if cur_from_lang:
+        await set_user_currency(callback.from_user.id, cur_from_lang)
     await callback.message.edit_text(t(lang, "lang_changed"))
     menu = _build_menu(lang)
     await callback.message.answer(t(lang, "welcome"), reply_markup=menu, parse_mode="HTML")
@@ -584,13 +594,6 @@ async def cmd_tz(message: types.Message):
         tz = raw
     _tz_cache[message.from_user.id] = tz
     await set_user_tz(message.from_user.id, tz)
-
-    from app.intents import _country_from_location
-    existing_cur = await get_user_currency(message.from_user.id)
-    if not existing_cur:
-        cur = _country_from_location(raw if 'tz' not in raw[:5] else parts[1])
-        if cur:
-            await set_user_currency(message.from_user.id, cur)
 
     if lang == "ru":
         await message.answer(f"Часовой пояс установлен: {tz}")

@@ -659,7 +659,6 @@ async def _handle_track_movement(args: dict, lang: str, user_id: int = 0, tz: st
 
 
 async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int = 0) -> str:
-    from app.database import set_user_currency, get_user_currency
     location = args.get("location", "")
     if not location:
         if lang == "ru":
@@ -674,25 +673,8 @@ async def _handle_set_timezone_by_location(args: dict, lang: str, user_id: int =
         await set_user_tz(user_id, tz_name)
     except Exception:
         pass
-    # Auto-switch currency based on location
-    detected_cur = _country_from_location(location)
-    existing_cur = await get_user_currency(user_id)
-    cur_changed = False
-    cur_msg = ""
-    if detected_cur and detected_cur != existing_cur:
-        try:
-            await set_user_currency(user_id, detected_cur)
-            cur_changed = True
-            sym = currency_symbol(detected_cur)
-            if lang == "ru":
-                cur_msg = f" Валюта переключена: {detected_cur} {sym}"
-            else:
-                cur_msg = f" Currency switched: {detected_cur} {sym}"
-        except Exception:
-            pass
     if lang == "ru":
-        base = f"🕐 Часовой пояс: {tz_name}. Время — MSK + местное."
-        return base + cur_msg
+        return f"🕐 Часовой пояс: {tz_name}. Время — MSK + местное."
     base = f"🕐 Timezone: {tz_name}. Times shown as MSK + local."
     return base + cur_msg
 
