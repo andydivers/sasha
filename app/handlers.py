@@ -112,6 +112,10 @@ LANG_TO_CURRENCY = {
     "hi": "INR", "ja": "JPY",
 }
 
+LANG_TOGGLE_CURRENCIES = {
+    "pt": ["USD", "EUR", "BRL"],
+}
+
 LANG_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(
         text=f"{TRANSLATIONS[code]['flag']} {TRANSLATIONS[code]['name']} ({currency_symbol(LANG_TO_CURRENCY.get(code, 'USD'))})",

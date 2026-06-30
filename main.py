@@ -299,7 +299,9 @@ async def api_dashboard(user_id: int, token: str = ""):
         events = await get_calendar_events(user_id) or []
         lang = await get_user_lang(user_id) or "en"
         user_currency = await get_user_currency(user_id) or ""
-        return JSONResponse({"ok": True, "lang": lang, "user_currency": user_currency, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
+        from app.handlers import LANG_TOGGLE_CURRENCIES, LANG_TO_CURRENCY
+        toggle_currencies = LANG_TOGGLE_CURRENCIES.get(lang, ["USD", LANG_TO_CURRENCY.get(lang, "USD")])
+        return JSONResponse({"ok": True, "lang": lang, "user_currency": user_currency, "toggle_currencies": toggle_currencies, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
     except Exception as e:
         logger.error("Dashboard API error: %s", e)
         return JSONResponse({"ok": False, "error": str(e)})
