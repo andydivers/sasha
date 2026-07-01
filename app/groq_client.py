@@ -44,9 +44,9 @@ REASONING_KEYWORDS = frozenset({
 })
 
 # ─── Model config ───────────────────────────────────────────────────────────
-# Primary: llama-3.3-70b (free on Groq, best tool calling support)
+# Primary: qwen-2.5-32b (tool calling, fast, free tier on Groq)
 # Fallback: llama-3.1-8b (fast, always available)
-PRIMARY_MODEL = "llama-3.3-70b-versatile"
+PRIMARY_MODEL = "qwen-2.5-32b"
 FALLBACK_MODEL = "llama-3.1-8b-instant"
 
 
