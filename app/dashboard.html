@@ -90,6 +90,32 @@ body {
   background: var(--accent);
   color: #fff;
 }
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.month-arrow {
+  background: var(--surface2);
+  border: none;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text2);
+  transition: all 0.15s;
+}
+.month-arrow:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.month-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  min-width: 90px;
+  text-align: center;
+}
 
 /* ─── Summary Cards ───────────────────────────── */
 .summary {
@@ -463,6 +489,11 @@ body {
     <div class="header-date" id="headerDate"></div>
   </div>
   <div class="header-bottom">
+    <div class="month-nav" id="monthNav">
+      <button class="month-arrow" onclick="prevMonth()">◀</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button class="month-arrow" onclick="nextMonth()">▶</button>
+    </div>
     <div class="currency-toggle" id="currencyToggle"></div>
   </div>
 </div>
@@ -745,13 +776,47 @@ function detectBaseCurrency(expenses) {
   return sorted.length > 0 ? sorted[0][0] : 'USD';
 }
 
+// ─── Month navigation ─────────────────────────────────
+let _viewMonth = 0; // 0 = current, -1 = previous, etc.
+
+function getMonthRange(offset) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  const start = new Date(d.getFullYear(), d.getMonth(), 1);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return { start, end, year: d.getFullYear(), month: d.getMonth() };
+}
+
+function updateMonthLabel() {
+  const { year, month } = getMonthRange(_viewMonth);
+  const d = new Date(year, month);
+  const label = d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { month: 'long', year: 'numeric' });
+  document.getElementById('monthLabel').textContent = label;
+}
+
+function prevMonth() {
+  _viewMonth--;
+  updateMonthLabel();
+  render();
+}
+
+function nextMonth() {
+  _viewMonth++;
+  updateMonthLabel();
+  render();
+}
+
+// Reset month when data loads
+function resetMonth() { _viewMonth = 0; updateMonthLabel(); }
+
 // ─── Compute stats ─────────────────────────────────
 function computeStats() {
   const expenses = window._data?.expenses || [];
   const todos = window._data?.todos || [];
+  const { start: monthStart } = getMonthRange(_viewMonth);
   const now = new Date();
   const weekAgo = new Date(now - 7 * 86400000);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const baseCur = window._baseCurrency || 'USD';
   const rates = _ratesCache;
@@ -842,6 +907,7 @@ function hideTip() {
 
 function render() {
   document.getElementById('headerDate').textContent = formatHeaderDate();
+  updateMonthLabel();
   renderSummary();
   renderTabs();
   renderTip();
@@ -875,7 +941,11 @@ function emptyState(icon, title, sub, commands) {
 }
 
 function loadExpenses() {
-  const expenses = window._data?.expenses || [];
+  const { start, end } = getMonthRange(_viewMonth);
+  const expenses = (window._data?.expenses || []).filter(e => {
+    const d = new Date(e.created_at || 0);
+    return d >= start && d < end;
+  });
   if (!expenses.length) {
     setContent(emptyState('🧾', t('no_expenses'), t('no_expenses_sub'), [
       [t('cmd_photo'), ''],
@@ -1133,6 +1203,7 @@ async function loadData() {
     if (!json.ok) throw new Error(json.error);
     window._data = json;
     lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
+    resetMonth();
     // Use user's currency setting from server, fallback to detecting from expenses
     const userCur = json.user_currency || detectBaseCurrency(json.expenses || []);
     let base = userCur;
