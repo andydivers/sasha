@@ -153,10 +153,14 @@ _SPLIT_RE = re.compile(
 )
 
 _CURRENCY_WORDS_CLEANUP = re.compile(
-    r"\s*(?:бат|bath|baths|฿|₽|₫|рублей|руб|рубль|rub|rubles|"
-    r"\$|usd|долларов|доллар|dollar|dollars|€|eur|евро|euro|euros|"
-    r"£|gbp|фунтов|фунт|pound|pounds|донг|донга|донгов|dong|"
-    r"тысяч|тысячи|тыща|тыщи|миллион|миллиона|млн|миллиард|миллиарда|млрд|k)",
+    r"\s*(?:донгов|донга|донг|dong|"
+    r"рублей|рубль|руб|rubles|rub|"
+    r"долларов|доллар|dollars|dollar|usd|\$|"
+    r"фунтов|фунт|pounds|pound|gbp|£|"
+    r"евро|euros|euro|eur|€|"
+    r"миллионов|миллиона|миллион|млн|миллиардов|миллиарда|миллиард|млрд|"
+    r"тысяч|тысячи|тыща|тыщи|тыс|k|"
+    r"бат|baths|bath|฿|₽|₫)",
     re.I,
 )
 
