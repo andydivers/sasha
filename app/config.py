@@ -2,12 +2,20 @@ import os
 from dataclasses import dataclass, field
 
 
+def _env(*names: str) -> str:
+    for n in names:
+        v = os.getenv(n, "").strip()
+        if v:
+            return v
+    return ""
+
+
 @dataclass
 class Config:
-    bot_token: str = field(default_factory=lambda: os.getenv("BOT_TOKEN", ""))
-    groq_api_key: str = field(default_factory=lambda: os.getenv("GROQ_API_KEY", ""))
-    openrouter_api_key: str = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", ""))
-    gemini_api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
+    bot_token: str = field(default_factory=lambda: _env("BOT_TOKEN"))
+    groq_api_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
+    openrouter_api_key: str = field(default_factory=lambda: _env("OPENROUTER_API_KEY", "OPENROUTER_API_KEY2"))
+    gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY"))
     google_sheets_creds: str = field(default_factory=lambda: os.getenv("GOOGLE_SHEETS_CREDENTIALS", ""))
     supabase_url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
     supabase_key: str = field(default_factory=lambda: os.getenv("SUPABASE_KEY", ""))

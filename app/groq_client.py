@@ -77,8 +77,9 @@ def _openrouter_chat(messages: list, tools: list, max_tokens: int, temperature: 
 
     Returns a dict-like message ({"content", "tool_calls"}) or None on failure.
     """
-    key = os.getenv("OPENROUTER_API_KEY", "")
+    key = os.getenv("OPENROUTER_API_KEY", "") or os.getenv("OPENROUTER_API_KEY2", "")
     if not key:
+        logger.warning("OpenRouter fallback skipped: OPENROUTER_API_KEY not set")
         return None
     body = json.dumps({
         "model": OPENROUTER_MODEL,
