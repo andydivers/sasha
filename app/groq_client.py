@@ -2,11 +2,28 @@ import json
 import logging
 import time
 import re
+import os
+import urllib.request
 from io import BytesIO
 
 from groq import Groq
 
 logger = logging.getLogger(__name__)
+
+
+class _ToolCallFn:
+    __slots__ = ("name", "arguments")
+
+    def __init__(self, name: str, arguments: str):
+        self.name = name
+        self.arguments = arguments
+
+
+class _ToolCall:
+    __slots__ = ("function",)
+
+    def __init__(self, name: str, arguments: str):
+        self.function = _ToolCallFn(name, arguments)
 
 
 SIMPLE_GREETINGS_EN = frozenset({"hello", "hi", "hey", "good morning", "good afternoon", "good evening", "thanks", "thank you", "thx", "ok", "okay", "bye", "goodbye", "cool", "great", "nice"})
@@ -48,10 +65,49 @@ REASONING_KEYWORDS = frozenset({
 # Fallback: same model — single retry handles transient errors
 PRIMARY_MODEL = "llama-3.1-8b-instant"
 FALLBACK_MODEL = "llama-3.1-8b-instant"
+OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct"
 
 
 def create_groq_client(api_key: str) -> Groq:
     return Groq(api_key=api_key, timeout=30.0)
+
+
+def _openrouter_chat(messages: list, tools: list, max_tokens: int, temperature: float = 0.1):
+    """Call OpenRouter with native tool calling — used when Groq is rate-limited.
+
+    Returns a dict-like message ({"content", "tool_calls"}) or None on failure.
+    """
+    key = os.getenv("OPENROUTER_API_KEY", "")
+    if not key:
+        return None
+    body = json.dumps({
+        "model": OPENROUTER_MODEL,
+        "messages": messages,
+        "tools": tools,
+        "tool_choice": "auto",
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=body,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            data = json.loads(resp.read())
+        return data["choices"][0]["message"]
+    except Exception as e:
+        logger.warning("OpenRouter fallback failed: %s", e)
+        return None
+
+
+def _or_tool_calls(message: dict) -> list[_ToolCall] | None:
+    """Convert OpenRouter tool_calls to Groq SDK-compatible objects."""
+    tcs = message.get("tool_calls")
+    if not tcs:
+        return None
+    return [_ToolCall(tc["function"]["name"], tc["function"]["arguments"]) for tc in tcs]
 
 
 LANG_INSTRUCTIONS = {
@@ -270,7 +326,9 @@ def build_system_prompt(lang: str) -> str:
     base += "\n\nRULES:"
     base += "\n- If user mentions spending money, call add_expense. ALWAYS include the currency parameter (e.g., 'THB', 'RUB', 'USD', 'EUR') if detectable from the message."
     base += "\n- If user mentions receiving/earning money (salary, freelance, got paid), call add_income. ALWAYS include the currency parameter."
-    base += "\n- Detect currency from symbols (₽=$=€=฿=£=¥) or words (руб/bath/dollars/euros/won/yuan) in the message."
+    base += "\n- Detect currency from symbols (₽=$=€=฿=£=¥) or words (руб/bath/dollars/euros/won/yuan/донгов) in the message. 'донг/донга/донгов' means VND."
+    base += "\n- NEVER claim you saved/added/recorded an expense, income or task unless you actually called the function and got a result. If you did not call a function, just say what you understood and ask for confirmation."
+    base += "\n- Use only valid ISO currency codes for the currency parameter: USD, EUR, RUB, GBP, THB, VND, CNY, JPY, KRW, INR, AED, BRL. Never invent codes like 'донга' or 'KHR' for 'донг'."
     base += "\n- IMPORTANT: If user mentions MULTIPLE expenses in one message (e.g., 'еда 150 бат, хостинг 600 рублей'), call add_expense SEPARATELY for EACH item. Each expense must have its own currency."
     base += "\n- If user mentions a task or something to do later, call add_todo."
     base += "\n- If user says where they are, call track_movement AND set_timezone_by_location."
@@ -336,17 +394,35 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
             logger.warning("Groq error with %s: %s", model, e)
             continue
 
+    # Try OpenRouter (Groq is rate-limited / down) — still with native tool calling
+    or_msg = _openrouter_chat(messages, TOOLS, max_tokens)
+    if or_msg:
+        logger.info("OpenRouter fallback used")
+        or_tcs = _or_tool_calls(or_msg)
+        if or_tcs:
+            messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
+            return or_tcs, elapsed, messages
+        content = or_msg.get("content") or ""
+        return content, elapsed, messages
+
     # Last resort: no tools, simple response
     try:
         start = time.perf_counter()
         response = client.chat.completions.create(
             model=FALLBACK_MODEL,
             messages=messages,
+            tools=TOOLS,
+            tool_choice="auto",
             temperature=0.1,
             max_tokens=max_tokens,
         )
         elapsed = time.perf_counter() - start
-        content = response.choices[0].message.content or ""
+        choice = response.choices[0]
+        msg = choice.message
+        if msg.tool_calls:
+            messages.append(msg)
+            return msg.tool_calls, elapsed, messages
+        content = msg.content or ""
         return content, elapsed, messages
     except Exception as e:
         logger.error("All Groq models failed: %s", e)
@@ -385,6 +461,17 @@ def chat_turn(client: Groq, messages: list):
         except Exception as e:
             logger.warning("Groq chat_turn error with %s: %s", model, e)
             continue
+
+    # OpenRouter fallback with native tool calling
+    or_msg = _openrouter_chat(messages, TOOLS, max_tokens)
+    if or_msg:
+        or_tcs = _or_tool_calls(or_msg)
+        if or_tcs:
+            messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
+            return or_tcs, messages
+        content = or_msg.get("content") or ""
+        messages.append({"role": "assistant", "content": content})
+        return content, messages
 
     return "I'm having trouble. Please try again.", messages
 

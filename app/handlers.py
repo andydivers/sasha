@@ -145,50 +145,81 @@ _MULTIPLIERS = [
     (r"(?:^|\s)\d[\d.,]*\s*k\b", 1000),
 ]
 
+# Split multi-item messages: "еда 300 бат и кофе 100 бат" → two expenses
+_SPLIT_RE = re.compile(
+    r"\s+(?:и\s+ещё|и|а\s+также|также|ещё|and|also|then|потом|затем)\s+"
+    r"|\s*;\s*|(?<!\d)\s*,\s*(?!\d)",
+    re.I,
+)
 
-async def _try_save_expense_fallback(text: str, user_id: int) -> tuple | None:
+_CURRENCY_WORDS_CLEANUP = re.compile(
+    r"\s*(?:бат|bath|baths|฿|₽|₫|рублей|руб|рубль|rub|rubles|"
+    r"\$|usd|долларов|доллар|dollar|dollars|€|eur|евро|euro|euros|"
+    r"£|gbp|фунтов|фунт|pound|pounds|донг|донга|донгов|dong|"
+    r"тысяч|тысячи|тыща|тыщи|миллион|миллиона|млн|миллиард|миллиарда|млрд|k)",
+    re.I,
+)
+
+
+def _extract_amount(segment: str) -> str:
+    """Extract amount, joining space/comma-grouped thousands: '650 000' → '650000'."""
+    m = re.search(r"\d{1,3}(?:[\s,](?=\d)\d{3})+", segment)
+    if m:
+        return m.group().replace(" ", "").replace(",", "")
+    m = re.search(r"\d[\d.,]*", segment)
+    return m.group() if m else ""
+
+
+async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
+    """Parse and save one or more expenses from text without AI.
+
+    Returns list of (description, amount, currency) actually saved.
+    """
     lowered = text.lower().strip()
-    amount_match = re.search(r"\d[\d.,]*", text)
-
-    if not amount_match:
-        return None
+    if not re.search(r"\d", text):
+        return []
 
     for w in _NON_EXPENSE_WORDS:
         if w in lowered:
-            return None
+            return []
 
-    # Check for subsequent numbers — multi-number phrases go to AI
-    remaining = text[amount_match.end():]
-    if re.search(r"\d[\d.,]*", remaining):
-        return None
+    segments = [s.strip() for s in _SPLIT_RE.split(text) if s.strip()]
+    numbered = [s for s in segments if re.search(r"\d", s)]
+    if len(numbered) < 2:
+        numbered = [text]
 
-    raw_amount = amount_match.group()
-    after_num = text[amount_match.end():].strip().lower()
+    saved: list = []
+    for seg in numbered:
+        try:
+            raw = _extract_amount(seg)
+            if not raw:
+                continue
+            mult = 1
+            for pattern, m in _MULTIPLIERS:
+                if re.search(pattern, seg.lower()):
+                    mult = m
+                    break
+            amount = str(int(float(parse_amount(raw)) * mult))
+            user_cur = await get_user_currency(user_id)
+            cur = extract_currency(seg) or user_cur or ""
+            desc = _CURRENCY_WORDS_CLEANUP.sub("", seg)
+            desc = re.sub(r"\d[\d.,]*\s*", "", desc)
+            desc = re.sub(r"\s+", " ", desc).strip().strip(",-;:")
+            if not desc:
+                desc = seg.strip()
+            await add_expense(user_id, desc, amount, "expense", currency=cur)
+            saved.append((desc, amount, cur))
+        except Exception as e:
+            logger.error("Fallback save expense failed for user %s: %s", user_id, e)
+    return saved
 
-    mult = 1
-    for pattern, m in _MULTIPLIERS:
-        if re.search(pattern, text.lower()):
-            mult = m
-            break
 
-    amount = str(int(float(parse_amount(raw_amount)) * mult))
-    user_cur = await get_user_currency(user_id)
-    cur = extract_currency(text) or user_cur or ""
-    sym = currency_symbol(cur) if cur else ""
-    currency = cur
-
-    desc = text.strip()
-    cleanup_pat = re.compile(r"\s*(?:бат|bath|baths|฿|₽|rubles|рублей|руб|rub|\$|usd|долларов|доллар|dollars|dollar|€|eur|евро|euro|£|gbp|фунтов|фунт|pound|тысяч|тысячи|тыща|тыщи|миллион|миллиона|млн|миллиард|миллиарда|млрд)", re.I)
-    for pat in [re.compile(r"\d[\d.,]*\s*", re.I), cleanup_pat]:
-        desc = pat.sub("", desc).strip()
-    desc = re.sub(r"\s+", " ", desc).strip()
-
-    try:
-        await add_expense(user_id, desc or text.strip(), amount, "expense", currency=currency)
-        return (desc or text.strip(), amount, currency)
-    except Exception as e:
-        logger.error("Fallback save expense failed for user %s: %s", user_id, e)
-        return None
+def _format_saved_expenses(items: list) -> str:
+    lines = []
+    for desc, amt, cur in items:
+        sym = currency_symbol(cur) if cur else ""
+        lines.append(f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}")
+    return "\n".join(lines)
 
 
 async def get_tz(user_id: int) -> str:
@@ -1559,12 +1590,10 @@ async def handle_voice(message: types.Message, bot: Bot):
         tz = await get_tz(message.from_user.id)
 
         suffix = "" if _is_group(message) else t(lang, "voice_prompt")
-        _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
+        saved_items = await _try_save_expenses_fallback(text, message.from_user.id)
 
-        if _saved_amount is not None:
-            desc, amt, cur = _saved_amount
-            sym = currency_symbol(cur) if cur else ""
-            response_text = f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}"
+        if saved_items:
+            response_text = _format_saved_expenses(saved_items)
             await message.answer(response_text + suffix)
             latency = 0
         else:
@@ -1675,12 +1704,10 @@ async def handle_message(message: types.Message):
     suffix = "" if _is_group(message) else t(lang, "voice_prompt")
 
     try:
-        _saved_amount = await _try_save_expense_fallback(text, message.from_user.id)
+        saved_items = await _try_save_expenses_fallback(text, message.from_user.id)
 
-        if _saved_amount is not None:
-            desc, amt, cur = _saved_amount
-            sym = currency_symbol(cur) if cur else ""
-            response_text = f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}"
+        if saved_items:
+            response_text = _format_saved_expenses(saved_items)
             await message.answer(response_text + suffix)
             latency = 0
         else:

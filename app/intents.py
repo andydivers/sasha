@@ -14,6 +14,12 @@ from app.currency import detect_currency_from_text, currency_from_location, get_
 
 logger = logging.getLogger(__name__)
 
+_KNOWN_CURRENCIES = frozenset({
+    "USD", "EUR", "RUB", "GBP", "THB", "VND", "CNY", "JPY", "KRW", "INR",
+    "AED", "BRL", "UAH", "KZT", "SGD", "MYR", "PHP", "TRY", "CHF", "MNT",
+    "BTC", "USDT", "USDC",
+})
+
 
 async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = None, tz: str = "UTC", user_id: int = 0) -> str:
     name = tool_call.function.name
@@ -351,8 +357,10 @@ async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
             if nums2:
                 amount = nums2[-1].replace(",", ".").strip()
     category = "expense" if amount else "note"
-    # Priority: 1) currency from Groq tool arg, 2) detect from text, 3) user default
+    # Priority: 1) currency from Groq tool arg (validated), 2) detect from text, 3) user default
     currency = args.get("currency", "").strip().upper()
+    if currency not in _KNOWN_CURRENCIES:
+        currency = ""
     if not currency:
         currency = detect_currency_from_text(f"{description} {amount}")
     if not currency:
@@ -384,8 +392,10 @@ async def _handle_add_income(args: dict, lang: str, user_id: int = 0) -> str:
     description = args.get("description", "")
     amount = args.get("amount", "")
     category = "income"
-    # Priority: 1) currency from Groq tool arg, 2) detect from text, 3) user default
+    # Priority: 1) currency from Groq tool arg (validated), 2) detect from text, 3) user default
     currency = args.get("currency", "").strip().upper()
+    if currency not in _KNOWN_CURRENCIES:
+        currency = ""
     if not currency:
         currency = detect_currency_from_text(f"{description} {amount}")
     if not currency:
