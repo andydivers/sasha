@@ -30,30 +30,33 @@ def parse_amount(raw: str) -> str:
       - "1,800" or "1.800" with exactly 3 digits after separator → thousands → "1800"
       - "1,8" or "1.8" with 1-2 digits after separator → decimal → "1.8"
       - "1,000,000" → remove all thousands separators → "1000000"
+      - "1.200,50" (European) or "1,200.50" (US) → "1200.50"
     """
     if not raw:
         return ""
-    # Normalize: treat both , and . as separators
     s = raw.strip().replace(" ", "")
-    # If multiple separators, they're all thousands: "1,000,000" or "1.000.000"
+    # Mixed separators: decide which is the decimal one
+    if "," in s and "." in s:
+        if s.rindex(",") > s.rindex("."):
+            # comma is the decimal separator: "1.200,50" → "1200.50"
+            return s.replace(".", "").replace(",", ".")
+        # dot is the decimal separator: "1,200.50" → "1200.50"
+        return s.replace(",", "")
+    # Multiple commas → thousands separators: "1,000,000"
     parts_comma = s.split(",")
-    parts_dot = s.split(".")
     if len(parts_comma) > 2:
-        # Multiple commas → thousands separators: "1,000,000"
         return "".join(parts_comma)
-    if len(parts_dot) > 2:
-        # Multiple dots → thousands separators: "1.000.000"
-        return "".join(parts_dot)
-    # Single separator: check digit count after it
-    # Try comma first
     if "," in s:
         before, after = s.split(",", 1)
         if len(after) == 3 and after.isdigit():
             # "1,800" → 1800 (thousands)
             return before + after
-        else:
-            # "1,8" or "1,80" → 1.8 (decimal)
-            return before + "." + after
+        # "1,8" or "1,80" → 1.8 (decimal)
+        return before + "." + after
+    # Multiple dots → thousands separators: "1.000.000"
+    parts_dot = s.split(".")
+    if len(parts_dot) > 2:
+        return "".join(parts_dot)
     if "." in s:
         before, after = s.split(".", 1)
         if len(after) == 3 and after.isdigit() and len(before) > 0:
@@ -139,7 +142,7 @@ _NON_EXPENSE_WORDS = {"напомни","remind","встреча","meeting","вс
 
 
 _MULTIPLIERS = [
-    (r"(?:^|\s)\d[\d.,]*\s*(тысяч|тысячи|тыща|тыщи)\b", 1000),
+    (r"(?:^|\s)\d[\d.,]*\s*(тысяч|тысячи|тыща|тыщи|тыс|nghìn|ngàn)\b", 1000),
     (r"(?:^|\s)\d[\d.,]*\s*(миллион|миллиона|млн)\b", 1000000),
     (r"(?:^|\s)\d[\d.,]*\s*(миллиард|миллиарда|млрд)\b", 1000000000),
     (r"(?:^|\s)\d[\d.,]*\s*k\b", 1000),
@@ -147,29 +150,33 @@ _MULTIPLIERS = [
 
 # Split multi-item messages: "еда 300 бат и кофе 100 бат" → two expenses
 _SPLIT_RE = re.compile(
-    r"\s+(?:и\s+ещё|и|а\s+также|также|ещё|and|also|then|потом|затем)\s+"
+    r"\s+(?:и\s+ещё|и|а\s+также|также|ещё|and|also|then|потом|затем|"
+    r"y|e|et|und|e\s+mais|và|और|و|以及|和|そして|または|そして)\s+"
     r"|\s*;\s*|(?<!\d)\s*,\s*(?!\d)",
     re.I,
 )
 
 _CURRENCY_WORDS_CLEANUP = re.compile(
-    r"\s*(?:донгов|донга|донг|dong|"
+    r"\s*(?:донгов|донга|донг|dong|đồng|"
     r"рублей|рубль|руб|rubles|rub|"
-    r"долларов|доллар|dollars|dollar|usd|\$|"
+    r"долларов|доллар|dollars|dollar|dólares|dólar|usd|\$|"
     r"фунтов|фунт|pounds|pound|gbp|£|"
-    r"евро|euros|euro|eur|€|"
+    r"евро|euros|euro|eur|€|yenes?|euros?|"
     r"миллионов|миллиона|миллион|млн|миллиардов|миллиарда|миллиард|млрд|"
-    r"тысяч|тысячи|тыща|тыщи|тыс|k|"
-    r"бат|baths|bath|฿|₽|₫)",
+    r"тысяч|тысячи|тыща|тыщи|тыс|nghìn|ngàn|"
+    r"батов|бат|bahts|baht|baths|bath|฿|บาท|₽|₫|reais|"
+    r"元|人民币|块|円|ドル|ユーロ|泰铢|"
+    r"रुपये|रुपया|रुपिए|₹|"
+    r"درهم|يورو|دولار|ليرة|ريال|دينار|جنيه)",
     re.I,
 )
 
 
 def _extract_amount(segment: str) -> str:
     """Extract amount, joining space/comma-grouped thousands: '650 000' → '650000'."""
-    m = re.search(r"\d{1,3}(?:[\s,](?=\d)\d{3})+", segment)
+    m = re.search(r"\d{1,3}(?:[\s,](?=\d)\d{3})+(?:[.,]\d{1,2})?", segment)
     if m:
-        return m.group().replace(" ", "").replace(",", "")
+        return m.group().replace(" ", "")
     m = re.search(r"\d[\d.,]*", segment)
     return m.group() if m else ""
 
@@ -203,10 +210,12 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
                 if re.search(pattern, seg.lower()):
                     mult = m
                     break
-            amount = str(int(float(parse_amount(raw)) * mult))
+            amt = float(parse_amount(raw)) * mult
+            amount = str(int(amt)) if amt.is_integer() else str(round(amt, 2))
             user_cur = await get_user_currency(user_id)
             cur = extract_currency(seg) or user_cur or ""
             desc = _CURRENCY_WORDS_CLEANUP.sub("", seg)
+            desc = re.sub(r"(?<=\d)\s*k\b", "", desc, flags=re.I)
             desc = re.sub(r"\d[\d.,]*\s*", "", desc)
             desc = re.sub(r"\s+", " ", desc).strip().strip(",-;:")
             if not desc:
