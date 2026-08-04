@@ -2,6 +2,7 @@ import logging
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+from google.auth.transport.requests import Request as AuthRequest
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ def init_sheets(credentials_json: str = ""):
     _service_email = creds_dict["client_email"]
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    # Validate the key now instead of reporting ready until the first sheet request.
+    creds.refresh(AuthRequest())
     _gc = gspread.authorize(creds)
     logger.info("Google Sheets initialized as %s", _service_email)
 

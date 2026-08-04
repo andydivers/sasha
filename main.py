@@ -260,6 +260,8 @@ async def webhook(request: Request):
         await dp.feed_update(bot, update)
     except Exception as e:
         logger.error("Webhook error: %s", e, exc_info=True)
+        # A non-2xx response makes Telegram retry the update instead of dropping it.
+        return Response(content="webhook processing failed", status_code=500)
     return Response(content="ok", status_code=200)
 
 
@@ -361,7 +363,14 @@ async def api_toggle_todo(user_id: int, token: str, todo_id: int):
 @app.get("/health")
 @app.head("/health")
 async def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "integrations": {
+            "supabase": bool(config.supabase_url and config.supabase_key),
+            "sheets": sheets_ready(),
+            "calendar": calendar_ready(),
+        },
+    }
 
 
 if __name__ == "__main__":
