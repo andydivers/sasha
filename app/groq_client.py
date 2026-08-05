@@ -477,14 +477,25 @@ def chat_turn(client: Groq, messages: list):
     return "I'm having trouble. Please try again.", messages
 
 
-def transcribe_audio(client: Groq, audio_bytes: bytes, filename: str = "voice.ogg") -> str:
+def transcribe_audio(
+    client: Groq,
+    audio_bytes: bytes,
+    language: str = "",
+    filename: str = "voice.ogg",
+) -> str:
     buffer = BytesIO(audio_bytes)
     buffer.name = filename
     try:
+        params = {
+            "model": "whisper-large-v3-turbo",
+            "file": (filename, buffer, "audio/ogg"),
+            "response_format": "text",
+        }
+        if language:
+            # A known language materially improves short utterances and numbers.
+            params["language"] = language
         transcription = client.audio.transcriptions.create(
-            model="whisper-large-v3-turbo",
-            file=(filename, buffer, "audio/ogg"),
-            response_format="text",
+            **params,
         )
         return transcription.strip()
     except Exception as e:

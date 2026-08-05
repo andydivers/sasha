@@ -1592,7 +1592,7 @@ async def handle_voice(message: types.Message, bot: Bot):
         buffer = await bot.download_file(file.file_path)
         audio_bytes = buffer.read()
 
-        text = transcribe_audio(groq, audio_bytes)
+        text = transcribe_audio(groq, audio_bytes, language=lang)
         if not text:
             if lang == "ru":
                 await message.answer("Не удалось распознать голос. Попробуй ещё раз.")
