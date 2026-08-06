@@ -352,9 +352,9 @@ def _format_saved_expenses(items: list) -> str:
             kind = "expense"
         sym = currency_symbol(cur) if cur else ""
         if kind == "income":
-            lines.append(f"💚 {desc}{' — +' + amt + (' ' + sym if sym else '') if amt else ''}")
+            lines.append(f"💚 {desc}{' : +' + amt + (' ' + sym if sym else '') if amt else ''}")
         else:
-            lines.append(f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}")
+            lines.append(f"💰 {desc}{' : ' + amt + (' ' + sym if sym else '') if amt else ''}")
     return "\n".join(lines)
 
 
