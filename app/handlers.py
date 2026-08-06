@@ -199,8 +199,26 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
     if len(numbered) < 2:
         numbered = [text]
 
+    _INCOME_WORDS = (
+        "получил", "получила", "получили", "получила", "зарплата", "зарплату",
+        "заработок", "заработал", "заработала", "доход", "дохода", "пришло",
+        "пришли", "перевели", "перевел", "перечислили", "зачислили", "аванс",
+        "фриланс", "income", "salary", "earned", "received", "wage", "paycheck",
+        "ingreso", "salario", "salaire", "revenu", "収入", "給料", "收入", "工资",
+        "आय", "वेतन", "salário", "renda", "رزق", "راتب", "收入",
+    )
+
+    def _is_income(segment: str) -> bool:
+        seg_lower = segment.lower()
+        return any(w in seg_lower for w in _INCOME_WORDS)
+
+    segment_kind = [_is_income(seg) for seg in numbered]
+    if len(numbered) < 2 and numbered:
+        # Whole text: one money mention. Decide income vs expense by keywords.
+        segment_kind = [_is_income(numbered[0])]
+
     saved: list = []
-    for seg in numbered:
+    for seg, is_inc in zip(numbered, segment_kind):
         try:
             raw = _extract_amount(seg)
             if not raw:
@@ -220,8 +238,9 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
             desc = re.sub(r"\s+", " ", desc).strip().strip(",-;:")
             if not desc:
                 desc = seg.strip()
-            await add_expense(user_id, desc, amount, "expense", currency=cur)
-            saved.append((desc, amount, cur))
+            kind = "income" if is_inc else "expense"
+            await add_expense(user_id, desc, amount, kind, currency=cur)
+            saved.append((desc, amount, cur, kind))
         except Exception as e:
             logger.error("Fallback save expense failed for user %s: %s", user_id, e)
     return saved
@@ -229,9 +248,17 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
 
 def _format_saved_expenses(items: list) -> str:
     lines = []
-    for desc, amt, cur in items:
+    for item in items:
+        if len(item) == 4:
+            desc, amt, cur, kind = item
+        else:
+            desc, amt, cur = item
+            kind = "expense"
         sym = currency_symbol(cur) if cur else ""
-        lines.append(f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}")
+        if kind == "income":
+            lines.append(f"💚 {desc}{' — +' + amt + (' ' + sym if sym else '') if amt else ''}")
+        else:
+            lines.append(f"💰 {desc}{' — ' + amt + (' ' + sym if sym else '') if amt else ''}")
     return "\n".join(lines)
 
 
