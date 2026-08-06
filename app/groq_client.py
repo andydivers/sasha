@@ -486,14 +486,27 @@ def transcribe_audio(
     buffer = BytesIO(audio_bytes)
     buffer.name = filename
     try:
+        whisper_prompts = {
+            "ru": "Расходы: продукты, транспорт, жильё, раннее заселение, виза, предоплата, тысячи донгов.",
+            "en": "Expenses: groceries, transport, rent, early check-in, visa, prepayment, thousands of dong.",
+            "es": "Gastos: productos, transporte, alojamiento, visado, prepago, miles de dongs.",
+            "fr": "Dépenses: courses, transport, logement, visa, acompte, milliers de dongs.",
+            "zh": "支出：食品、交通、住房、签证、预付款、数千越南盾。",
+            "ar": "المصروفات: الطعام، النقل، السكن، التأشيرة، الدفعة المقدمة، آلاف الدونغ.",
+            "pt": "Despesas: mercado, transporte, aluguel, visto, pagamento antecipado, milhares de dongues.",
+            "de": "Ausgaben: Lebensmittel, Transport, Unterkunft, Visum, Anzahlung, Tausende Dong.",
+            "hi": "खर्च: किराना, परिवहन, आवास, वीज़ा, अग्रिम भुगतान, हजारों डोंग।",
+            "ja": "支出：食料品、交通、住居、ビザ、前払い、数千ドン。",
+        }
         params = {
-            "model": "whisper-large-v3-turbo",
+            "model": os.getenv("WHISPER_MODEL", "whisper-large-v3"),
             "file": (filename, buffer, "audio/ogg"),
             "response_format": "text",
         }
         if language:
             # A known language materially improves short utterances and numbers.
             params["language"] = language
+            params["prompt"] = whisper_prompts.get(language, "Expenses, income, amounts, and currencies.")
         transcription = client.audio.transcriptions.create(
             **params,
         )

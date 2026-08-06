@@ -1603,7 +1603,14 @@ async def handle_voice(message: types.Message, bot: Bot):
         tz = await get_tz(message.from_user.id)
 
         suffix = "" if _is_group(message) else t(lang, "voice_prompt")
-        saved_items = await _try_save_expenses_fallback(text, message.from_user.id)
+        # Do not let a partial transcription of a long voice note become one
+        # wrong expense. Let the tool-calling path interpret complex notes.
+        amount_mentions = re.findall(r"\d[\d\s.,]*", text)
+        use_fast_fallback = len(amount_mentions) >= 2 or len(text.split()) <= 8
+        saved_items = (
+            await _try_save_expenses_fallback(text, message.from_user.id)
+            if use_fast_fallback else []
+        )
 
         if saved_items:
             response_text = _format_saved_expenses(saved_items)
