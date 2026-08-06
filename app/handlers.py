@@ -186,6 +186,34 @@ _NUM_RUN_RE = re.compile(
     r"\b(?:" + _NUM_WORD_ALT + r")(?:\s+(?:" + _NUM_WORD_ALT + r"))*\b", re.I,
 )
 
+# "8,5 миллиона" → "8500000"; "20 тысяч" → "20000". Must run BEFORE word-run
+# conversion so the standalone multiplier word is not converted to its scale
+# number (which would corrupt "8,5 миллиона" → "8,5 1000000").
+_NUM_MULT_WORDS = (
+    "тысяча|тысячи|тысяч|тыс|thousand|"
+    "миллион|миллиона|миллионов|млн|million|"
+    "миллиард|миллиарда|миллиардов|млрд|billion"
+)
+_NUM_MULT_SCALE = {
+    "тысяча": 1000, "тысячи": 1000, "тысяч": 1000, "тыс": 1000, "thousand": 1000,
+    "миллион": 1000000, "миллиона": 1000000, "миллионов": 1000000, "млн": 1000000,
+    "миллиард": 1000000000, "миллиарда": 1000000000, "миллиардов": 1000000000,
+    "млрд": 1000000000, "billion": 1000000000,
+    "million": 1000000,
+}
+_DIGIT_MULT_RE = re.compile(r"(\d[\d.,]*)\s+(" + _NUM_MULT_WORDS + r")\b", re.I)
+
+
+def _merge_digit_multiplier(text: str) -> str:
+    def repl(m):
+        try:
+            num = float(parse_amount(m.group(1)))
+            return str(int(num * _NUM_MULT_SCALE[m.group(2).lower()]))
+        except Exception:
+            return m.group(0)
+
+    return _DIGIT_MULT_RE.sub(repl, text)
+
 
 def _eval_num_run(words: list) -> int:
     total = 0
@@ -205,6 +233,7 @@ def _numwords_to_digits(text: str) -> str:
     if not re.search(r"[а-яёa-z]", text):
         return text
     normalized = text.replace("-", " ")
+    normalized = _merge_digit_multiplier(normalized)
 
     def _repl(m):
         words = [w.lower() for w in m.group().split()]
@@ -268,18 +297,16 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
     if len(numbered) < 2:
         numbered = [text]
 
-    _INCOME_WORDS = (
-        "получил", "получила", "получили", "получила", "зарплата", "зарплату",
-        "заработок", "заработал", "заработала", "доход", "дохода", "пришло",
-        "пришли", "перевели", "перевел", "перечислили", "зачислили", "аванс",
-        "фриланс", "income", "salary", "earned", "received", "wage", "paycheck",
-        "ingreso", "salario", "salaire", "revenu", "収入", "給料", "收入", "工资",
-        "आय", "वेतन", "salário", "renda", "رزق", "راتب", "收入",
+    _INCOME_RE = re.compile(
+        r"(?:получ|зарабат|поступ|приход|пришл|зачисл|перечисл|начисл|аванс|"
+        r"доход|зарплат|выручк|прибыль|кэшбэк|кэшбек|cashback|"
+        r"income|salary|earned|received|wage|paycheck|refund|"
+        r"ingreso|salario|salaire|revenu|収入|給料|收入|工资|"
+        r"आय|वेतन|salário|renda|رزق|راتب)", re.I,
     )
 
     def _is_income(segment: str) -> bool:
-        seg_lower = segment.lower()
-        return any(w in seg_lower for w in _INCOME_WORDS)
+        return bool(_INCOME_RE.search(segment))
 
     segment_kind = [_is_income(seg) for seg in numbered]
     if len(numbered) < 2 and numbered:
