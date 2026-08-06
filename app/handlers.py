@@ -148,6 +148,74 @@ _MULTIPLIERS = [
     (r"(?:^|\s)\d[\d.,]*\s*k\b", 1000),
 ]
 
+# Number words → digits ("пятьдесят тысяч" → "50000"). Whisper often
+# transcribes spoken amounts as words; the fallback needs digits.
+_NUM_UNITS = {
+    "ноль": 0, "один": 1, "одна": 1, "два": 2, "две": 2, "три": 3,
+    "четыре": 4, "пять": 5, "шесть": 6, "семь": 7, "восемь": 8, "девять": 9,
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9,
+}
+_NUM_TEENS = {
+    "десять": 10, "одиннадцать": 11, "двенадцать": 12, "тринадцать": 13,
+    "четырнадцать": 14, "пятнадцать": 15, "шестнадцать": 16,
+    "семнадцать": 17, "восемнадцать": 18, "девятнадцать": 19,
+    "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
+}
+_NUM_TENS = {
+    "двадцать": 20, "тридцать": 30, "сорок": 40, "пятьдесят": 50,
+    "шестьдесят": 60, "семьдесят": 70, "восемьдесят": 80, "девяносто": 90,
+    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
+    "seventy": 70, "eighty": 80, "ninety": 90,
+}
+_NUM_HUNDREDS = {
+    "сто": 100, "двести": 200, "триста": 300, "четыреста": 400,
+    "пятьсот": 500, "шестьсот": 600, "семьсот": 700, "восемьсот": 800,
+    "девятьсот": 900, "hundred": 100,
+}
+_NUM_BIG = {
+    "тысяча": 1000, "тысячи": 1000, "тысяч": 1000, "тыс": 1000,
+    "миллион": 1000000, "миллиона": 1000000, "миллионов": 1000000, "млн": 1000000,
+    "миллиард": 1000000000, "миллиарда": 1000000000, "миллиардов": 1000000000, "млрд": 1000000000,
+    "thousand": 1000, "million": 1000000, "billion": 1000000000,
+}
+_NUM_WORDS_ALL = {**_NUM_UNITS, **_NUM_TEENS, **_NUM_TENS, **_NUM_HUNDREDS, **_NUM_BIG}
+_NUM_WORD_ALT = "|".join(sorted(_NUM_WORDS_ALL, key=len, reverse=True))
+_NUM_RUN_RE = re.compile(
+    r"\b(?:" + _NUM_WORD_ALT + r")(?:\s+(?:" + _NUM_WORD_ALT + r"))*\b", re.I,
+)
+
+
+def _eval_num_run(words: list) -> int:
+    total = 0
+    seg = 0
+    for w in words:
+        if w == "hundred":
+            seg = (seg if seg else 1) * 100
+        elif w in _NUM_BIG:
+            total += (seg if seg else 1) * _NUM_BIG[w]
+            seg = 0
+        else:
+            seg += _NUM_UNITS.get(w, 0) + _NUM_TEENS.get(w, 0) + _NUM_TENS.get(w, 0) + _NUM_HUNDREDS.get(w, 0)
+    return total + seg
+
+
+def _numwords_to_digits(text: str) -> str:
+    if not re.search(r"[а-яёa-z]", text):
+        return text
+    normalized = text.replace("-", " ")
+
+    def _repl(m):
+        words = [w.lower() for w in m.group().split()]
+        try:
+            return str(_eval_num_run(words))
+        except Exception:
+            return m.group()
+
+    return _NUM_RUN_RE.sub(_repl, normalized)
+
+
 # Split multi-item messages: "еда 300 бат и кофе 100 бат" → two expenses
 _SPLIT_RE = re.compile(
     r"\s+(?:и\s+ещё|и|а\s+также|также|ещё|and|also|then|потом|затем|"
@@ -186,6 +254,7 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
 
     Returns list of (description, amount, currency) actually saved.
     """
+    text = _numwords_to_digits(text)
     lowered = text.lower().strip()
     if not re.search(r"\d", text):
         return []
@@ -1629,22 +1698,26 @@ async def handle_voice(message: types.Message, bot: Bot):
 
         tz = await get_tz(message.from_user.id)
 
+        heard_text = text
+        norm_text = _numwords_to_digits(text)
+
         suffix = "" if _is_group(message) else t(lang, "voice_prompt")
+        heard = f"\n\n🎤 Вы сказали: «{heard_text}»"
         # Do not let a partial transcription of a long voice note become one
         # wrong expense. Let the tool-calling path interpret complex notes.
-        amount_mentions = re.findall(r"\d[\d\s.,]*", text)
-        use_fast_fallback = len(amount_mentions) >= 2 or len(text.split()) <= 8
+        amount_mentions = re.findall(r"\d[\d\s.,]*", norm_text)
+        use_fast_fallback = len(amount_mentions) >= 2 or len(norm_text.split()) <= 8
         saved_items = (
-            await _try_save_expenses_fallback(text, message.from_user.id)
+            await _try_save_expenses_fallback(norm_text, message.from_user.id)
             if use_fast_fallback else []
         )
 
         if saved_items:
-            response_text = _format_saved_expenses(saved_items)
+            response_text = _format_saved_expenses(saved_items) + heard
             await message.answer(response_text + suffix)
             latency = 0
         else:
-            result, latency, messages = detect_intent(groq, text, lang=lang)
+            result, latency, messages = detect_intent(groq, norm_text, lang=lang)
 
             if isinstance(result, str):
                 response_text = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", result, flags=re.DOTALL).strip()
@@ -1697,7 +1770,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                     current = next_result
                 response_text = all_responses[0] if len(all_responses) == 1 else "\n\n".join(all_responses) if all_responses else "Done."
                 if all_responses:
-                    await message.answer(response_text + suffix)
+                    await message.answer(response_text + suffix + heard)
 
         await save_chat(message.from_user.id, text, response_text, int(latency * 1000))
         logger.info("Handled voice in %.2fs", latency)
@@ -1751,14 +1824,15 @@ async def handle_message(message: types.Message):
     suffix = "" if _is_group(message) else t(lang, "voice_prompt")
 
     try:
-        saved_items = await _try_save_expenses_fallback(text, message.from_user.id)
+        norm_text = _numwords_to_digits(text)
+        saved_items = await _try_save_expenses_fallback(norm_text, message.from_user.id)
 
         if saved_items:
             response_text = _format_saved_expenses(saved_items)
             await message.answer(response_text + suffix)
             latency = 0
         else:
-            result, latency, messages = detect_intent(groq, text, lang=lang)
+            result, latency, messages = detect_intent(groq, norm_text, lang=lang)
 
             if isinstance(result, str):
                 response_text = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", result, flags=re.DOTALL).strip()

@@ -487,16 +487,16 @@ def transcribe_audio(
     buffer.name = filename
     try:
         whisper_prompts = {
-            "ru": "Расходы: продукты, транспорт, жильё, раннее заселение, виза, предоплата, тысячи донгов.",
-            "en": "Expenses: groceries, transport, rent, early check-in, visa, prepayment, thousands of dong.",
-            "es": "Gastos: productos, transporte, alojamiento, visado, prepago, miles de dongs.",
-            "fr": "Dépenses: courses, transport, logement, visa, acompte, milliers de dongs.",
-            "zh": "支出：食品、交通、住房、签证、预付款、数千越南盾。",
-            "ar": "المصروفات: الطعام، النقل، السكن، التأشيرة، الدفعة المقدمة، آلاف الدونغ.",
-            "pt": "Despesas: mercado, transporte, aluguel, visto, pagamento antecipado, milhares de dongues.",
-            "de": "Ausgaben: Lebensmittel, Transport, Unterkunft, Visum, Anzahlung, Tausende Dong.",
-            "hi": "खर्च: किराना, परिवहन, आवास, वीज़ा, अग्रिम भुगतान, हजारों डोंग।",
-            "ja": "支出：食料品、交通、住居、ビザ、前払い、数千ドン。",
+            "ru": "Транскрибируй суммы цифрами, например «50 тысяч» → 50000. Расходы: продукты, транспорт, жильё, раннее заселение, виза, предоплата, тысячи донгов.",
+            "en": "Write amounts as digits, e.g. \"fifty thousand\" → 50000. Expenses: groceries, transport, rent, early check-in, visa, prepayment, thousands of dong.",
+            "es": "Escribe los importes con dígitos, p. ej. \"cincuenta mil\" → 50000. Gastos: productos, transporte, alojamiento, visado, prepago, miles de dongs.",
+            "fr": "Écris les montants en chiffres, ex. \"cinquante mille\" → 50000. Dépenses: courses, transport, logement, visa, acompte, milliers de dongs.",
+            "zh": "将金额写成数字，例如“五万”→50000。支出：食品、交通、住房、签证、预付款、数千越南盾。",
+            "ar": "اكتب المبالغ بالأرقام، مثال \"خمسين ألف\" ← 50000.  المصروفات: الطعام، النقل، السكن، التأشيرة، الدفعة المقدمة، آلاف الدونغ.",
+            "pt": "Escreva os valores com dígitos, ex. \"cinquenta mil\" → 50000. Despesas: mercado, transporte, aluguel, visto, pagamento antecipado, milhares de dongues.",
+            "de": "Schreibe Beträge als Ziffern, z. B. \"fünfzigtausend\" → 50000. Ausgaben: Lebensmittel, Transport, Unterkunft, Visum, Anzahlung, Tausende Dong.",
+            "hi": "राशियाँ अंकों में लिखें, जैसे \"पचास हज़ार\" → 50000. खर्च: किराना, परिवहन, आवास, वीज़ा, अग्रिम भुगतान, हजारों डोंग।",
+            "ja": "金額は数字で書いてください（例「五万」→50000）。支出：食料品、交通、住居、ビザ、前払い、数千ドン。",
         }
         params = {
             "model": os.getenv("WHISPER_MODEL", "whisper-large-v3"),
@@ -506,10 +506,13 @@ def transcribe_audio(
         if language:
             # A known language materially improves short utterances and numbers.
             params["language"] = language
-            params["prompt"] = whisper_prompts.get(language, "Expenses, income, amounts, and currencies.")
-        transcription = client.audio.transcriptions.create(
-            **params,
-        )
+            params["prompt"] = whisper_prompts.get(language, "Write amounts as digits. Expenses, income, amounts, and currencies.")
+        try:
+            # temperature=0 reduces number hallucination; groq accepts it, but
+            # retry without it in case an older endpoint rejects the param.
+            transcription = client.audio.transcriptions.create(**params, temperature=0)
+        except Exception:
+            transcription = client.audio.transcriptions.create(**params)
         return transcription.strip()
     except Exception as e:
         logger.error("Groq transcription error: %s", e)
