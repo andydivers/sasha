@@ -270,12 +270,32 @@ _CURRENCY_WORDS_CLEANUP = re.compile(
 
 
 def _extract_amount(segment: str) -> str:
-    """Extract amount, joining space/comma-grouped thousands: '650 000' → '650000'."""
-    m = re.search(r"\d{1,3}(?:[\s,](?=\d)\d{3})+(?:[.,]\d{1,2})?", segment)
-    if m:
-        return m.group().replace(" ", "")
-    m = re.search(r"\d[\d.,]*", segment)
-    return m.group() if m else ""
+    """Extract amount, joining space/comma-grouped thousands: '650 000' → '650000'.
+
+    Also handles irregular spoken numbers Whisper splits into groups without a
+    separator: '2000000 850000' → '2850000' (one value). Plain space-grouping
+    like '2 000 000' (all groups ≤3 digits) is joined verbatim.
+    """
+    m = re.search(r"(?<!\d)\d[\d\s.,]*(?!\d)", segment)
+    if not m:
+        return ""
+    raw = m.group().strip()
+    parts = raw.split()
+    if len(parts) == 1:
+        return parse_amount(parts[0])
+    if all(re.fullmatch(r"\d{1,3}", p) for p in parts):
+        # '2 000 000' → '2000000' (thousands grouping)
+        return "".join(parts)
+    # Groups are already full numbers: '2000000 850000' → 2850000
+    total = 0.0
+    for p in parts:
+        try:
+            total += float(parse_amount(p))
+        except Exception:
+            return raw.replace(" ", "")
+    if float(total).is_integer():
+        return str(int(total))
+    return str(round(total, 2))
 
 
 async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
