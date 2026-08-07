@@ -183,7 +183,7 @@ _NUM_BIG = {
 _NUM_WORDS_ALL = {**_NUM_UNITS, **_NUM_TEENS, **_NUM_TENS, **_NUM_HUNDREDS, **_NUM_BIG}
 _NUM_WORD_ALT = "|".join(sorted(_NUM_WORDS_ALL, key=len, reverse=True))
 _NUM_RUN_RE = re.compile(
-    r"\b(?:" + _NUM_WORD_ALT + r")(?:\s+(?:" + _NUM_WORD_ALT + r"))*\b", re.I,
+    r"\b(?:" + _NUM_WORD_ALT + r")(?:\s+(?:" + _NUM_WORD_ALT + r"|\d[\d.,]*))*\b", re.I,
 )
 
 # "8,5 миллиона" → "8500000"; "20 тысяч" → "20000". Must run BEFORE word-run
@@ -219,14 +219,25 @@ def _eval_num_run(words: list) -> int:
     total = 0
     seg = 0
     for w in words:
-        if w == "hundred":
+        if re.fullmatch(r"\d[\d.,]*", w):
+            # Spoken mixed form: "два миллиона 850 тысяч" already merged to
+            # "два миллиона 850000" — a digit group inside the run is a part
+            # of the same number ("850000" → 850000).
+            try:
+                seg += float(parse_amount(w))
+            except Exception:
+                continue
+        elif w == "hundred":
             seg = (seg if seg else 1) * 100
         elif w in _NUM_BIG:
             total += (seg if seg else 1) * _NUM_BIG[w]
             seg = 0
         else:
             seg += _NUM_UNITS.get(w, 0) + _NUM_TEENS.get(w, 0) + _NUM_TENS.get(w, 0) + _NUM_HUNDREDS.get(w, 0)
-    return total + seg
+    total += seg
+    if float(total).is_integer():
+        return int(total)
+    return round(total, 2)
 
 
 def _numwords_to_digits(text: str) -> str:
@@ -317,6 +328,16 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
     if len(numbered) < 2:
         numbered = [text]
 
+    # "доходы 2000000 850000 донгов": two amounts dictated without a separator
+    # become separate items. Spoken-word numbers are already merged upstream
+    # ("два миллиона 850 тысяч" → "2850000"), proper grouping like "2 000 000"
+    # stays a single number (groups ≤3 digits don't split here).
+    expanded = []
+    for s in numbered:
+        parts = re.split(r"\s+(?=\d{4,})", s)
+        expanded.extend(parts if len(parts) > 1 else [s])
+    numbered = expanded
+
     _INCOME_RE = re.compile(
         r"(?:получ|зарабат|поступ|приход|пришл|зачисл|перечисл|начисл|аванс|"
         r"доход|зарплат|выручк|прибыль|кэшбэк|кэшбек|cashback|"
@@ -325,16 +346,25 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
         r"आय|वेतन|salário|renda|رزق|راتب)", re.I,
     )
 
+    _EXPENSE_RE = re.compile(
+        r"потратил|потратила|потратили|купил|купила|купили|заплатил|заплатила|"
+        r"оплатил|оплатила|оплата|расчёт|расходы|снял|сняла|покупк|платил|платим|долг",
+        re.I,
+    )
+
+    # Income intent spreads to every item unless a segment names a cost.
+    text_is_income = bool(_INCOME_RE.search(text))
+
     def _is_income(segment: str) -> bool:
+        if _EXPENSE_RE.search(segment):
+            return False
+        if text_is_income:
+            return True
         return bool(_INCOME_RE.search(segment))
 
-    segment_kind = [_is_income(seg) for seg in numbered]
-    if len(numbered) < 2 and numbered:
-        # Whole text: one money mention. Decide income vs expense by keywords.
-        segment_kind = [_is_income(numbered[0])]
-
     saved: list = []
-    for seg, is_inc in zip(numbered, segment_kind):
+    last_desc = ""
+    for seg in numbered:
         try:
             raw = _extract_amount(seg)
             if not raw:
@@ -352,9 +382,14 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
             desc = re.sub(r"(?<=\d)\s*k\b", "", desc, flags=re.I)
             desc = re.sub(r"\d[\d.,]*\s*", "", desc)
             desc = re.sub(r"\s+", " ", desc).strip().strip(",-;:")
-            if not desc:
+            if desc:
+                last_desc = desc
+            elif last_desc:
+                # Adjacent number from the same utterance: reuse the previous item's name
+                desc = last_desc
+            else:
                 desc = seg.strip()
-            kind = "income" if is_inc else "expense"
+            kind = "income" if _is_income(seg) else "expense"
             await add_expense(user_id, desc, amount, kind, currency=cur)
             saved.append((desc, amount, cur, kind))
         except Exception as e:
