@@ -260,7 +260,7 @@ def _numwords_to_digits(text: str) -> str:
 _SPLIT_RE = re.compile(
     r"\s+(?:и\s+ещё|и|а\s+также|также|ещё|and|also|then|потом|затем|"
     r"y|e|et|und|e\s+mais|và|और|و|以及|和|そして|または|そして)\s+"
-    r"|\s*;\s*|(?<!\d)\s*,\s*(?!\d)",
+    r"|\s*;\s*|,\s*(?!\d)",
     re.I,
 )
 
@@ -329,12 +329,14 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
         numbered = [text]
 
     # "доходы 2000000 850000 донгов": two amounts dictated without a separator
-    # become separate items. Spoken-word numbers are already merged upstream
-    # ("два миллиона 850 тысяч" → "2850000"), proper grouping like "2 000 000"
-    # stays a single number (groups ≤3 digits don't split here).
+    # become separate items (split only between two digits — a description
+    # followed by a number like "заселение 535000 донгов" must NOT be split).
+    # Spoken-word numbers are already merged upstream ("два миллиона 850
+    # тысяч" → "2850000"), proper grouping like "2 000 000" stays a single
+    # number (groups ≤3 digits don't split here).
     expanded = []
     for s in numbered:
-        parts = re.split(r"\s+(?=\d{4,})", s)
+        parts = re.split(r"(?<=\d)\s+(?=\d{4,})", s)
         expanded.extend(parts if len(parts) > 1 else [s])
     numbered = expanded
 
@@ -364,6 +366,9 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
 
     saved: list = []
     last_desc = ""
+    lang = await get_lang(user_id)
+    exp_label = "расход" if lang == "ru" else "expense"
+    inc_label = "доход" if lang == "ru" else "income"
     for seg in numbered:
         try:
             raw = _extract_amount(seg)
@@ -387,9 +392,11 @@ async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
             elif last_desc:
                 # Adjacent number from the same utterance: reuse the previous item's name
                 desc = last_desc
-            else:
-                desc = seg.strip()
             kind = "income" if _is_income(seg) else "expense"
+            if not desc:
+                # Nothing left after cleanup and no prior item to inherit from:
+                # use a generic label instead of the raw number text.
+                desc = inc_label if kind == "income" else exp_label
             await add_expense(user_id, desc, amount, kind, currency=cur)
             saved.append((desc, amount, cur, kind))
         except Exception as e:
