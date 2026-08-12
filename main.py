@@ -295,7 +295,7 @@ async def api_dashboard(user_id: int, token: str = ""):
         return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
 
     try:
-        expenses = await get_user_items(user_id) or []
+        expenses = await get_user_items(user_id, limit=1000) or []
         movements = await get_movements(user_id) or []
         todos = await get_todos(user_id) or []
         events = await get_calendar_events(user_id) or []
