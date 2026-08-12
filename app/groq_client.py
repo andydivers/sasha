@@ -398,6 +398,7 @@ def build_system_prompt(lang: str) -> str:
     base += "\n- For events/meetings, call create_event."
     base += "\n- For reminders, call set_reminder."
     base += "\n- For spending summary, call get_spending_summary."
+    base += "\n- IMPORTANT: get_spending_summary and generate_report are READ-ONLY. NEVER call add_expense/add_income for amounts shown in a summary or report — they are already recorded. Only record NEW user-entered amounts."
     base += "\n- When user sends a receipt photo, call analyze_receipt with extracted data."
     base += "\n- When user sends a bank statement, extract ALL transactions and call add_expense or add_income for each — include currency for every transaction."
     base += "\n- You may call MULTIPLE functions in one response when the user mentions multiple items to track."

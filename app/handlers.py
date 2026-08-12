@@ -1861,6 +1861,8 @@ async def handle_voice(message: types.Message, bot: Bot):
                             os.unlink(path)
                         else:
                             all_responses.append(resp)
+                        if func_name in ("get_spending_summary", "generate_report"):
+                            resp += "\n[This is read-only data. Do NOT call add_expense or add_income for these amounts.]"
                         messages.append({"role": "user", "content": f"[Result of {func_name}]: {resp}"})
                     if not current:
                         break
@@ -1976,6 +1978,8 @@ async def handle_message(message: types.Message):
                             os.unlink(path)
                         else:
                             all_responses.append(resp)
+                        if func_name in ("get_spending_summary", "generate_report"):
+                            resp += "\n[This is read-only data. Do NOT call add_expense or add_income for these amounts.]"
                         messages.append({"role": "user", "content": f"[Result of {func_name}]: {resp}"})
                     if not current:
                         break
