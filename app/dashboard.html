@@ -1204,9 +1204,10 @@ async function loadData() {
     window._data = json;
     lang = json.lang === 'ru' ? 'ru' : json.lang === 'es' ? 'es' : 'en';
     resetMonth();
-    // Use user's currency setting from server, fallback to detecting from expenses
+    // Keep the user's selected/input currency as the default reporting base;
+    // RUB and USD remain available through the currency toggle.
     const userCur = json.user_currency || detectBaseCurrency(json.expenses || []);
-    let base = userCur;
+    let base = userCur || 'VND';
     // Allow manual override via localStorage
     try {
       const saved = localStorage.getItem('sasha_base_currency');

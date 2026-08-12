@@ -303,6 +303,9 @@ async def api_dashboard(user_id: int, token: str = ""):
         user_currency = await get_user_currency(user_id) or ""
         from app.handlers import LANG_TOGGLE_CURRENCIES, LANG_TO_CURRENCY
         toggle_currencies = list(dict.fromkeys(LANG_TOGGLE_CURRENCIES.get(lang, ["USD", LANG_TO_CURRENCY.get(lang, "USD")])))
+        for currency in ("VND", "RUB", "USD"):
+            if currency not in toggle_currencies:
+                toggle_currencies.append(currency)
         if user_currency and user_currency not in toggle_currencies:
             toggle_currencies.append(user_currency)
         return JSONResponse({"ok": True, "lang": lang, "user_currency": user_currency, "toggle_currencies": toggle_currencies, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
