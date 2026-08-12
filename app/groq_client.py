@@ -61,11 +61,16 @@ REASONING_KEYWORDS = frozenset({
 })
 
 # ─── Model config ───────────────────────────────────────────────────────────
-# Primary: llama-3.1-8b-instant (fast, reliable native tool calling, free tier)
-# Fallback: same model — single retry handles transient errors
-PRIMARY_MODEL = "llama-3.1-8b-instant"
-FALLBACK_MODEL = "llama-3.1-8b-instant"
-OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct"
+# Groq: llama-3.1-8b-instant (fast, reliable native tool calling, free tier)
+# Stronger path: OpenRouter deepseek/deepseek-v4-pro when PREFER_OPENROUTER=1
+# and OPENROUTER_API_KEY is set. All overridable via env.
+PRIMARY_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+FALLBACK_MODEL = os.getenv("GROQ_MODEL_FALLBACK", "llama-3.1-8b-instant")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-pro")
+
+
+def _prefer_openrouter() -> bool:
+    return os.getenv("PREFER_OPENROUTER", "").lower() in ("1", "true", "yes", "on")
 
 
 def create_groq_client(api_key: str) -> Groq:
@@ -363,6 +368,19 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
 
     max_tokens = 2000 if _needs_reasoning(text) else 1000
     messages = build_messages(text, lang, chat_history)
+    elapsed = 0.0
+
+    # Strong model via OpenRouter first (deepseek-v4-pro) when configured
+    if _prefer_openrouter():
+        or_msg = _openrouter_chat(messages, TOOLS, max_tokens)
+        if or_msg:
+            logger.info("OpenRouter primary used (%s)", OPENROUTER_MODEL)
+            or_tcs = _or_tool_calls(or_msg)
+            if or_tcs:
+                messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
+                return or_tcs, elapsed, messages
+            content = or_msg.get("content") or ""
+            return content, elapsed, messages
 
     # Try primary model (70B), fallback to 8B
     for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
@@ -433,6 +451,17 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
 def chat_turn(client: Groq, messages: list):
     """Continue a multi-turn conversation with native tool calling."""
     max_tokens = 1000
+
+    if _prefer_openrouter():
+        or_msg = _openrouter_chat(messages, TOOLS, max_tokens)
+        if or_msg:
+            or_tcs = _or_tool_calls(or_msg)
+            if or_tcs:
+                messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
+                return or_tcs, messages
+            content = or_msg.get("content") or ""
+            messages.append({"role": "assistant", "content": content})
+            return content, messages
 
     for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
         try:
