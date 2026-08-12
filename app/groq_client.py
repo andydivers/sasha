@@ -73,21 +73,36 @@ def _prefer_openrouter() -> bool:
     return os.getenv("PREFER_OPENROUTER", "").lower() in ("1", "true", "yes", "on")
 
 
+def _openrouter_models() -> list:
+    """Build the ordered list of OpenRouter models to try.
+    First: OPENROUTER_MODEL (default deepseek-v4-pro).
+    Then: any extra models from OPENROUTER_FALLBACK_MODELS (comma-separated).
+    """
+    models = [OPENROUTER_MODEL]
+    extra = os.getenv("OPENROUTER_FALLBACK_MODELS", "")
+    for m in extra.split(","):
+        m = m.strip()
+        if m and m not in models:
+            models.append(m)
+    return models
+
+
 def create_groq_client(api_key: str) -> Groq:
     return Groq(api_key=api_key, timeout=30.0)
 
 
-def _openrouter_chat(messages: list, tools: list, max_tokens: int, temperature: float = 0.1):
+def _openrouter_chat(messages: list, tools: list, max_tokens: int, temperature: float = 0.1, model: str | None = None):
     """Call OpenRouter with native tool calling — used when Groq is rate-limited.
 
     Returns a dict-like message ({"content", "tool_calls"}) or None on failure.
     """
+    model = model or OPENROUTER_MODEL
     key = os.getenv("OPENROUTER_API_KEY", "") or os.getenv("OPENROUTER_API_KEY2", "")
     if not key:
         logger.warning("OpenRouter fallback skipped: OPENROUTER_API_KEY not set")
         return None
     body = json.dumps({
-        "model": OPENROUTER_MODEL,
+        "model": model,
         "messages": messages,
         "tools": tools,
         "tool_choice": "auto",
@@ -370,17 +385,18 @@ def detect_intent(client: Groq, text: str, lang: str = "en", chat_history: list 
     messages = build_messages(text, lang, chat_history)
     elapsed = 0.0
 
-    # Strong model via OpenRouter first (deepseek-v4-pro) when configured
+    # Strong model via OpenRouter first (deepseek → glm → grok) when configured
     if _prefer_openrouter():
-        or_msg = _openrouter_chat(messages, TOOLS, max_tokens)
-        if or_msg:
-            logger.info("OpenRouter primary used (%s)", OPENROUTER_MODEL)
-            or_tcs = _or_tool_calls(or_msg)
-            if or_tcs:
-                messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
-                return or_tcs, elapsed, messages
-            content = or_msg.get("content") or ""
-            return content, elapsed, messages
+        for or_model in _openrouter_models():
+            or_msg = _openrouter_chat(messages, TOOLS, max_tokens, model=or_model)
+            if or_msg:
+                logger.info("OpenRouter primary used (%s)", or_model)
+                or_tcs = _or_tool_calls(or_msg)
+                if or_tcs:
+                    messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
+                    return or_tcs, elapsed, messages
+                content = or_msg.get("content") or ""
+                return content, elapsed, messages
 
     # Try primary model (70B), fallback to 8B
     for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
@@ -453,15 +469,16 @@ def chat_turn(client: Groq, messages: list):
     max_tokens = 1000
 
     if _prefer_openrouter():
-        or_msg = _openrouter_chat(messages, TOOLS, max_tokens)
-        if or_msg:
-            or_tcs = _or_tool_calls(or_msg)
-            if or_tcs:
-                messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
-                return or_tcs, messages
-            content = or_msg.get("content") or ""
-            messages.append({"role": "assistant", "content": content})
-            return content, messages
+        for or_model in _openrouter_models():
+            or_msg = _openrouter_chat(messages, TOOLS, max_tokens, model=or_model)
+            if or_msg:
+                or_tcs = _or_tool_calls(or_msg)
+                if or_tcs:
+                    messages.append({"role": "assistant", "content": or_msg.get("content") or None, "tool_calls": or_msg.get("tool_calls") or []})
+                    return or_tcs, messages
+                content = or_msg.get("content") or ""
+                messages.append({"role": "assistant", "content": content})
+                return content, messages
 
     for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
         try:
