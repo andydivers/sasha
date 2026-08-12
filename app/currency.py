@@ -93,28 +93,27 @@ _RATES_CACHE_TIME = 0.0
 
 def get_exchange_rate(from_cur: str, to_cur: str) -> float:
     """Get exchange rate from one currency to another.
-    Caches for 1 hour. Returns 1.0 if can't fetch.
+    Always converts through USD. Caches for 1 hour. Returns 1.0 if can't fetch.
     """
+    from_cur = from_cur.upper()
+    to_cur = to_cur.upper()
     if from_cur == to_cur:
         return 1.0
     global _RATES_CACHE, _RATES_CACHE_TIME
     now_ts = time.time()
     if now_ts - _RATES_CACHE_TIME > 3600:
         try:
-            url = f"https://open.er-api.com/v6/latest/{from_cur}"
+            url = "https://open.er-api.com/v6/latest/USD"
             with urllib.request.urlopen(url, timeout=5) as resp:
                 data = json.loads(resp.read())
             _RATES_CACHE = data.get("rates", {})
             _RATES_CACHE_TIME = now_ts
         except Exception as e:
             logger.warning("Failed to fetch exchange rates: %s", e)
-    rate = _RATES_CACHE.get(to_cur)
-    if rate:
-        return rate
-    # Try reverse direction
-    rate_rev = _RATES_CACHE.get(from_cur)
-    if rate_rev:
-        return 1.0 / rate_rev
+    from_rate = 1.0 if from_cur == "USD" else _RATES_CACHE.get(from_cur)
+    to_rate = 1.0 if to_cur == "USD" else _RATES_CACHE.get(to_cur)
+    if from_rate and to_rate:
+        return to_rate / from_rate
     return 1.0
 
 

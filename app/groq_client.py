@@ -91,6 +91,32 @@ def create_groq_client(api_key: str) -> Groq:
     return Groq(api_key=api_key, timeout=30.0)
 
 
+def _sanitize_messages(messages: list) -> list:
+    """Convert Groq SDK message objects into plain JSON-serializable dicts."""
+    out = []
+    for m in messages:
+        if isinstance(m, dict):
+            out.append(m)
+            continue
+        tcs = getattr(m, "tool_calls", None)
+        out.append({
+            "role": getattr(m, "role", "assistant"),
+            "content": getattr(m, "content", None),
+            "tool_calls": [
+                {
+                    "id": getattr(tc, "id", None) or f"call_{i}",
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for i, tc in enumerate(tcs)
+            ] if tcs else None,
+        })
+    return out
+
+
 def _openrouter_chat(messages: list, tools: list, max_tokens: int, temperature: float = 0.1, model: str | None = None):
     """Call OpenRouter with native tool calling — used when Groq is rate-limited.
 
@@ -103,7 +129,7 @@ def _openrouter_chat(messages: list, tools: list, max_tokens: int, temperature: 
         return None
     body = json.dumps({
         "model": model,
-        "messages": messages,
+        "messages": _sanitize_messages(messages),
         "tools": tools,
         "tool_choice": "auto",
         "temperature": temperature,
@@ -197,6 +223,22 @@ TOOLS = [
                     "currency": {"type": "string", "description": "Currency code from the message (e.g., 'THB', 'RUB', 'USD', 'EUR'). Extract from symbols like ₽/$/€/฿ or words like 'руб', 'bath', 'dollars'. If no currency mentioned, leave empty."},
                 },
                 "required": ["description"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "convert_currency",
+            "description": "Convert an amount from one currency to another and answer currency conversion questions (e.g., '70 долларов в донгах?', 'how much is 100 USD in VND?', 'сколько 5000 бат в рублях?'). Returns the converted amount with the live rate.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "amount": {"type": "number", "description": "The amount to convert (e.g., 70)"},
+                    "from_currency": {"type": "string", "description": "Source currency code (e.g., 'USD', 'RUB', 'VND', 'THB')"},
+                    "to_currency": {"type": "string", "description": "Target currency code (e.g., 'USD', 'RUB', 'VND', 'THB')"},
+                },
+                "required": ["amount", "from_currency", "to_currency"],
             },
         },
     },

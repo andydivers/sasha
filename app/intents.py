@@ -61,6 +61,9 @@ async def handle_tool_call(tool_call, lang: str = "en", sheet_url: str | None = 
     if name == "analyze_receipt":
         return _handle_analyze_receipt(args, lang, user_id)
 
+    if name in ("convert_currency", "analyze_currency_exchange"):
+        return _handle_convert_currency(args, lang)
+
     handlers = {
         "analyze_screenshot": _handle_analyze_screenshot,
     }
@@ -75,6 +78,29 @@ def _handle_analyze_screenshot(args: dict, lang: str) -> str:
     if lang == "ru":
         return "Понял! Я проанализирую этот скриншот. Отправь изображение, и я обработаю его."
     return "Got it! I'll analyze that screenshot. Send me the image and I'll process it."
+
+
+def _handle_convert_currency(args: dict, lang: str) -> str:
+    from app.currency import convert_amount, currency_symbol
+    from_cur = str(args.get("from_currency") or "").upper().strip()
+    to_cur = str(args.get("to_currency") or "").upper().strip()
+    try:
+        amount = float(str(args.get("amount") or "0").replace(",", ".").replace(" ", ""))
+    except (TypeError, ValueError):
+        amount = 0.0
+    if not from_cur or not to_cur or amount <= 0:
+        if lang == "ru":
+            return "Не понял валюту или сумму. Например: «70 долларов в донгах» или «100 USD в VND»."
+        return "Couldn't understand the currency or amount. Try: '70 USD in VND'."
+    result = convert_amount(amount, from_cur, to_cur)
+    if to_cur == "VND" or to_cur == "JPY":
+        display = f"{int(round(result)):,}".replace(",", " ")
+    else:
+        display = f"{result:,.2f}".replace(",", " ")
+    sym = currency_symbol(to_cur)
+    if lang == "ru":
+        return f"{amount:g} {from_cur} ≈ {display} {to_cur} ({sym})"
+    return f"{amount:g} {from_cur} ≈ {display} {to_cur} ({sym})"
 
 
 async def _handle_manage_sheets(args: dict, lang: str, sheet_url: str | None = None, user_id: int = 0) -> str:
