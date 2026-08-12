@@ -62,11 +62,11 @@ REASONING_KEYWORDS = frozenset({
 
 # ─── Model config ───────────────────────────────────────────────────────────
 # Groq: llama-3.1-8b-instant (fast, reliable native tool calling, free tier)
-# Stronger path: OpenRouter deepseek/deepseek-v4-pro when PREFER_OPENROUTER=1
-# and OPENROUTER_API_KEY is set. All overridable via env.
+# Stronger path when PREFER_OPENROUTER=1: OpenRouter DeepSeek Flash → Grok → Groq.
+# All model names are overridable via env.
 PRIMARY_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 FALLBACK_MODEL = os.getenv("GROQ_MODEL_FALLBACK", "llama-3.1-8b-instant")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-pro")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash")
 
 
 def _prefer_openrouter() -> bool:
@@ -75,11 +75,11 @@ def _prefer_openrouter() -> bool:
 
 def _openrouter_models() -> list:
     """Build the ordered list of OpenRouter models to try.
-    First: OPENROUTER_MODEL (default deepseek-v4-pro).
-    Then: any extra models from OPENROUTER_FALLBACK_MODELS (comma-separated).
+    First: OPENROUTER_MODEL (default deepseek-v4-flash).
+    Then: OPENROUTER_FALLBACK_MODELS comma-separated (default grok-4.5).
     """
     models = [OPENROUTER_MODEL]
-    extra = os.getenv("OPENROUTER_FALLBACK_MODELS", "")
+    extra = os.getenv("OPENROUTER_FALLBACK_MODELS", "x-ai/grok-4.5")
     for m in extra.split(","):
         m = m.strip()
         if m and m not in models:
