@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 from urllib.request import urlopen
@@ -429,6 +430,19 @@ async def get_tz(user_id: int) -> str:
 
 dashboard_url = config.webhook_url.replace("/webhook", "/dashboard") if config.webhook_url else "https://sasha-dbgw.onrender.com/dashboard"
 
+
+def _call_signature(tool_call) -> str:
+    """Normalized tool-call signature for dedup: same logical call regardless
+    of JSON key order/whitespace in arguments (prevents duplicate saves)."""
+    name = tool_call.function.name
+    args_raw = getattr(tool_call.function, "arguments", "") or ""
+    try:
+        args = json.loads(args_raw)
+        if isinstance(args, dict):
+            args_raw = json.dumps(args, sort_keys=True, ensure_ascii=False)
+    except Exception:
+        pass
+    return f"{name}:{args_raw}"
 MENU_LABELS = {
     "en": {"howto": "🎤 How it works", "help": "📋 Commands", "dash": "📊 Dashboard", "buy": "💳 Buy subscription", "lang": "🌐 Language", "currency": "💱 Currency"},
     "ru": {"howto": "🎤 Как работать", "help": "📋 Команды", "dash": "📊 Дашборд", "buy": "💳 Купить подписку", "lang": "🌐 Язык", "currency": "💱 Валюта"},
@@ -1832,7 +1846,7 @@ async def handle_voice(message: types.Message, bot: Bot):
                         func_name = tool_call.function.name if hasattr(tool_call, 'function') else "tool"
                         # Dedup by full call signature (name+args), not just name
                         # This allows multiple add_expense calls with different items
-                        call_sig = f"{func_name}:{getattr(tool_call.function, 'arguments', '')}"
+                        call_sig = _call_signature(tool_call)
                         if call_sig in seen_calls:
                             continue
                         seen_calls.add(call_sig)
@@ -1947,7 +1961,7 @@ async def handle_message(message: types.Message):
                         func_name = tool_call.function.name if hasattr(tool_call, 'function') else "tool"
                         # Dedup by full call signature (name+args), not just name
                         # This allows multiple add_expense calls with different items
-                        call_sig = f"{func_name}:{getattr(tool_call.function, 'arguments', '')}"
+                        call_sig = _call_signature(tool_call)
                         if call_sig in seen_calls:
                             continue
                         seen_calls.add(call_sig)
