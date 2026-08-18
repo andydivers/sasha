@@ -518,7 +518,7 @@ if (!userId) {
 // ─── i18n ──────────────────────────────────────────
 const T = {
   en: {
-    tabs: ['Expenses', 'Tasks', 'Places', 'Calendar'],
+    tabs: ['Expenses', 'Plan'],
     total_spent: 'Spent this month',
     total_earned: 'Earned this month',
     balance: 'Balance',
@@ -551,7 +551,7 @@ const T = {
     cmd_income: '💚 "earned 5000"',
   },
   ru: {
-    tabs: ['Расходы', 'Задачи', 'Места', 'Календарь'],
+    tabs: ['Расходы', 'План'],
     total_spent: 'Потрачено за месяц',
     total_earned: 'Заработано за месяц',
     balance: 'Баланс',
@@ -584,7 +584,7 @@ const T = {
     cmd_income: '💚 "получил 5000₽"',
   },
   es: {
-    tabs: ['Gastos', 'Tareas', 'Lugares', 'Calendario'],
+    tabs: ['Gastos', 'Plan'],
     total_spent: 'Gastado este mes',
     total_earned: 'Ganado este mes',
     balance: 'Balance',
@@ -877,7 +877,7 @@ function renderSummary() {
 }
 
 function renderTabs() {
-  const tabIds = ['expenses', 'todos', 'movements', 'events'];
+  const tabIds = ['expenses', 'plan'];
   document.getElementById('tabs').innerHTML = t('tabs').map((name, i) =>
     `<button class="tab${tabIds[i] === currentTab ? ' active' : ''}" onclick="switchTab('${tabIds[i]}')">${name}</button>`
   ).join('');
@@ -887,9 +887,7 @@ function renderTip() {
   if (hiddenTips.has(currentTab)) { document.getElementById('tipArea').innerHTML = ''; return; }
   const tips = {
     expenses: t('tip_expenses'),
-    todos: t('tip_todos'),
-    movements: t('tip_places'),
-    events: t('tip_calendar'),
+    plan: t('tip_todos'),
   };
   const text = tips[currentTab];
   if (!text) return;
@@ -1014,22 +1012,26 @@ function loadExpenses() {
   setContent(html);
 }
 
-function loadTodos() {
-  const todos = window._data?.todos || [];
-  const active = todos.filter(t => !t.done);
-  const done = todos.filter(t => t.done);
+function loadPlan() {
+  const todos = (window._data?.todos || []).filter(t => !t.done);
+  const today = getDateKey(new Date());
+  const events = (window._data?.events || []).filter(e => {
+    const d = e.event_data || {};
+    return d.date && d.date >= today;
+  });
 
-  if (!todos.length) {
-    setContent(emptyState('✅', t('no_todos'), t('no_todos_sub'), [
+  if (!todos.length && !events.length) {
+    setContent(emptyState('📅', t('no_events'), t('no_events_sub'), [
       [t('cmd_todo'), ''],
+      [t('cmd_event'), ''],
     ]));
     return;
   }
 
   let html = '';
-  if (active.length) {
-    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Активные' : 'Active') + ` <span style="color:var(--accent2)">${active.length}</span></div>`;
-    active.forEach(t => {
+  if (todos.length) {
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Задачи' : 'Tasks') + ` <span style="color:var(--accent2)">${todos.length}</span></div>`;
+    todos.forEach(t => {
       html += `
         <div class="item" data-id="${t.id}">
           <button class="todo-check" onclick="toggleTodo(${t.id})">☐</button>
@@ -1040,81 +1042,18 @@ function loadTodos() {
     });
     html += '</div>';
   }
-  if (done.length) {
-    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Выполненные' : 'Completed') + '</div>';
-    done.slice(0, 10).forEach(t => {
+  if (events.length) {
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'События' : 'Events') + '</div>';
+    events.forEach(e => {
+      const d = e.event_data || {};
       html += `
-        <div class="item" data-id="${t.id}" style="opacity:0.5">
-          <div class="todo-check done">✓</div>
-          <div class="item-body">
-            <div class="item-title todo-title done">${escHtml(t.title)}</div>
-          </div>
+        <div class="event-card">
+          <div class="event-title">${escHtml(d.summary || 'Event')}</div>
+          <div class="event-time">${[d.date, d.time].filter(Boolean).join(' · ') || ''}</div>
         </div>`;
     });
     html += '</div>';
   }
-
-  setContent(html);
-}
-
-function loadMovements() {
-  const movements = window._data?.movements || [];
-  if (!movements.length) {
-    setContent(emptyState('📍', t('no_movements'), t('no_movements_sub'), [
-      [t('cmd_place'), ''],
-    ]));
-    return;
-  }
-
-  const groups = {};
-  movements.forEach(m => {
-    const key = getDateKey(m.created_at);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(m);
-  });
-
-  const sortedKeys = Object.keys(groups).sort().reverse();
-
-  let html = '';
-  sortedKeys.forEach(key => {
-    const items = groups[key];
-    const label = formatDayDate(items[0].created_at);
-    html += `<div class="date-group"><div class="date-label">${escHtml(label)}</div>`;
-    items.forEach(m => {
-      html += `
-        <div class="item">
-          <div class="item-icon movement">📍</div>
-          <div class="item-body">
-            <div class="item-title">${escHtml(m.location || '')}</div>
-            <div class="item-meta">${formatTime(m.created_at)}${m.description ? ' · ' + escHtml(m.description) : ''}</div>
-          </div>
-        </div>`;
-    });
-    html += '</div>';
-  });
-
-  setContent(html);
-}
-
-function loadEvents() {
-  const events = window._data?.events || [];
-  if (!events.length) {
-    setContent(emptyState('📅', t('no_events'), t('no_events_sub'), [
-      [t('cmd_event'), ''],
-    ]));
-    return;
-  }
-
-  let html = '<div class="date-group">';
-  events.forEach(e => {
-    const d = e.event_data || {};
-    html += `
-      <div class="event-card">
-        <div class="event-title">${escHtml(d.summary || 'Event')}</div>
-        <div class="event-time">${[d.date, d.time].filter(Boolean).join(' · ') || ''}</div>
-      </div>`;
-  });
-  html += '</div>';
 
   setContent(html);
 }
@@ -1122,9 +1061,7 @@ function loadEvents() {
 function loadSection(name) {
   switch(name) {
     case 'expenses': loadExpenses(); break;
-    case 'todos': loadTodos(); break;
-    case 'movements': loadMovements(); break;
-    case 'events': loadEvents(); break;
+    case 'plan': loadPlan(); break;
   }
 }
 
