@@ -1014,13 +1014,14 @@ function loadExpenses() {
 
 function loadPlan() {
   const todos = (window._data?.todos || []).filter(t => !t.done);
+  const reminders = (window._data?.reminders || []).filter(r => !r.done);
   const today = getDateKey(new Date());
   const events = (window._data?.events || []).filter(e => {
     const d = e.event_data || {};
     return d.date && d.date >= today;
   });
 
-  if (!todos.length && !events.length) {
+  if (!todos.length && !reminders.length && !events.length) {
     setContent(emptyState('📅', t('no_events'), t('no_events_sub'), [
       [t('cmd_todo'), ''],
       [t('cmd_event'), ''],
@@ -1029,6 +1030,22 @@ function loadPlan() {
   }
 
   let html = '';
+  if (reminders.length) {
+    html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Напоминания' : 'Reminders') + ` <span style="color:var(--accent2)">${reminders.length}</span></div>`;
+    reminders.forEach(r => {
+      const cfg = r.config || {};
+      const when = (r.next_run || '').replace('T', ' ').slice(0, 16);
+      html += `
+        <div class="item">
+          <div class="item-icon income">⏰</div>
+          <div class="item-body">
+            <div class="item-title">${escHtml(cfg.message || r.job_id || 'Reminder')}</div>
+            <div class="item-meta">${escHtml(when)}</div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  }
   if (todos.length) {
     html += '<div class="date-group"><div class="date-label">' + (lang === 'ru' ? 'Задачи' : 'Tasks') + ` <span style="color:var(--accent2)">${todos.length}</span></div>`;
     todos.forEach(t => {

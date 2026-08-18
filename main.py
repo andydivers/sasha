@@ -284,7 +284,7 @@ async def api_dashboard(user_id: int, token: str = ""):
     Token = bot sends a verification message with a one-time link.
     For now, require a secret token from env DASHBOARD_TOKEN or user's chat_id hashed.
     """
-    from app.database import get_user_items, get_movements, get_todos, get_user_lang, get_calendar_events, get_user_currency
+    from app.database import get_user_items, get_movements, get_todos, get_user_lang, get_calendar_events, get_user_currency, get_upcoming_reminders
     from fastapi.responses import JSONResponse
     import hashlib, os
 
@@ -299,6 +299,7 @@ async def api_dashboard(user_id: int, token: str = ""):
         movements = await get_movements(user_id) or []
         todos = await get_todos(user_id) or []
         events = await get_calendar_events(user_id) or []
+        reminders = await get_upcoming_reminders(user_id) or []
         lang = await get_user_lang(user_id) or "en"
         user_currency = await get_user_currency(user_id) or ""
         from app.handlers import LANG_TOGGLE_CURRENCIES, LANG_TO_CURRENCY
@@ -308,7 +309,7 @@ async def api_dashboard(user_id: int, token: str = ""):
                 toggle_currencies.append(currency)
         if user_currency and user_currency not in toggle_currencies:
             toggle_currencies.append(user_currency)
-        return JSONResponse({"ok": True, "lang": lang, "user_currency": user_currency, "toggle_currencies": toggle_currencies, "expenses": expenses, "movements": movements, "todos": todos, "events": events})
+        return JSONResponse({"ok": True, "lang": lang, "user_currency": user_currency, "toggle_currencies": toggle_currencies, "expenses": expenses, "movements": movements, "todos": todos, "events": events, "reminders": reminders})
     except Exception as e:
         logger.error("Dashboard API error: %s", e)
         return JSONResponse({"ok": False, "error": str(e)})

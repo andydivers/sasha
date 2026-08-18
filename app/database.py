@@ -110,6 +110,18 @@ async def add_reminder(user_id: int, message: str, next_run: str):
         logger.warning("Failed to add reminder: %s", e)
 
 
+async def get_upcoming_reminders(user_id: int, limit: int = 50) -> list[dict]:
+    """Upcoming (not yet fired) reminders for the dashboard."""
+    try:
+        resp = get_db().table("scheduled_tasks").select("*") \
+            .eq("user_id", user_id).eq("task_type", "reminder").eq("done", False) \
+            .order("next_run").limit(limit).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.warning("Failed to get upcoming reminders: %s", e)
+        return []
+
+
 async def get_due_reminders() -> list[dict]:
     try:
         now_ts = datetime.now(timezone.utc).isoformat()
