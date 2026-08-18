@@ -12,7 +12,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from app.config import Config
 from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense, delete_last_expense, delete_expense
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
-from app.intents import handle_tool_call
+from app.intents import handle_tool_call, _country_from_location
 from app.currency_utils import extract_currency, currency_symbol, format_amount_with_currency
 from app.gemini_client import init_gemini, analyze_image
 from app.sheets_client import init_sheets, read_sheet, write_sheet, append_row, get_service_email, is_ready as sheets_ready
@@ -418,6 +418,54 @@ def _format_saved_expenses(items: list) -> str:
             lines.append(f"💚 {desc}{' : +' + amt + (' ' + sym if sym else '') if amt else ''}")
         else:
             lines.append(f"💰 {desc}{' : ' + amt + (' ' + sym if sym else '') if amt else ''}")
+    return "\n".join(lines)
+
+
+async def _conversion_lines(items: list, lang: str, user_id: int) -> str:
+    """'≈ 5 206 610 VND / 16 600 RUB' lines for saved items.
+
+    Targets:
+      - ru: USD, RUB and local currency (e.g. VND)
+      - other langs: USD, user's home currency and local currency
+    Skips the currency the item is already in.
+    """
+    from app.currency import convert_amount
+
+    targets = ["USD"]
+    if lang == "ru":
+        targets.append("RUB")
+    user_cur = (await get_user_currency(user_id) or "").upper()
+    if user_cur and user_cur not in targets:
+        targets.append(user_cur)
+    try:
+        tz = await get_tz(user_id)
+        local = _country_from_location(tz)
+        if local and local not in targets:
+            targets.append(local)
+    except Exception:
+        pass
+
+    lines = []
+    for item in items:
+        cur = (item[2] if len(item) >= 3 else "").upper()
+        amt = item[1] if len(item) >= 2 else ""
+        if not cur or not amt:
+            continue
+        convs = []
+        for t in targets:
+            if t == cur:
+                continue
+            try:
+                val = convert_amount(float(amt), cur, t)
+            except Exception:
+                continue
+            if t in ("VND", "JPY"):
+                disp = f"{int(round(val)):,}".replace(",", " ")
+            else:
+                disp = f"{val:,.2f}".replace(",", " ")
+            convs.append(f"{disp} {t}")
+        if convs:
+            lines.append("≈ " + " / ".join(convs))
     return "\n".join(lines)
 
 
@@ -1816,7 +1864,11 @@ async def handle_voice(message: types.Message, bot: Bot):
         )
 
         if saved_items:
-            response_text = _format_saved_expenses(saved_items) + heard
+            response_text = _format_saved_expenses(saved_items)
+            conv = await _conversion_lines(saved_items, lang, message.from_user.id)
+            if conv:
+                response_text += "\n" + conv
+            response_text += heard
             await message.answer(response_text + suffix)
             latency = 0
         else:
@@ -1934,6 +1986,9 @@ async def handle_message(message: types.Message):
 
         if saved_items:
             response_text = _format_saved_expenses(saved_items)
+            conv = await _conversion_lines(saved_items, lang, message.from_user.id)
+            if conv:
+                response_text += "\n" + conv
             await message.answer(response_text + suffix)
             latency = 0
         else:
