@@ -15,7 +15,7 @@ _openrouter_key: str = ""
 def init_gemini(api_key: str):
     global _api_key, _groq_key, _openrouter_key
     _api_key = api_key
-    # Groq API key — already set on Render, supports vision via llama-4-scout
+    # Groq API key — already set on Render, supports vision via qwen3.6-27b
     _groq_key = os.getenv("GROQ_API_KEY", "")
     # OpenRouter key — may NOT be set on Render
     _openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
@@ -57,21 +57,18 @@ def _call_gemini(model: str, image_bytes: bytes, mime_type: str, prompt: str) ->
     return None, "Gemini rate-limited."
 
 
-# ─── 2. Groq Vision (llama-4-scout) ─────────────────────────────────────────
+# ─── 2. Groq Vision (qwen3.6-27b) ───────────────────────────────────────────
 
 def _call_groq_vision(image_bytes: bytes, mime_type: str, prompt: str) -> tuple[str | None, str]:
-    """Use Groq's llama-4-scout vision model. GROQ_API_KEY is already on Render."""
+    """Use Groq's qwen3.6-27b vision model. GROQ_API_KEY is already on Render."""
     if not _groq_key:
         return None, "No GROQ_API_KEY"
 
     base64_img = base64.b64encode(image_bytes).decode()
     data_url = f"data:{mime_type};base64,{base64_img}"
 
-    # Groq vision models (free tier)
-    models = [
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-        "meta-llama/llama-4-maverick-17b-128e-instruct",
-    ]
+    # Groq vision model (llama-4-series decommissioned 2026-07-17)
+    models = ["qwen/qwen3.6-27b"]
 
     for model in models:
         try:
@@ -124,8 +121,9 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, prompt: str) -> 
     data_url = f"data:{mime_type};base64,{base64_img}"
 
     models = [
-        "google/gemini-2.0-flash-exp:free",
-        "meta-llama/llama-4-scout:free",
+        "google/gemma-4-31b-it:free",
+        "nvidia/nemotron-nano-12b-2-vl:free",
+        "google/gemma-4-26b-a4b-it:free",
     ]
 
     for model in models:
@@ -173,8 +171,8 @@ def analyze_image(image_bytes: bytes, mime_type: str, prompt: str = "Describe wh
     """Analyze an image using a cascade of vision providers.
     
     Priority: Gemini → Groq Vision → OpenRouter Vision
-    Groq Vision is the most reliable fallback because GROQ_API_KEY is already
-    configured on Render and Groq now supports llama-4-scout for vision.
+    Groq Vision (qwen3.6-27b) is the most reliable fallback because
+    GROQ_API_KEY is already configured on Render.
     """
     
     # 1. Try Gemini first (if key available)

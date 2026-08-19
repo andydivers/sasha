@@ -61,11 +61,10 @@ REASONING_KEYWORDS = frozenset({
 })
 
 # ─── Model config ───────────────────────────────────────────────────────────
-# Groq: llama-3.1-8b-instant (fast, reliable native tool calling, free tier)
-# Stronger path when PREFER_OPENROUTER=1: OpenRouter DeepSeek Flash → Grok → Groq.
-# All model names are overridable via env.
-PRIMARY_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-FALLBACK_MODEL = os.getenv("GROQ_MODEL_FALLBACK", "llama-3.1-8b-instant")
+# Groq: openai/gpt-oss-120b (llama-3.1-8b-instant decommissioned 2026-08-16;
+# native tool calling + JSON mode). All model names are overridable via env.
+PRIMARY_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+FALLBACK_MODEL = os.getenv("GROQ_MODEL_FALLBACK", "openai/gpt-oss-20b")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash")
 
 
