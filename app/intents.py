@@ -316,58 +316,161 @@ def _parse_delay(raw: str) -> int:
 def _parse_when(when: str, tz: str) -> str | None:
     """Parse 'when' string to UTC ISO time. Returns None if can't parse."""
     when = when.lower().strip()
+    from datetime import datetime, timedelta, timezone
+    import zoneinfo
+    try:
+        tz_obj = zoneinfo.ZoneInfo(tz)
+    except Exception:
+        tz_obj = timezone.utc
+    now_local = datetime.now(tz_obj)
+
+    # Relative delays: "через 2 часа", "in 30 minutes", "1h", "через 3 дня"
     try:
         delay = _parse_delay(when)
-        return (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+        return (now_local + timedelta(seconds=delay)).astimezone(timezone.utc).isoformat()
     except ValueError:
         pass
-    try:
-        hour_match = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", when)
-        if hour_match:
-            hour = int(hour_match.group(1))
-            minute = int(hour_match.group(2)) if hour_match.group(2) else 0
-            ampm = hour_match.group(3)
-            if ampm:
-                if ampm == "pm" and hour < 12:
-                    hour += 12
-                if ampm == "am" and hour == 12:
-                    hour = 0
-            import zoneinfo
+
+    # "завтра", "послезавтра" (+ optional time)
+    day_offset = 0
+    if "послезавтра" in when or "day after tomorrow" in when:
+        day_offset = 2
+    elif "завтра" in when or "tomorrow" in when:
+        day_offset = 1
+
+    # Day-of-week: "в понедельник", "на вторник", "monday" — next occurrence
+    weekdays = {
+        "понедельник": 0, "вторник": 1, "среда": 2, "среду": 2,
+        "четверг": 3, "пятница": 4, "суббота": 5, "воскресенье": 6,
+        "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+        "friday": 4, "saturday": 5, "sunday": 6,
+    }
+    for name, dow in weekdays.items():
+        if re.search(rf"\b{name}\b", when):
+            days_ahead = (dow - now_local.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            day_offset = days_ahead
+            break
+
+    # Explicit date: "31 августа", "1 september", "2026-09-01"
+    m = re.search(r"(\d{1,2})\s*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря|january|february|march|april|may|june|july|august|september|october|november|december)", when)
+    month_map = {
+        "января": 1, "февраля": 2, "марта": 3, "апреля": 4, "мая": 5,
+        "июня": 6, "июля": 7, "августа": 8, "сентября": 9, "октября": 10,
+        "ноября": 11, "декабря": 12, "january": 1, "february": 2, "march": 3,
+        "april": 4, "may": 5, "june": 6, "july": 7, "august": 8,
+        "september": 9, "october": 10, "november": 11, "december": 12,
+    }
+    target_date = None
+    if m:
+        day = int(m.group(1))
+        month = month_map[m.group(2)]
+        year = now_local.year
+        try:
+            target_date = datetime(year, month, day, tzinfo=tz_obj)
+        except ValueError:
+            return None
+        if target_date < now_local:
+            target_date = target_date.replace(year=year + 1)
+    elif day_offset:
+        target_date = now_local + timedelta(days=day_offset)
+    else:
+        m2 = re.search(r"(\d{4})-(\d{2})-(\d{2})", when)
+        if m2:
             try:
-                tz_obj = zoneinfo.ZoneInfo(tz)
-            except Exception:
-                tz_obj = timezone.utc
-            now_local = datetime.now(tz_obj)
-            target_local = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
-            if target_local <= now_local:
-                target_local += timedelta(days=1)
-            target_utc = target_local.astimezone(timezone.utc)
-            return target_utc.isoformat()
-    except Exception:
-        pass
+                target_date = datetime(int(m2.group(1)), int(m2.group(2)), int(m2.group(3)), tzinfo=tz_obj)
+            except ValueError:
+                return None
+
+    # Time component: "в 9", "9:30", "10 утра", "2pm" (only when <= 23 — a day like "31" must not become an hour)
+    hour, minute = 0, 0
+    hour_match = None
+    strict_hour_patterns = [
+        r"(?:в|at)\s+(\d{1,2})(?::(\d{2}))?\s*(?:am|pm|час(?:а|ов)?)?",
+        r"(\d{1,2}):(\d{2})\s*(?:am|pm)?",
+        r"(\d{1,2})\s*(?:am|pm|час(?:а|ов)?|утра|дня|вечера|ночи)",
+    ]
+    for pat in strict_hour_patterns:
+        m = re.search(pat, when)
+        if m:
+            hour_match = m
+            break
+    if hour_match:
+        raw_hour = int(hour_match.group(1))
+        if raw_hour <= 23:
+            minute = int(hour_match.group(2)) if hour_match.re.groups > 1 and hour_match.group(2) else 0
+            low = when[hour_match.start():hour_match.end()].lower()
+            if "pm" in low or "вечера" in low or "ночи" in low:
+                if raw_hour < 12:
+                    raw_hour += 12
+            elif "am" in low:
+                if raw_hour == 12:
+                    raw_hour = 0
+            elif "часа" in low or "часов" in low:
+                if raw_hour < 9:
+                    raw_hour += 12
+            hour = raw_hour
+
+    if target_date:
+        hour = min(hour, 23)
+        target_local = target_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if hour == 0 and minute == 0 and ":" not in when:
+            # No explicit time: keep it as-is (start of that day)
+            pass
+        return target_local.astimezone(timezone.utc).isoformat()
+
+    # Time-only: "в 19:00", "2pm"
+    hour_match = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", when)
+    if hour_match:
+        hour = int(hour_match.group(1))
+        minute = int(hour_match.group(2)) if hour_match.group(2) else 0
+        ampm = hour_match.group(3)
+        if ampm:
+            if ampm == "pm" and hour < 12:
+                hour += 12
+            if ampm == "am" and hour == 12:
+                hour = 0
+        now_local = datetime.now(tz_obj)
+        target_local = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target_local <= now_local:
+            target_local += timedelta(days=1)
+        return target_local.astimezone(timezone.utc).isoformat()
     return None
 
 
 async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0, tz: str = "UTC") -> str:
     message_text = args.get("message", "")
     when = args.get("when", "")
-    if not message_text or not when:
+    if not message_text:
         if lang == "ru":
-            return "Что напомнить и когда? Например: напомни купить молоко через 2 часа"
-        return "What to remind and when? Say: remind me to buy milk in 2 hours"
-    when_utc = _parse_when(when, tz)
-    if when_utc:
-        await add_reminder(user_id, message_text, when_utc)
+            return "Что напомнить? Например: напомни купить молоко через 2 часа"
+        return "What should I remind you about? Say: remind me to buy milk in 2 hours"
+    if when:
+        when_utc = _parse_when(when, tz)
+        if when_utc:
+            await add_reminder(user_id, message_text, when_utc)
+            if lang == "ru":
+                return f"⏰ Напомню: {message_text} ({when})"
+            return f"⏰ I'll remind you: {message_text} ({when})"
+        # Couldn't parse time — don't fake it, ask
         if lang == "ru":
-            return f"⏰ Напомню: {message_text}"
-        return f"⏰ I'll remind you: {message_text}"
+            return f"Не понял, когда напомнить («{when}»). Скажи так: напомни {message_text} завтра в 9 утра / через 2 часа"
+        return f"Couldn't understand when («{when}»). Say: remind me {message_text} tomorrow 9am / in 2 hours"
+    # No time given: save as a simple reminder for later today evening (harmless fallback)
     if lang == "ru":
-        return f"⏰ Напомню: {message_text} ({when})"
-    return f"⏰ I'll remind you: {message_text} ({when})"
+        return f"⏰ Когда напомнить про «{message_text}»? Скажи, например: через 2 часа или завтра в 10"
+    return f"⏰ When should I remind you about «{message_text}»? Say: in 2 hours or tomorrow 10am"
 
 
 async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
     description = args.get("description", "")
+    _reminder_desc = description.lower()
+    if re.search(r"напомн|напоминани|remind|reminder|не забудь|забудь|будильник|alarm", _reminder_desc):
+        when = args.get("when", "")
+        if lang == "ru":
+            return f"⏰ Это скорее напоминание, чем расход. Скажи: «напомни {description} когда» — и я установлю напоминание."
+        return f"⏰ This looks like a reminder, not an expense. Say: «remind me {description} when» and I'll set a reminder."
     amount_raw = args.get("amount", "")
     nums = re.findall(r"\d[\d.,]*", amount_raw)
     amount = nums[0].replace(",", ".").strip() if nums else ""
@@ -416,6 +519,10 @@ async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
 
 async def _handle_add_income(args: dict, lang: str, user_id: int = 0) -> str:
     description = args.get("description", "")
+    if re.search(r"напомн|напоминани|remind|reminder|не забудь|забудь|будильник|alarm", description.lower()):
+        if lang == "ru":
+            return f"⏰ Это скорее напоминание, чем доход. Скажи: «напомни {description} когда» — и я установлю напоминание."
+        return f"⏰ This looks like a reminder, not income. Say: «remind me {description} when» and I'll set a reminder."
     amount = args.get("amount", "")
     category = "income"
     # Priority: 1) currency from Groq tool arg (validated), 2) detect from text, 3) user default
