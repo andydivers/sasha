@@ -275,6 +275,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+.item-title.expanded {
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
 }
 .item-meta {
   font-size: 12px;
@@ -924,6 +930,14 @@ function setContent(html) {
   const el = document.getElementById('content');
   el.innerHTML = html;
 }
+
+document.addEventListener('click', function (ev) {
+  const t = ev.target.closest('.item-title');
+  if (!t) return;
+  if (t.scrollWidth > t.clientWidth + 2 || t.classList.contains('expanded')) {
+    t.classList.toggle('expanded');
+  }
+});
 
 function emptyState(icon, title, sub, commands) {
   let html = `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div>`;
