@@ -85,6 +85,22 @@ async def save_chat(user_id: int, message: str, response: str, latency_ms: int):
         logger.warning("Failed to save chat: %s", e)
 
 
+async def get_chat_history(user_id: int, limit: int = 3) -> list:
+    """Recent user/assistant turns for LLM context (oldest first)."""
+    try:
+        resp = get_db().table("chats").select("message,response") \
+            .eq("user_id", user_id).order("created_at").limit(limit).execute()
+        rows = resp.data or []
+        history = []
+        for r in rows:
+            history.append({"role": "user", "content": r.get("message", "")})
+            history.append({"role": "assistant", "content": r.get("response", "")})
+        return history
+    except Exception as e:
+        logger.warning("Failed to get chat history: %s", e)
+        return []
+
+
 async def log_event(user_id: int, event_type: str, event_data: dict = None):
     try:
         get_db().table("events").insert({

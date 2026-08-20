@@ -10,7 +10,7 @@ from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.config import Config
-from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense, delete_last_expense, delete_expense
+from app.database import get_user_lang, set_user_lang, get_user_tz, set_user_tz, get_user_currency, set_user_currency, get_user_sheet, set_user_sheet, save_chat, get_chat_history, log_event, add_reminder, add_todo, get_todos, mark_todo_done, create_pending_payment, get_unsynced_items, mark_items_synced, get_digest_config, set_digest_config, add_recurring_payment, get_recurring_payments, delete_recurring_payment, add_expense, delete_last_expense, delete_expense
 from app.groq_client import create_groq_client, detect_intent, chat_turn, transcribe_audio
 from app.intents import handle_tool_call, _country_from_location
 from app.currency_utils import extract_currency, currency_symbol, format_amount_with_currency
@@ -1848,11 +1848,25 @@ async def handle_voice(message: types.Message, bot: Bot):
             return
 
         tz = await get_tz(message.from_user.id)
+        try:
+            chat_history = await get_chat_history(message.from_user.id)
+        except Exception:
+            chat_history = []
 
         heard_text = text
         norm_text = _numwords_to_digits(text)
 
         suffix = "" if _is_group(message) else t(lang, "voice_prompt")
+
+        # Complete a pending reminder ("когда напомнить?") before any parsing
+        from app.intents import try_complete_pending_reminder
+        completed = await try_complete_pending_reminder(message.from_user.id, norm_text, lang, tz)
+        if completed:
+            await message.answer(completed + suffix)
+            latency = 0
+            await save_chat(message.from_user.id, text, completed, 0)
+            return
+
         heard = f"\n\n🎤 Вы сказали: «{heard_text}»"
         # Do not let a partial transcription of a long voice note become one
         # wrong expense. Let the tool-calling path interpret complex notes.
@@ -1872,7 +1886,7 @@ async def handle_voice(message: types.Message, bot: Bot):
             await message.answer(response_text + suffix)
             latency = 0
         else:
-            result, latency, messages = detect_intent(groq, norm_text, lang=lang)
+            result, latency, messages = detect_intent(groq, norm_text, lang=lang, chat_history=chat_history)
 
             if isinstance(result, str):
                 response_text = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", result, flags=re.DOTALL).strip()
@@ -1982,6 +1996,16 @@ async def handle_message(message: types.Message):
 
     try:
         norm_text = _numwords_to_digits(text)
+
+        # Complete a pending reminder ("когда напомнить?") before any parsing
+        from app.intents import try_complete_pending_reminder
+        completed = await try_complete_pending_reminder(message.from_user.id, norm_text, lang, tz)
+        if completed:
+            await message.answer(completed + suffix)
+            latency = 0
+            await save_chat(message.from_user.id, text, completed, 0)
+            return
+
         saved_items = await _try_save_expenses_fallback(norm_text, message.from_user.id)
 
         if saved_items:
@@ -1992,7 +2016,11 @@ async def handle_message(message: types.Message):
             await message.answer(response_text + suffix)
             latency = 0
         else:
-            result, latency, messages = detect_intent(groq, norm_text, lang=lang)
+            try:
+                chat_history = await get_chat_history(message.from_user.id)
+            except Exception:
+                chat_history = []
+            result, latency, messages = detect_intent(groq, norm_text, lang=lang, chat_history=chat_history)
 
             if isinstance(result, str):
                 response_text = re.sub(r"(?:<function[^>]*>.*?(?:</?function>)?|\{\{.*?\}\})", "", result, flags=re.DOTALL).strip()

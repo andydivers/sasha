@@ -14,6 +14,69 @@ from app.currency import detect_currency_from_text, currency_from_location, get_
 
 logger = logging.getLogger(__name__)
 
+# Pending reminder state: user_id -> {"message": str|None, "when": str|None}
+# Set when the bot asked a follow-up ("Что напомнить?" / "Когда напомнить?"),
+# completed on the user's next message.
+_PENDING_REMINDERS: dict[int, dict] = {}
+
+
+def set_pending_reminder(user_id: int, message: str | None = None, when: str | None = None):
+    _PENDING_REMINDERS[user_id] = {"message": message, "when": when}
+
+
+def get_pending_reminder(user_id: int) -> dict | None:
+    return _PENDING_REMINDERS.get(user_id)
+
+
+def clear_pending_reminder(user_id: int):
+    _PENDING_REMINDERS.pop(user_id, None)
+
+
+def _looks_like_when(text: str) -> bool:
+    """Heuristic: does this message answer 'когда напомнить?' (a time, not the reminder text)."""
+    t = text.lower().strip()
+    if re.match(r"^(в|at)\s*$", t):
+        return False
+    if _parse_when(t, "UTC") is not None:
+        return True
+    return bool(re.search(
+        r"\b(?:в\s*\d{1,2}|через\s+\d+|завтра|послезавтра|сегодня|tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+        r"понедельник|вторник|среда|среду|четверг|пятница|суббота|воскресенье|"
+        r"января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря|am|pm|\d{1,2}:\d{2})\b", t))
+
+
+async def try_complete_pending_reminder(user_id: int, text: str, lang: str, tz: str = "UTC") -> str | None:
+    """If a pending reminder exists and this message answers the follow-up, create it.
+
+    Returns the reply text, or None if the message doesn't complete a pending reminder.
+    """
+    pending = get_pending_reminder(user_id)
+    if not pending:
+        return None
+    when_like = _looks_like_when(text)
+    if pending.get("message") and when_like:
+        # User answered "когда?" — complete with the stored message
+        when_utc = _parse_when(text, tz) or _parse_when("завтра в 9", tz)
+        await add_reminder(user_id, pending["message"], when_utc)
+        clear_pending_reminder(user_id)
+        if lang == "ru":
+            return f"⏰ Напомню: {pending['message']} ({text})"
+        return f"⏰ I'll remind you: {pending['message']} ({text})"
+    if pending.get("when") and not when_like:
+        # User answered "что?" — complete with the stored time
+        when_utc = _parse_when(pending["when"], tz)
+        if when_utc:
+            await add_reminder(user_id, text, when_utc)
+            clear_pending_reminder(user_id)
+            if lang == "ru":
+                return f"⏰ Напомню: {text} ({pending['when']})"
+            return f"⏰ I'll remind you: {text} ({pending['when']})"
+    if pending.get("message") and not when_like:
+        # Maybe they rephrased the message ("купить молоко" -> "купи молоко")
+        clear_pending_reminder(user_id)
+        return None
+    return None
+
 _KNOWN_CURRENCIES = frozenset({
     "USD", "EUR", "RUB", "GBP", "THB", "VND", "CNY", "JPY", "KRW", "INR",
     "AED", "BRL", "UAH", "KZT", "SGD", "MYR", "PHP", "TRY", "CHF", "MNT",
@@ -443,6 +506,11 @@ async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0, tz: str 
     message_text = args.get("message", "")
     when = args.get("when", "")
     if not message_text:
+        if when:
+            set_pending_reminder(user_id, when=when)
+            if lang == "ru":
+                return f"Что напомнить? Ты просил(а) напомнить {when}."
+            return f"What should I remind you about? You asked to be reminded {when}."
         if lang == "ru":
             return "Что напомнить? Например: напомни купить молоко через 2 часа"
         return "What should I remind you about? Say: remind me to buy milk in 2 hours"
@@ -450,6 +518,7 @@ async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0, tz: str 
         when_utc = _parse_when(when, tz)
         if when_utc:
             await add_reminder(user_id, message_text, when_utc)
+            clear_pending_reminder(user_id)
             if lang == "ru":
                 return f"⏰ Напомню: {message_text} ({when})"
             return f"⏰ I'll remind you: {message_text} ({when})"
@@ -457,10 +526,11 @@ async def _handle_add_reminder(args: dict, lang: str, user_id: int = 0, tz: str 
         if lang == "ru":
             return f"Не понял, когда напомнить («{when}»). Скажи так: напомни {message_text} завтра в 9 утра / через 2 часа"
         return f"Couldn't understand when («{when}»). Say: remind me {message_text} tomorrow 9am / in 2 hours"
-    # No time given: save as a simple reminder for later today evening (harmless fallback)
+    # No time given: remember the message and ask when
+    set_pending_reminder(user_id, message=message_text)
     if lang == "ru":
-        return f"⏰ Когда напомнить про «{message_text}»? Скажи, например: через 2 часа или завтра в 10"
-    return f"⏰ When should I remind you about «{message_text}»? Say: in 2 hours or tomorrow 10am"
+        return f"Когда напомнить про «{message_text}»? Скажи, например: через 2 часа или завтра в 10"
+    return f"When should I remind you about «{message_text}»? Say: in 2 hours or tomorrow 10am"
 
 
 async def _handle_add_expense(args: dict, lang: str, user_id: int = 0) -> str:
