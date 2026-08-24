@@ -86,7 +86,9 @@ async def lifespan(app: FastAPI):
                 for r in reminders:
                     msg = r["config"].get("message", "Reminder!")
                     try:
-                        await bot.send_message(chat_id=r["user_id"], text=f"⏰ <b>Reminder:</b> {msg}")
+                        lang = await get_user_lang(r["user_id"]) or "en"
+                        label = "Напоминание" if lang == "ru" else "Reminder"
+                        await bot.send_message(chat_id=r["user_id"], text=f"⏰ <b>{label}:</b> {msg}")
                         await mark_reminder_done(r["id"])
                     except Exception as e:
                         logger.warning("Failed to send reminder to %s: %s", r["user_id"], e)
