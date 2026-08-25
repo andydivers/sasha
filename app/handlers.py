@@ -141,6 +141,42 @@ _EXPENSE_WORDS = {"купил","потратил","оплатил","заплат
 
 _NON_EXPENSE_WORDS = {"напомни","напомнить","напомню","напоминани","напоминание","напоминания","напомин","remind","reminder","встреча","meeting","встречу","завтра","tomorrow","через","надо","нужно","необходимо","запланируй","schedule","plan","событие","event","рожден","день рождения","birthday","ужин сегодня","dinner today","обед сегодня","будильник","alarm","не забудь","забудь","на будущий","следующ"}
 
+# Questions/commands that must go to the LLM, never auto-saved as a note.
+_NOTE_BLOCK_WORDS = {
+    "сколько","как","что","когда","почему","зачем","где","кто","какой","какая","какие",
+    "покажи","расскажи","скажи","найди","посчитай","рассчитай","переведи","конвертируй",
+    "открой","удали","отмени","подведи","сколько я потратил","потратил","потратила",
+    "доход","расходы","выписка","отчёт","отчет","статистика","статистику","сумма",
+    "сколько потрачено","баланс","итого","анализ","сравни","сравнение","прогноз",
+    "how much","how","what","when","why","where","who","spent","expense","income",
+    "report","summary","statistics","analysis","balance","total","show","find","convert",
+    "курс","exchange rate","погода","weather",
+    "привет","прив","здравствуй","здравствуйте","hello","hi","хай","спасибо","спс",
+    "thanks","thank","ок","окей","понял","поняла","понятно","ладно","хорошо",
+    "bye","пока","до свидания","добрый день","доброе утро","добрый вечер",
+    "good morning","good afternoon","good evening","good night","goodbye",
+}
+_NOTE_BLOCK_PREFIXES = ("сколько","как","что","когда","почему","зачем","где","кто",
+    "покажи","расскажи","скажи","найди","посчитай","рассчитай","переведи","конвертируй",
+    "открой","удали","отмени","подведи","how","what","when","why","where","who","show","find",
+    "напомни","напомни мне","remind","не забудь","забудь","запланируй","добавь встречу",
+    "встреча","событие","создай событие","создай встречу",
+    "переведи деньги","сколько я потратил","запиши расход","добавь расход",
+    "напомни мне позвонить",
+)
+_NOTE_BLOCK_ANYWHERE = {
+    "понедельник","вторник","среда","среду","четверг","пятница","суббота","воскресенье",
+    "завтра","послезавтра","сегодня в","через","января","февраля","марта","апреля","мая",
+    "июня","июля","августа","сентября","октября","ноября","декабря",
+    "monday","tuesday","wednesday","thursday","friday","saturday","sunday",
+    "tomorrow","today","january","february","march","april","may","june","july",
+    "august","september","october","november","december","напомни","remind",
+    "утра","дня","вечера","ночи","часов","минут","am","pm","будильник","alarm",
+    "не забудь","забудь","встреча","встречу","meeting","событие","event",
+    "день рождения","birthday","праздник","поездка","перелёт","перелет","билет",
+    "виза","отель","бронь","забронируй","забронировать",
+}
+
 
 _MULTIPLIERS = [
     (r"(?:^|\s)\d[\d.,]*\s*(тысяч|тысячи|тыща|тыщи|тыс|nghìn|ngàn)\b", 1000),
@@ -308,6 +344,36 @@ def _extract_amount(segment: str) -> str:
     if float(total).is_integer():
         return str(int(total))
     return str(round(total, 2))
+
+
+async def _try_save_note_if_applicable(text: str, user_id: int, lang: str) -> str | None:
+    """If the message is a plain text note (no digits, not a question/command),
+    save it as a task in the Plan automatically. Returns reply or None."""
+    t = text.strip()
+    if not t or len(t) < 2 or re.search(r"\d", t):
+        return None
+    lowered = t.lower()
+    # Location / timezone statements go to the LLM (track_movement / tz)
+    if re.search(r"\b(?:я\s+(?:в|на|у)\s+|я\s+нахожусь|я\s+приехал|я\s+в|й\s+ам|i'?m\s+(?:in|at|on)\s+|i\s+am\s+(?:in|at|on)\s+)", lowered):
+        return None
+    # Block questions/commands (word-boundary for single words, substring for phrases)
+    for w in _NOTE_BLOCK_WORDS:
+        if re.search(rf"\b{re.escape(w)}\b", lowered, re.I):
+            return None
+    if lowered.startswith(_NOTE_BLOCK_PREFIXES):
+        return None
+    for w in _NOTE_BLOCK_ANYWHERE:
+        if w in lowered:
+            return None
+    # Looks like a plain note -> save as todo (task) in the Plan
+    try:
+        await add_todo(user_id, t)
+    except Exception as e:
+        logger.error("Auto-save note failed for user %s: %s", user_id, e)
+        return None
+    if lang == "ru":
+        return f"📝 Добавил в план:\n☐ {t}"
+    return f"📝 Added to your plan:\n☐ {t}"
 
 
 async def _try_save_expenses_fallback(text: str, user_id: int) -> list:
@@ -1867,6 +1933,15 @@ async def handle_voice(message: types.Message, bot: Bot):
             await save_chat(message.from_user.id, text, completed, 0)
             return
 
+        # Plain text note (no digits) -> save directly to the Plan as a task
+        note_reply = await _try_save_note_if_applicable(norm_text, message.from_user.id, lang)
+        if note_reply:
+            note_heard = f"\n\n🎤 Вы сказали: «{heard_text}»"
+            await message.answer(note_reply + suffix + note_heard)
+            latency = 0
+            await save_chat(message.from_user.id, text, note_reply, 0)
+            return
+
         heard = f"\n\n🎤 Вы сказали: «{heard_text}»"
         # Do not let a partial transcription of a long voice note become one
         # wrong expense. Let the tool-calling path interpret complex notes.
@@ -2004,6 +2079,14 @@ async def handle_message(message: types.Message):
             await message.answer(completed + suffix)
             latency = 0
             await save_chat(message.from_user.id, text, completed, 0)
+            return
+
+        # Plain text note (no digits) -> save directly to the Plan as a task
+        note_reply = await _try_save_note_if_applicable(norm_text, message.from_user.id, lang)
+        if note_reply:
+            await message.answer(note_reply + suffix)
+            latency = 0
+            await save_chat(message.from_user.id, text, note_reply, 0)
             return
 
         saved_items = await _try_save_expenses_fallback(norm_text, message.from_user.id)
